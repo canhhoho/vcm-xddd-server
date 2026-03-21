@@ -72,14 +72,14 @@ router.get('/stats', async (req, res) => {
       // Nguồn việc target (Yearly)
       const nvTarget = await query(`
         SELECT COALESCE(target_value, 0) as tv FROM targets
-        WHERE type = 'NGUON_VIEC' AND period_type LIKE '%YEAR%' AND period LIKE '%' || $1 || '%' AND (unit_type = 'GENERAL' OR unit_type IS NULL OR unit_type = '')
+        WHERE (type = 'NGUON_VIEC' OR type ILIKE '%NGUON%' OR type ILIKE '%NGUỒN%') AND period_type LIKE '%YEAR%' AND period LIKE '%' || $1 || '%' AND (unit_type = 'GENERAL' OR unit_type IS NULL OR unit_type = '')
         LIMIT 1
       `, [String(year)]);
 
       // Doanh thu target (Yearly)
       const dtTarget = await query(`
         SELECT COALESCE(target_value, 0) as tv FROM targets
-        WHERE type = 'DOANH_THU' AND period_type LIKE '%YEAR%' AND period LIKE '%' || $1 || '%' AND (unit_type = 'GENERAL' OR unit_type IS NULL OR unit_type = '')
+        WHERE (type = 'DOANH_THU' OR type ILIKE '%DOANH%') AND period_type LIKE '%YEAR%' AND period LIKE '%' || $1 || '%' AND (unit_type = 'GENERAL' OR unit_type IS NULL OR unit_type = '')
         LIMIT 1
       `, [String(year)]);
 
@@ -89,14 +89,14 @@ router.get('/stats', async (req, res) => {
       // Nguồn việc target (Monthly)
       const nvTargetMonth = await query(`
         SELECT COALESCE(target_value, 0) as tv FROM targets
-        WHERE type = 'NGUON_VIEC' AND period_type LIKE '%MONTH%' AND period LIKE '%' || $1 || '%' AND (unit_type = 'GENERAL' OR unit_type IS NULL OR unit_type = '')
+        WHERE (type = 'NGUON_VIEC' OR type ILIKE '%NGUON%' OR type ILIKE '%NGUỒN%') AND period_type LIKE '%MONTH%' AND period LIKE '%' || $1 || '%' AND (unit_type = 'GENERAL' OR unit_type IS NULL OR unit_type = '')
         LIMIT 1
       `, [currentMonthStr]);
 
       // Doanh thu target (Monthly)
       const dtTargetMonth = await query(`
         SELECT COALESCE(target_value, 0) as tv FROM targets
-        WHERE type = 'DOANH_THU' AND period_type LIKE '%MONTH%' AND period LIKE '%' || $1 || '%' AND (unit_type = 'GENERAL' OR unit_type IS NULL OR unit_type = '')
+        WHERE (type = 'DOANH_THU' OR type ILIKE '%DOANH%') AND period_type LIKE '%MONTH%' AND period LIKE '%' || $1 || '%' AND (unit_type = 'GENERAL' OR unit_type IS NULL OR unit_type = '')
         LIMIT 1
       `, [currentMonthStr]);
 
@@ -130,13 +130,13 @@ router.get('/stats', async (req, res) => {
       // Get monthly targets for trends
       const monthlyNvTargets = await query(`
         SELECT period, target_value FROM targets
-        WHERE type = 'NGUON_VIEC' AND period_type LIKE '%MONTH%' AND period LIKE $1
+        WHERE (type = 'NGUON_VIEC' OR type ILIKE '%NGUON%' OR type ILIKE '%NGUỒN%') AND period_type LIKE '%MONTH%' AND period LIKE $1
         AND (unit_type = 'GENERAL' OR unit_type IS NULL OR unit_type = '')
       `, [`${year}-%`]);
 
       const monthlyDtTargets = await query(`
         SELECT period, target_value FROM targets
-        WHERE type = 'DOANH_THU' AND period_type LIKE '%MONTH%' AND period LIKE $1
+        WHERE (type = 'DOANH_THU' OR type ILIKE '%DOANH%') AND period_type LIKE '%MONTH%' AND period LIKE $1
         AND (unit_type = 'GENERAL' OR unit_type IS NULL OR unit_type = '')
       `, [`${year}-%`]);
 

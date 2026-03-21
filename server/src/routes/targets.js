@@ -86,6 +86,11 @@ router.get('/', async (req, res) => {
         const branch = branchMap[r.unit_id];
 
         // Dynamic normalization for robustness
+        let tType = (r.type || '').toUpperCase().trim();
+        if (tType.includes('NGUON') || tType.includes('NGUỒN')) tType = 'NGUON_VIEC';
+        else if (tType.includes('DOANH')) tType = 'DOANH_THU';
+        else if (tType.includes('THU')) tType = 'THU_TIEN';
+
         let pType = (r.period_type || '').toUpperCase().trim();
         if (pType.includes('NĂM') || pType.includes('NAM')) pType = 'YEAR';
         else if (pType.includes('QUÝ') || pType.includes('QUY')) pType = 'QUARTER';
@@ -110,10 +115,10 @@ router.get('/', async (req, res) => {
           }
         }
 
-        const actualValue = await calcActualValue(r.type, pType, period, r.unit_type, r.unit_id);
+        const actualValue = await calcActualValue(tType, pType, period, r.unit_type, r.unit_id);
 
         targets.push({
-          id: r.id, name: r.name, type: r.type,
+          id: r.id, name: r.name, type: tType,
           periodType: pType, period: period,
           unitType: isGeneral ? 'GENERAL' : 'BRANCH',
           unitId: r.unit_id || '',
