@@ -37,11 +37,23 @@ router.get('/stats', async (req, res) => {
         FROM invoices WHERE EXTRACT(YEAR FROM issued_date) = $1
       `, [year]);
 
+      // KPI: Doanh thu MTD
+      const dtMtd = await query(`
+        SELECT COALESCE(SUM(value), 0) as total
+        FROM invoices WHERE EXTRACT(YEAR FROM issued_date) = $1 AND EXTRACT(MONTH FROM issued_date) = $2
+      `, [year, month]);
+
       // KPI: Thu tiền YTD (paid invoices)
       const ttYtd = await query(`
         SELECT COALESCE(SUM(payment), 0) as total
         FROM invoices WHERE payment > 0 AND EXTRACT(YEAR FROM issued_date) = $1
       `, [year]);
+
+      // KPI: Thu tiền MTD
+      const ttMtd = await query(`
+        SELECT COALESCE(SUM(payment), 0) as total
+        FROM invoices WHERE payment > 0 AND EXTRACT(YEAR FROM issued_date) = $1 AND EXTRACT(MONTH FROM issued_date) = $2
+      `, [year, month]);
 
       // KPI: Dự án stats
       const projStats = await query(`
@@ -57,25 +69,49 @@ router.get('/stats', async (req, res) => {
         else projectExecution.waiting = count;
       });
 
-      // Nguồn việc target
+      // Nguồn việc target (Yearly)
       const nvTarget = await query(`
         SELECT COALESCE(target_value, 0) as tv FROM targets
         WHERE type = 'NGUON_VIEC' AND period_type = 'YEAR' AND period = $1 AND (unit_type = 'GENERAL' OR unit_type IS NULL OR unit_type = '')
         LIMIT 1
       `, [String(year)]);
 
-      // Doanh thu target
+      // Doanh thu target (Yearly)
       const dtTarget = await query(`
         SELECT COALESCE(target_value, 0) as tv FROM targets
         WHERE type = 'DOANH_THU' AND period_type = 'YEAR' AND period = $1 AND (unit_type = 'GENERAL' OR unit_type IS NULL OR unit_type = '')
         LIMIT 1
       `, [String(year)]);
 
+      // Current month for target filtering (e.g. "2026-03")
+      const currentMonthStr = `${year}-${String(month).padStart(2, '0')}`;
+
+      // Nguồn việc target (Monthly)
+      const nvTargetMonth = await query(`
+        SELECT COALESCE(target_value, 0) as tv FROM targets
+        WHERE type = 'NGUON_VIEC' AND period_type = 'MONTH' AND period = $1 AND (unit_type = 'GENERAL' OR unit_type IS NULL OR unit_type = '')
+        LIMIT 1
+      `, [currentMonthStr]);
+
+      // Doanh thu target (Monthly)
+      const dtTargetMonth = await query(`
+        SELECT COALESCE(target_value, 0) as tv FROM targets
+        WHERE type = 'DOANH_THU' AND period_type = 'MONTH' AND period = $1 AND (unit_type = 'GENERAL' OR unit_type IS NULL OR unit_type = '')
+        LIMIT 1
+      `, [currentMonthStr]);
+
       const nvTargetVal = nvTarget.rows[0]?.tv || 0;
       const dtTargetVal = dtTarget.rows[0]?.tv || 0;
+      const nvTargetMtdVal = nvTargetMonth.rows[0]?.tv || 0;
+      const dtTargetMtdVal = dtTargetMonth.rows[0]?.tv || 0;
+
       const nvActual = parseFloat(nvYtd.rows[0].total) / 1000000;
       const dtActual = parseFloat(dtYtd.rows[0].total) / 1000000;
       const ttActual = parseFloat(ttYtd.rows[0].total) / 1000000;
+
+      const nvMtdVal = parseFloat(nvMtd.rows[0].total) / 1000000;
+      const dtMtdValActual = parseFloat(dtMtd.rows[0].total) / 1000000;
+      const ttMtdValActual = parseFloat(ttMtd.rows[0].total) / 1000000;
 
       // Monthly trend: nguồn việc
       const nvTrend = await query(`
@@ -176,13 +212,9 @@ router.get('/stats', async (req, res) => {
       const dtAllTime = await query(`SELECT COALESCE(SUM(value)/1000000, 0) as total FROM invoices`);
       const ttAllTime = await query(`SELECT COALESCE(SUM(payment)/1000000, 0) as total FROM invoices WHERE payment > 0`);
 
-      const nvMtdVal = parseFloat(nvMtd.rows[0].total) / 1000000;
       const nvMom = Math.round((nvMtdVal - parseFloat(nvPrevMonth.rows[0].total)) * 100) / 100;
-
-      const dtMtdVal = parseFloat(dtYtd.rows[0].total) / 1000000; // current month DT
-      const dtMom = Math.round((dtMtdVal - parseFloat(dtPrevMonth.rows[0].total)) * 100) / 100;
-
-      const ttMom = Math.round((ttActual - parseFloat(ttPrevMonth.rows[0].total)) * 100) / 100;
+      const dtMom = Math.round((dtMtdValActual - parseFloat(dtPrevMonth.rows[0].total)) * 100) / 100;
+      const ttMom = Math.round((ttMtdValActual - parseFloat(ttPrevMonth.rows[0].total)) * 100) / 100;
 
       return {
         success: true,
@@ -192,32 +224,32 @@ router.get('/stats', async (req, res) => {
               value: Math.round(nvMtdVal),
               valueYTD: Math.round(nvActual),
               valueAllTime: Math.round(parseFloat(nvAllTime.rows[0].total)),
-              achievedPct: nvTargetVal > 0 ? Math.round(nvActual / nvTargetVal * 100 * 10) / 10 : 0,
-              target: parseFloat(nvTargetVal),
+              achievedPct: nvTargetMtdVal > 0 ? Math.round(nvMtdVal / nvTargetMtdVal * 100 * 10) / 10 : 0,
+              target: parseFloat(nvTargetMtdVal),
               targetYTD: parseFloat(nvTargetVal),
               yearPct: nvTargetVal > 0 ? Math.round(nvActual / nvTargetVal * 100) : 0,
               mom: nvMom,
             },
             doanhThu: {
-              value: Math.round(dtActual),
+              value: Math.round(dtMtdValActual),
               valueYTD: Math.round(dtActual),
               valueAllTime: Math.round(parseFloat(dtAllTime.rows[0].total)),
               valueSuffix: 'Tr',
-              achievedPct: dtTargetVal > 0 ? Math.round(dtActual / dtTargetVal * 100 * 10) / 10 : 0,
-              target: parseFloat(dtTargetVal),
+              achievedPct: dtTargetMtdVal > 0 ? Math.round(dtMtdValActual / dtTargetMtdVal * 100 * 10) / 10 : 0,
+              target: parseFloat(dtTargetMtdVal),
               targetYTD: parseFloat(dtTargetVal),
               yearPct: dtTargetVal > 0 ? Math.round(dtActual / dtTargetVal * 100) : 0,
               mom: dtMom,
             },
             thuTien: {
-              value: Math.round(ttActual),
+              value: Math.round(ttMtdValActual),
               valueYTD: Math.round(ttActual),
               valueAllTime: Math.round(parseFloat(ttAllTime.rows[0].total)),
-              target: parseFloat(dtTargetVal),
+              target: parseFloat(dtTargetMtdVal),
               targetYTD: parseFloat(dtTargetVal),
-              achievedPct: dtTargetVal > 0 ? Math.round(ttActual / dtTargetVal * 100) : 0,
+              achievedPct: dtTargetMtdVal > 0 ? Math.round(ttMtdValActual / dtTargetMtdVal * 100) : 0,
               yearPct: dtTargetVal > 0 ? Math.round(ttActual / dtTargetVal * 100) : 0,
-              pct: dtTargetVal > 0 ? Math.round(ttActual / dtTargetVal * 100) : 0,
+              pct: dtTargetMtdVal > 0 ? Math.round(ttMtdValActual / dtTargetMtdVal * 100) : 0,
               mom: ttMom,
             },
             duAn: { ...projectExecution, delayed: 0 },

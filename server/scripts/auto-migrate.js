@@ -349,11 +349,41 @@ async function migrate() {
       if (rows.length > 0) console.log(`  📋 Columns: ${Object.keys(rows[0]).join(', ')}`);
       for (const tgt of rows) {
         try {
+          // Normalize Type
+          let type = toStr(g(tgt,'type')).toUpperCase().trim();
+          if (type.includes('NGUON') || type.includes('NGUỒN')) type = 'NGUON_VIEC';
+          else if (type.includes('DOANH')) type = 'DOANH_THU';
+          else if (type.includes('THU')) type = 'THU_TIEN';
+
+          // Normalize Period Type
+          let pType = toStr(g(tgt,'periodtype','period_type')).toUpperCase().trim();
+          if (pType.includes('YEAR') || pType.includes('NĂM') || pType.includes('NAM')) pType = 'YEAR';
+          else if (pType.includes('QUARTER') || pType.includes('QUÝ') || pType.includes('QUY')) pType = 'QUARTER';
+          else if (pType.includes('MONTH') || pType.includes('THÁNG') || pType.includes('THANG')) pType = 'MONTH';
+
+          // Normalize Period Value
+          let period = toStr(g(tgt,'period')).trim().toUpperCase();
+          if (period.endsWith('.0')) period = period.replace('.0', '');
+          
+          if (pType === 'YEAR') {
+            if (period.includes('NĂM') || period.includes('NAM')) period = period.replace(/[^\d]/g, '');
+          } else if (pType === 'QUARTER') {
+            if (!period.includes('-')) {
+              const q = period.replace(/[^\d]/g, '') || '1';
+              period = `2026-Q${q}`; // Default to 2026 if year missing
+            }
+          } else if (pType === 'MONTH') {
+            if (!period.includes('-')) {
+              const m = period.replace(/[^\d]/g, '').padStart(2, '0') || '01';
+              period = `2026-${m}`; // Default to 2026 if year missing
+            }
+          }
+
           await client.query(
             `INSERT INTO targets (id, name, type, period_type, period, unit_type, unit_id, target_value, created_at)
              VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) ON CONFLICT (id) DO NOTHING`,
-            [toStr(g(tgt,'id')), toStr(g(tgt,'name')), toStr(g(tgt,'type')),
-             toStr(g(tgt,'periodtype','period_type')), toStr(g(tgt,'period')),
+            [toStr(g(tgt,'id')), toStr(g(tgt,'name')), type,
+             pType, period,
              toStr(g(tgt,'unittype','unit_type')||'GENERAL'), toStr(g(tgt,'unitid','unit_id')),
              toNum(g(tgt,'targetvalue','target_value')),
              toDate(g(tgt,'createdat','created_at')) || new Date().toISOString()]
