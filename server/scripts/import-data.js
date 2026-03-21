@@ -83,11 +83,23 @@ async function importData() {
       await client.query('DELETE FROM positions');
       let count = 0;
       for (const p of data.positions) {
+        // Handle both PascalCase (from GAS Positions sheet: ID, Name, Code, DefaultRole)
+        // and camelCase (from API: id, name, code, defaultRole)
+        const id = toStr(p.id || p.ID);
+        const name = toStr(p.name || p.Name);
+        const code = toStr(p.code || p.Code);
+        const defaultRole = toStr(p.defaultRole || p.default_role || p.DefaultRole || 'VIEW');
+        const category = toStr(p.category || p.Category);
+        const description = toStr(p.description || p.Description);
+        const createdAt = toDate(p.createdAt || p.CreatedAt) || new Date().toISOString();
+
+        if (!id) continue; // Skip empty positions
+
         await client.query(
           `INSERT INTO positions (id, name, code, default_role, category, description, created_at)
            VALUES ($1, $2, $3, $4, $5, $6, $7)
            ON CONFLICT (id) DO UPDATE SET name=$2, code=$3, default_role=$4, category=$5, description=$6`,
-          [toStr(p.id), toStr(p.name), toStr(p.code), toStr(p.defaultRole || p.default_role || 'VIEW'), toStr(p.category), toStr(p.description), toDate(p.createdAt) || new Date().toISOString()]
+          [id, name, code, defaultRole, category, description, createdAt]
         );
         count++;
       }
