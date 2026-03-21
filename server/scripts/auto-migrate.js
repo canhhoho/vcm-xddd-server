@@ -153,7 +153,24 @@ function toDate(val) {
   const day = String(d.getDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
 }
-function toNum(val) { return parseFloat(val) || 0; }
+function toNum(val) {
+  if (!val) return 0;
+  let str = String(val).trim();
+  const match = str.match(/[\.,]/g);
+  if (!match) return parseFloat(str) || 0;
+  const lastSep = match[match.length - 1];
+  if (lastSep === ',') {
+    str = str.replace(/\./g, '').replace(/,/g, '.');
+  } else if (lastSep === '.') {
+    const parts = str.split('.');
+    if (parts[parts.length - 1].length === 3) {
+      str = str.replace(/\./g, '').replace(/,/g, '');
+    } else {
+      str = str.replace(/,/g, '');
+    }
+  }
+  return parseFloat(str) || 0;
+}
 function toStr(val) { return val ? String(val) : ''; }
 
 async function migrate() {
@@ -385,7 +402,7 @@ async function migrate() {
             [toStr(g(tgt,'id')), toStr(g(tgt,'name')), type,
              pType, period,
              toStr(g(tgt,'unittype','unit_type')||'GENERAL'), toStr(g(tgt,'unitid','unit_id')),
-             toNum(g(tgt,'targetvalue','target_value')),
+             tv,
              toDate(g(tgt,'createdat','created_at')) || new Date().toISOString()]
           );
           count++;

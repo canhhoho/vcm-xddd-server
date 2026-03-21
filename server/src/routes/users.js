@@ -50,12 +50,25 @@ router.post('/', async (req, res) => {
     const id = 'u_' + uuidv4().substring(0, 8);
     const hashedPassword = SecurityService.hashPassword(d.password || 'vcm123');
 
+    // Resolve position name from DB
+    let posCode = d.positionCode || '';
+    let posName = d.positionName || '';
+    if (d.positionId) {
+      try {
+        const pRes = await query('SELECT code, name FROM positions WHERE id = $1', [d.positionId]);
+        if (pRes.rows.length > 0) {
+          posCode = pRes.rows[0].code;
+          posName = pRes.rows[0].name;
+        }
+      } catch (e) { console.error('Error resolving position:', e.message); }
+    }
+
     await query(`
       INSERT INTO users (id, email, password, name, position_id, position_code, position_name, category, description, role, branches, contracts, projects, targets, business)
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
     `, [
       id, d.email, hashedPassword, d.name || '',
-      d.positionId || '', d.positionCode || '', d.positionName || '',
+      d.positionId || '', posCode, posName,
       d.category || '', d.description || '',
       d.role || 'VIEW',
       'VIEW', 'VIEW', 'VIEW', 'VIEW', 'VIEW'
@@ -86,9 +99,25 @@ router.put('/:id', async (req, res) => {
       projects: 'projects', targets: 'targets', business: 'business'
     };
 
+    // Resolve position name from DB if positionId is being updated
+    let localPosCode = d.positionCode;
+    let localPosName = d.positionName;
+    if (d.positionId) {
+       try {
+         const pRes = await query('SELECT code, name FROM positions WHERE id = $1', [d.positionId]);
+         if (pRes.rows.length > 0) {
+           localPosCode = pRes.rows[0].code;
+           localPosName = pRes.rows[0].name;
+         }
+       } catch (e) { console.error('Error resolving position on update:', e.message); }
+    }
+
     for (const [jsKey, dbCol] of Object.entries(mapping)) {
       if (d[jsKey] !== undefined) {
-        fields.push(`${dbCol} = $${idx}`); values.push(d[jsKey]); idx++;
+        let val = d[jsKey];
+        if (jsKey === 'positionCode' && localPosCode !== undefined) val = localPosCode;
+        if (jsKey === 'positionName' && localPosName !== undefined) val = localPosName;
+        fields.push(`${dbCol} = $${idx}`); values.push(val); idx++;
       }
     }
 
