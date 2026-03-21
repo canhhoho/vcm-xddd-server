@@ -28,6 +28,8 @@ server/uploads/*
 .agent/
 .gemini/
 skills/
+templates/
+antigravity-rules.md
 
 # Backup files
 *.bak
