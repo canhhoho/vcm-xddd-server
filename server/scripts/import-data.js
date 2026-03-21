@@ -224,16 +224,23 @@ async function importData() {
       await client.query('DELETE FROM targets');
       let count = 0;
       for (const tgt of data.targets) {
+        // Normalize period — handle .0 suffix, Date objects, numeric values
+        let period = toStr(tgt.period);
+        period = period.replace(/\.0$/, '').replace(/,/g, '').trim();
+        
+        // Auto-generate name if missing
+        const typeLabel = toStr(tgt.type).includes('NGUON') ? 'Nguồn việc' : toStr(tgt.type).includes('DOANH') ? 'Doanh thu' : 'Thu tiền';
+        const name = toStr(tgt.name) || `${typeLabel} - ${period}`;
+
         await client.query(
-          `INSERT INTO targets (id, type, period_type, period, unit_type, unit_id, target_value, note, created_at)
+          `INSERT INTO targets (id, name, type, period_type, period, unit_type, unit_id, target_value, created_at)
            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
            ON CONFLICT (id) DO NOTHING`,
           [
-            toStr(tgt.id), toStr(tgt.type), toStr(tgt.periodType || tgt.period_type),
-            toStr(tgt.period), toStr(tgt.unitType || tgt.unit_type || ''),
+            toStr(tgt.id), name, toStr(tgt.type), toStr(tgt.periodType || tgt.period_type),
+            period, toStr(tgt.unitType || tgt.unit_type || ''),
             toStr(tgt.unitId || tgt.unit_id || ''),
             toNum(tgt.targetValue || tgt.target_value),
-            toStr(tgt.note || ''),
             toDate(tgt.createdAt || tgt.created_at) || new Date().toISOString()
           ]
         );

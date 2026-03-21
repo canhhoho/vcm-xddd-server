@@ -78,12 +78,20 @@ router.get('/', async (req, res) => {
       const result = await query('SELECT * FROM targets ORDER BY created_at DESC');
       const branchResult = await query('SELECT id, name, code FROM branches');
       const branchMap = {};
-      branchResult.rows.forEach(b => { branchMap[b.id] = b; branchMap[b.code] = b; });
+      branchResult.rows.forEach(b => {
+        branchMap[b.id] = b;
+        branchMap[b.code] = b;
+        // Also map by uppercase code for GAS-migrated data
+        if (b.code) branchMap[b.code.toUpperCase()] = b;
+      });
 
+      const currentYear = new Date().getFullYear().toString();
       const targets = [];
       for (const r of result.rows) {
         const isGeneral = r.unit_type === 'GENERAL' || !r.unit_type;
-        const branch = branchMap[r.unit_id];
+        // Lookup branch by id first, then by code (GAS saves code as unitId)
+        const unitIdStr = (r.unit_id || '').trim();
+        const branch = branchMap[unitIdStr] || branchMap[unitIdStr.toUpperCase()];
 
         // Dynamic normalization for robustness
         let tType = (r.type || '').toUpperCase().trim();
@@ -96,33 +104,54 @@ router.get('/', async (req, res) => {
         else if (pType.includes('QUÝ') || pType.includes('QUY')) pType = 'QUARTER';
         else if (pType.includes('THÁNG') || pType.includes('THANG')) pType = 'MONTH';
 
-        let period = (r.period || '').toUpperCase().trim();
+        // Period normalization — handle numeric values, empty strings, .0 suffix
+        let period = String(r.period || '').trim();
         period = period.replace(/\.0$/, '').replace(/,/g, ''); // "2026.0" -> "2026", "2,026" -> "2026"
-        
+        period = period.toUpperCase();
+
         if (pType === 'YEAR') {
           if (period.includes('NĂM') || period.includes('NAM') || !period.includes('-')) {
             period = period.replace(/[^\d]/g, '');
           }
+          // Fallback: if period is empty or 0, use current year
+          if (!period || period === '0') period = currentYear;
         } else if (pType === 'QUARTER') {
           if (!period.includes('-')) {
-            const q = period.replace(/[^\d]/g, '') || '1';
-            period = `2026-Q${q}`;
+            const digits = period.replace(/[^\d]/g, '');
+            const q = digits ? digits.charAt(digits.length - 1) : '1'; // last digit = quarter number
+            const yearPart = digits.length > 1 ? digits.slice(0, -1) : currentYear;
+            period = `${yearPart}-Q${q}`;
           }
         } else if (pType === 'MONTH') {
           if (!period.includes('-')) {
-            const m = period.replace(/[^\d]/g, '').padStart(2, '0') || '01';
-            period = `2026-${m}`;
+            const digits = period.replace(/[^\d]/g, '');
+            if (digits.length >= 6) {
+              // e.g., "202603" -> "2026-03"
+              period = `${digits.slice(0, 4)}-${digits.slice(4, 6)}`;
+            } else if (digits.length <= 2) {
+              const m = (digits || '01').padStart(2, '0');
+              period = `${currentYear}-${m}`;
+            } else {
+              period = `${currentYear}-${digits.padStart(2, '0')}`;
+            }
           }
         }
 
-        const actualValue = await calcActualValue(tType, pType, period, r.unit_type, r.unit_id);
+        // Resolve actual unitId to branch ID for calcActualValue
+        const resolvedUnitId = branch ? branch.id : unitIdStr;
+
+        const actualValue = await calcActualValue(tType, pType, period, r.unit_type, resolvedUnitId);
+
+        // Auto-generate name if missing (GAS import didn't include name)
+        const typeLabel = tType === 'NGUON_VIEC' ? 'Nguồn việc' : tType === 'DOANH_THU' ? 'Doanh thu' : 'Thu tiền';
+        const autoName = r.name || `${typeLabel} - ${period}`;
 
         targets.push({
-          id: r.id, name: r.name, type: tType,
+          id: r.id, name: autoName, type: tType,
           periodType: pType, period: period,
           unitType: isGeneral ? 'GENERAL' : 'BRANCH',
-          unitId: r.unit_id || '',
-          unitName: branch ? branch.name : (isGeneral ? 'Chung' : r.unit_id),
+          unitId: resolvedUnitId || '',
+          unitName: branch ? branch.name : (isGeneral ? 'Chung' : unitIdStr),
           targetValue: parseFloat(r.target_value) || 0,
           actualValue,
           createdAt: r.created_at,

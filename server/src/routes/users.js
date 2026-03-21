@@ -31,9 +31,16 @@ function toUser(r) {
 router.get('/', async (req, res) => {
   try {
     const data = await CacheService.getOrSet('USERS_LIST', async () => {
-      const result = await query(
-        'SELECT id, email, name, position_id, position_code, position_name, category, description, role, branches, contracts, projects, targets, business, created_at FROM users ORDER BY created_at DESC'
-      );
+      const result = await query(`
+        SELECT u.id, u.email, u.name, u.position_id,
+          COALESCE(p.code, u.position_code) as position_code,
+          COALESCE(p.name, u.position_name) as position_name,
+          COALESCE(p.category, u.category) as category,
+          u.description, u.role, u.branches, u.contracts, u.projects, u.targets, u.business, u.created_at
+        FROM users u
+        LEFT JOIN positions p ON u.position_id = p.id
+        ORDER BY u.created_at DESC
+      `);
       return { success: true, data: result.rows.map(toUser) };
     }, CacheService.TTL.MEDIUM);
 
