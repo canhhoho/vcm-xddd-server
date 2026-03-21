@@ -84,11 +84,37 @@ router.get('/', async (req, res) => {
       for (const r of result.rows) {
         const isGeneral = r.unit_type === 'GENERAL' || !r.unit_type;
         const branch = branchMap[r.unit_id];
-        const actualValue = await calcActualValue(r.type, r.period_type, r.period, r.unit_type, r.unit_id);
+
+        // Dynamic normalization for robustness
+        let pType = (r.period_type || '').toUpperCase().trim();
+        if (pType.includes('NĂM') || pType.includes('NAM')) pType = 'YEAR';
+        else if (pType.includes('QUÝ') || pType.includes('QUY')) pType = 'QUARTER';
+        else if (pType.includes('THÁNG') || pType.includes('THANG')) pType = 'MONTH';
+
+        let period = (r.period || '').toUpperCase().trim();
+        period = period.replace(/\.0$/, '').replace(/,/g, ''); // "2026.0" -> "2026", "2,026" -> "2026"
+        
+        if (pType === 'YEAR') {
+          if (period.includes('NĂM') || period.includes('NAM') || !period.includes('-')) {
+            period = period.replace(/[^\d]/g, '');
+          }
+        } else if (pType === 'QUARTER') {
+          if (!period.includes('-')) {
+            const q = period.replace(/[^\d]/g, '') || '1';
+            period = `2026-Q${q}`;
+          }
+        } else if (pType === 'MONTH') {
+          if (!period.includes('-')) {
+            const m = period.replace(/[^\d]/g, '').padStart(2, '0') || '01';
+            period = `2026-${m}`;
+          }
+        }
+
+        const actualValue = await calcActualValue(r.type, pType, period, r.unit_type, r.unit_id);
 
         targets.push({
           id: r.id, name: r.name, type: r.type,
-          periodType: r.period_type, period: r.period,
+          periodType: pType, period: period,
           unitType: isGeneral ? 'GENERAL' : 'BRANCH',
           unitId: r.unit_id || '',
           unitName: branch ? branch.name : (isGeneral ? 'Chung' : r.unit_id),
