@@ -112,12 +112,17 @@ function parseCSV(csv) {
   return rows;
 }
 
-// Convert CSV rows to objects using headers
+// Normalize header: "BranchID" → "branchid", "CreatedAt" → "createdat", "ID" → "id"
+function normalizeKey(key) {
+  return key.trim().toLowerCase();
+}
+
+// Convert CSV rows to objects using normalized lowercase headers
 function csvToObjects(csv) {
   const rows = parseCSV(csv);
   if (rows.length < 2) return [];
   
-  const headers = rows[0];
+  const headers = rows[0].map(h => normalizeKey(h));
   return rows.slice(1).filter(row => row[0]).map(row => {
     const obj = {};
     headers.forEach((h, i) => {
@@ -125,6 +130,15 @@ function csvToObjects(csv) {
     });
     return obj;
   });
+}
+
+// Helper to get value from object with normalized keys
+function g(obj, ...keys) {
+  for (const k of keys) {
+    const val = obj[normalizeKey(k)];
+    if (val !== null && val !== undefined) return val;
+  }
+  return null;
 }
 
 function toDate(val) {
@@ -167,7 +181,7 @@ async function migrate() {
     await client.query('DELETE FROM branches');
     console.log('🗑️  Cleared existing data\n');
     
-    // === Import each table independently (no single wrapping transaction) ===
+    // === Import each table independently ===
 
     // 1. Branches
     let count = 0;
@@ -175,10 +189,10 @@ async function migrate() {
       try {
         await client.query(
           `INSERT INTO branches (id, name, code, address, phone, email, created_at) VALUES ($1,$2,$3,$4,$5,$6,$7) ON CONFLICT (id) DO NOTHING`,
-          [toStr(b.id), toStr(b.name), toStr(b.code), toStr(b.address), toStr(b.phone), toStr(b.email), toDate(b.createdAt) || new Date().toISOString()]
+          [toStr(g(b,'id')), toStr(g(b,'name')), toStr(g(b,'code')), toStr(g(b,'address')), toStr(g(b,'phone')), toStr(g(b,'email')), toDate(g(b,'createdat','createdAt')) || new Date().toISOString()]
         );
         count++;
-      } catch (e) { console.warn(`  ⚠️ Branch ${b.id}: ${e.message}`); }
+      } catch (e) { console.warn(`  ⚠️ Branch ${g(b,'id')}: ${e.message}`); }
     }
     console.log(`✅ Branches: ${count}`);
 
@@ -186,150 +200,162 @@ async function migrate() {
     try {
       const csv = await downloadCSV('Positions');
       const rows = csvToObjects(csv); count = 0;
+      if (rows.length > 0) console.log(`  📋 Columns: ${Object.keys(rows[0]).join(', ')}`);
       for (const p of rows) {
         try {
           await client.query(
             `INSERT INTO positions (id, name, code, default_role, category, description, created_at) VALUES ($1,$2,$3,$4,$5,$6,$7) ON CONFLICT (id) DO NOTHING`,
-            [toStr(p.id), toStr(p.name), toStr(p.code), toStr(p.defaultRole || p.default_role || 'VIEW'), toStr(p.category), toStr(p.description), toDate(p.createdAt) || new Date().toISOString()]
+            [toStr(g(p,'id')), toStr(g(p,'name')), toStr(g(p,'code')), toStr(g(p,'defaultrole','default_role') || 'VIEW'), toStr(g(p,'category')), toStr(g(p,'description')), toDate(g(p,'createdat','createdAt')) || new Date().toISOString()]
           );
           count++;
-        } catch (e) { console.warn(`  ⚠️ Position ${p.id}: ${e.message}`); }
+        } catch (e) { console.warn(`  ⚠️ Position ${g(p,'id')}: ${e.message}`); }
       }
       console.log(`✅ Positions: ${count}`);
-    } catch (e) { console.warn(`⚠️ Positions download: ${e.message}`); }
+    } catch (e) { console.warn(`⚠️ Positions: ${e.message}`); }
 
     // 3. Users
     try {
       const csv = await downloadCSV('Users');
       const rows = csvToObjects(csv); count = 0;
-      // Debug: show first row headers
-      if (rows.length > 0) console.log(`  📋 User columns: ${Object.keys(rows[0]).join(', ')}`);
+      if (rows.length > 0) console.log(`  📋 Columns: ${Object.keys(rows[0]).join(', ')}`);
       for (const u of rows) {
         try {
           await client.query(
             `INSERT INTO users (id, email, password, name, role, position_id, position_code, position_name, category, description, branches, contracts, projects, targets, business, created_at) 
              VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16) ON CONFLICT (id) DO NOTHING`,
-            [toStr(u.id), toStr(u.email), toStr(u.password), toStr(u.name), toStr(u.role||'VIEW'),
-             toStr(u.positionId), toStr(u.positionCode), toStr(u.positionName), toStr(u.category),
-             toStr(u.description), toStr(u.branches), toStr(u.contracts), toStr(u.projects),
-             toStr(u.targets), toStr(u.business), toDate(u.createdAt) || new Date().toISOString()]
+            [toStr(g(u,'id')), toStr(g(u,'email')), toStr(g(u,'password')), toStr(g(u,'name')), toStr(g(u,'role')||'VIEW'),
+             toStr(g(u,'positionid','position_id')), toStr(g(u,'positioncode','position_code')), toStr(g(u,'positionname','position_name')), toStr(g(u,'category')),
+             toStr(g(u,'description')), toStr(g(u,'branches')), toStr(g(u,'contracts')), toStr(g(u,'projects')),
+             toStr(g(u,'targets')), toStr(g(u,'business')), toDate(g(u,'createdat','createdAt')) || new Date().toISOString()]
           );
           count++;
-        } catch (e) { console.warn(`  ⚠️ User ${u.email}: ${e.message}`); }
+        } catch (e) { console.warn(`  ⚠️ User ${g(u,'email')}: ${e.message}`); }
       }
       console.log(`✅ Users: ${count}`);
-    } catch (e) { console.warn(`⚠️ Users download: ${e.message}`); }
+    } catch (e) { console.warn(`⚠️ Users: ${e.message}`); }
 
-    // 4. Contracts
+    // 4. Contracts (columns: ID, Code, Name, BranchID, BusinessField, Value, StartDate, EndDate, Status, FileURL, Note, Progress, CreatedAt, CreatedBy)
     try {
       const csv = await downloadCSV('Contracts');
       const rows = csvToObjects(csv); count = 0;
-      if (rows.length > 0) console.log(`  📋 Contract columns: ${Object.keys(rows[0]).join(', ')}`);
+      if (rows.length > 0) console.log(`  📋 Columns: ${Object.keys(rows[0]).join(', ')}`);
       for (const c of rows) {
         try {
           await client.query(
-            `INSERT INTO contracts (id, code, name, branch_id, business_field, value, status, start_date, end_date, note, file_urls, created_at)
-             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) ON CONFLICT (id) DO NOTHING`,
-            [toStr(c.id), toStr(c.code||c.contractCode), toStr(c.name||c.contractName),
-             toStr(c.branchId||c.provinceId||c.branch_id), toStr(c.businessField||c.business_field||''),
-             toNum(c.value), toStr(c.status||'TODO'),
-             toDate(c.startDate||c.start_date), toDate(c.endDate||c.end_date),
-             toStr(c.note||''), toStr(c.fileUrls||c.file_urls||''),
-             toDate(c.createdAt||c.created_at) || new Date().toISOString()]
+            `INSERT INTO contracts (id, code, name, branch_id, business_field, value, status, start_date, end_date, note, file_urls, progress, created_at, created_by)
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14) ON CONFLICT (id) DO NOTHING`,
+            [toStr(g(c,'id')), toStr(g(c,'code','contractcode')), toStr(g(c,'name','contractname')),
+             toStr(g(c,'branchid','branch_id','provinceid')), toStr(g(c,'businessfield','business_field')),
+             toNum(g(c,'value')), toStr(g(c,'status')||'TODO'),
+             toDate(g(c,'startdate','start_date')), toDate(g(c,'enddate','end_date')),
+             toStr(g(c,'note')), toStr(g(c,'fileurl','fileurls','file_urls')),
+             parseInt(g(c,'progress'))||0, toDate(g(c,'createdat','created_at')) || new Date().toISOString(),
+             toStr(g(c,'createdby','created_by'))]
           );
           count++;
-        } catch (e) { console.warn(`  ⚠️ Contract ${c.id}: ${e.message}`); }
+        } catch (e) { console.warn(`  ⚠️ Contract ${g(c,'id')}: ${e.message}`); }
       }
       console.log(`✅ Contracts: ${count}`);
-    } catch (e) { console.warn(`⚠️ Contracts download: ${e.message}`); }
+    } catch (e) { console.warn(`⚠️ Contracts: ${e.message}`); }
 
-    // 5. Invoices
+    // 5. Invoices (columns: id, contractId, invoiceNumber, installment, value, issuedDate, payment, createdAt, files)
+    // DB schema: id, contract_id, invoice_number, installment, value, issued_date, payment, created_at, files
     try {
       const csv = await downloadCSV('Invoices');
       const rows = csvToObjects(csv); count = 0;
-      if (rows.length > 0) console.log(`  📋 Invoice columns: ${Object.keys(rows[0]).join(', ')}`);
+      if (rows.length > 0) console.log(`  📋 Columns: ${Object.keys(rows[0]).join(', ')}`);
       for (const inv of rows) {
         try {
           await client.query(
-            `INSERT INTO invoices (id, contract_id, invoice_number, value, payment, issued_date, note, status, created_at)
+            `INSERT INTO invoices (id, contract_id, invoice_number, installment, value, issued_date, payment, created_at, files)
              VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) ON CONFLICT (id) DO NOTHING`,
-            [toStr(inv.id), toStr(inv.contractId||inv.contract_id),
-             toStr(inv.invoiceNumber||inv.invoice_number||''),
-             toNum(inv.value), toNum(inv.payment||inv.paidAmount),
-             toDate(inv.issuedDate||inv.issued_date), toStr(inv.note||''), toStr(inv.status||''),
-             toDate(inv.createdAt||inv.created_at) || new Date().toISOString()]
+            [toStr(g(inv,'id')), toStr(g(inv,'contractid','contract_id')),
+             toStr(g(inv,'invoicenumber','invoice_number')),
+             toStr(g(inv,'installment')),
+             toNum(g(inv,'value')), toDate(g(inv,'issueddate','issued_date')),
+             toNum(g(inv,'payment','paidamount')),
+             toDate(g(inv,'createdat','created_at')) || new Date().toISOString(),
+             toStr(g(inv,'files'))]
           );
           count++;
-        } catch (e) { console.warn(`  ⚠️ Invoice ${inv.id}: ${e.message}`); }
+        } catch (e) { console.warn(`  ⚠️ Invoice ${g(inv,'id')}: ${e.message}`); }
       }
       console.log(`✅ Invoices: ${count}`);
-    } catch (e) { console.warn(`⚠️ Invoices download: ${e.message}`); }
+    } catch (e) { console.warn(`⚠️ Invoices: ${e.message}`); }
 
-    // 6. Projects
+    // 6. Projects (columns: id, code, name, status, managerId, contractId, location, investor, startDate, endDate, budget, description, members, createdAt)
     try {
       const csv = await downloadCSV('Projects');
       const rows = csvToObjects(csv); count = 0;
-      if (rows.length > 0) console.log(`  📋 Project columns: ${Object.keys(rows[0]).join(', ')}`);
+      if (rows.length > 0) console.log(`  📋 Columns: ${Object.keys(rows[0]).join(', ')}`);
       for (const p of rows) {
         try {
-          const members = p.members || p.memberIds || '[]';
+          const members = g(p,'members','memberids') || '[]';
           await client.query(
-            `INSERT INTO projects (id, code, name, status, start_date, end_date, manager_id, description, members, created_at)
-             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) ON CONFLICT (id) DO NOTHING`,
-            [toStr(p.id), toStr(p.code), toStr(p.name), toStr(p.status||'TODO'),
-             toDate(p.startDate||p.start_date), toDate(p.endDate||p.end_date),
-             toStr(p.managerId||p.manager_id||''), toStr(p.description||''),
+            `INSERT INTO projects (id, code, name, status, start_date, end_date, manager_id, contract_id, location, investor, budget, description, members, created_at)
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14) ON CONFLICT (id) DO NOTHING`,
+            [toStr(g(p,'id')), toStr(g(p,'code')), toStr(g(p,'name')), toStr(g(p,'status')||'TODO'),
+             toDate(g(p,'startdate','start_date')), toDate(g(p,'enddate','end_date')),
+             toStr(g(p,'managerid','manager_id')), toStr(g(p,'contractid','contract_id')),
+             toStr(g(p,'location')), toStr(g(p,'investor')),
+             toNum(g(p,'budget')), toStr(g(p,'description')),
              typeof members === 'string' ? members : JSON.stringify(members),
-             toDate(p.createdAt||p.created_at) || new Date().toISOString()]
+             toDate(g(p,'createdat','created_at')) || new Date().toISOString()]
           );
           count++;
-        } catch (e) { console.warn(`  ⚠️ Project ${p.id}: ${e.message}`); }
+        } catch (e) { console.warn(`  ⚠️ Project ${g(p,'id')}: ${e.message}`); }
       }
       console.log(`✅ Projects: ${count}`);
-    } catch (e) { console.warn(`⚠️ Projects download: ${e.message}`); }
+    } catch (e) { console.warn(`⚠️ Projects: ${e.message}`); }
 
     // 7. Tasks
+    // DB schema: id, project_id, item_type, item_name, name, assignee_id, status, progress, start_date, end_date, description, priority, sort_order, created_at
     try {
       const csv = await downloadCSV('Tasks');
       const rows = csvToObjects(csv); count = 0;
+      if (rows.length > 0) console.log(`  📋 Columns: ${Object.keys(rows[0]).join(', ')}`);
       for (const t of rows) {
         try {
           await client.query(
-            `INSERT INTO tasks (id, project_id, item_type, item_name, name, assignee_id, status, priority, due_date, description, "order", created_at)
-             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) ON CONFLICT (id) DO NOTHING`,
-            [toStr(t.id), toStr(t.projectId||t.project_id),
-             toStr(t.itemType||t.item_type||''), toStr(t.itemName||t.item_name||''),
-             toStr(t.name), toStr(t.assigneeId||t.assignee_id||''),
-             toStr(t.status||'TODO'), toStr(t.priority||'NORMAL'),
-             toDate(t.dueDate||t.due_date), toStr(t.description||''),
-             parseInt(t.order)||0, toDate(t.createdAt||t.created_at) || new Date().toISOString()]
+            `INSERT INTO tasks (id, project_id, item_type, item_name, name, assignee_id, status, progress, start_date, end_date, description, priority, sort_order, created_at)
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14) ON CONFLICT (id) DO NOTHING`,
+            [toStr(g(t,'id')), toStr(g(t,'projectid','project_id')),
+             toStr(g(t,'itemtype','item_type')), toStr(g(t,'itemname','item_name')),
+             toStr(g(t,'name')), toStr(g(t,'assigneeid','assignee_id')),
+             toStr(g(t,'status')||'TODO'), parseInt(g(t,'progress'))||0,
+             toDate(g(t,'startdate','start_date')), toDate(g(t,'enddate','end_date','duedate','due_date')),
+             toStr(g(t,'description')), toStr(g(t,'priority')||'MEDIUM'),
+             parseInt(g(t,'sortorder','sort_order','order'))||0,
+             toDate(g(t,'createdat','created_at')) || new Date().toISOString()]
           );
           count++;
-        } catch (e) { console.warn(`  ⚠️ Task ${t.id}: ${e.message}`); }
+        } catch (e) { console.warn(`  ⚠️ Task ${g(t,'id')}: ${e.message}`); }
       }
       console.log(`✅ Tasks: ${count}`);
-    } catch (e) { console.warn(`⚠️ Tasks download: ${e.message}`); }
+    } catch (e) { console.warn(`⚠️ Tasks: ${e.message}`); }
 
-    // 8. Targets
+    // 8. Targets (columns: id, name, type, periodType, period, unitType, unitId, targetValue, createdAt)
+    // DB schema: id, name, type, period_type, period, unit_type, unit_id, target_value, created_at (NO note column)
     try {
       const csv = await downloadCSV('Targets');
       const rows = csvToObjects(csv); count = 0;
-      if (rows.length > 0) console.log(`  📋 Target columns: ${Object.keys(rows[0]).join(', ')}`);
+      if (rows.length > 0) console.log(`  📋 Columns: ${Object.keys(rows[0]).join(', ')}`);
       for (const tgt of rows) {
         try {
           await client.query(
-            `INSERT INTO targets (id, type, period_type, period, unit_type, unit_id, target_value, note, created_at)
+            `INSERT INTO targets (id, name, type, period_type, period, unit_type, unit_id, target_value, created_at)
              VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) ON CONFLICT (id) DO NOTHING`,
-            [toStr(tgt.id), toStr(tgt.type), toStr(tgt.periodType||tgt.period_type),
-             toStr(tgt.period), toStr(tgt.unitType||tgt.unit_type||''),
-             toStr(tgt.unitId||tgt.unit_id||''), toNum(tgt.targetValue||tgt.target_value),
-             toStr(tgt.note||''), toDate(tgt.createdAt||tgt.created_at) || new Date().toISOString()]
+            [toStr(g(tgt,'id')), toStr(g(tgt,'name')), toStr(g(tgt,'type')),
+             toStr(g(tgt,'periodtype','period_type')), toStr(g(tgt,'period')),
+             toStr(g(tgt,'unittype','unit_type')||'GENERAL'), toStr(g(tgt,'unitid','unit_id')),
+             toNum(g(tgt,'targetvalue','target_value')),
+             toDate(g(tgt,'createdat','created_at')) || new Date().toISOString()]
           );
           count++;
-        } catch (e) { console.warn(`  ⚠️ Target ${tgt.id}: ${e.message}`); }
+        } catch (e) { console.warn(`  ⚠️ Target ${g(tgt,'id')}: ${e.message}`); }
       }
       console.log(`✅ Targets: ${count}`);
-    } catch (e) { console.warn(`⚠️ Targets download: ${e.message}`); }
+    } catch (e) { console.warn(`⚠️ Targets: ${e.message}`); }
 
     // 9. Staff
     try {
@@ -340,15 +366,15 @@ async function migrate() {
           await client.query(
             `INSERT INTO staff (id, branch_id, name, position, phone, email, created_at)
              VALUES ($1,$2,$3,$4,$5,$6,$7) ON CONFLICT (id) DO NOTHING`,
-            [toStr(s.id), toStr(s.branchId||s.branch_id||''), toStr(s.name),
-             toStr(s.position||''), toStr(s.phone||''), toStr(s.email||''),
-             toDate(s.createdAt||s.created_at) || new Date().toISOString()]
+            [toStr(g(s,'id')), toStr(g(s,'branchid','branch_id')), toStr(g(s,'name')),
+             toStr(g(s,'position')), toStr(g(s,'phone')), toStr(g(s,'email')),
+             toDate(g(s,'createdat','created_at')) || new Date().toISOString()]
           );
           count++;
-        } catch (e) { console.warn(`  ⚠️ Staff ${s.id}: ${e.message}`); }
+        } catch (e) { console.warn(`  ⚠️ Staff ${g(s,'id')}: ${e.message}`); }
       }
       console.log(`✅ Staff: ${count}`);
-    } catch (e) { console.warn(`⚠️ Staff download: ${e.message}`); }
+    } catch (e) { console.warn(`⚠️ Staff: ${e.message}`); }
 
     // 10. Activities (last 200)
     try {
@@ -360,14 +386,14 @@ async function migrate() {
           await client.query(
             `INSERT INTO activities (id, email, action, description, created_at)
              VALUES ($1,$2,$3,$4,$5) ON CONFLICT (id) DO NOTHING`,
-            [toStr(a.id), toStr(a.email||a.userId||''), toStr(a.action),
-             toStr(a.description||''), toDate(a.createdAt||a.created_at||a.timestamp) || new Date().toISOString()]
+            [toStr(g(a,'id')), toStr(g(a,'email','userid')), toStr(g(a,'action')),
+             toStr(g(a,'description')), toDate(g(a,'createdat','created_at','timestamp')) || new Date().toISOString()]
           );
           count++;
-        } catch (e) { console.warn(`  ⚠️ Activity ${a.id}: ${e.message}`); }
+        } catch (e) { console.warn(`  ⚠️ Activity ${g(a,'id')}: ${e.message}`); }
       }
       console.log(`✅ Activities: ${count}`);
-    } catch (e) { console.warn(`⚠️ Activities download: ${e.message}`); }
+    } catch (e) { console.warn(`⚠️ Activities: ${e.message}`); }
     
     // Summary
     console.log('\n🎉 Migration complete!\n');
