@@ -402,7 +402,7 @@ async function migrate() {
             [toStr(g(tgt,'id')), toStr(g(tgt,'name')), type,
              pType, period,
              toStr(g(tgt,'unittype','unit_type')||'GENERAL'), toStr(g(tgt,'unitid','unit_id')),
-             tv,
+             toNum(g(tgt,'targetvalue','target_value')),
              toDate(g(tgt,'createdat','created_at')) || new Date().toISOString()]
           );
           count++;
