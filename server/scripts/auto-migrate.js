@@ -143,8 +143,15 @@ function g(obj, ...keys) {
 
 function toDate(val) {
   if (!val) return null;
+  // Try to parse as date string directly (YYYY-MM-DD or MM/DD/YYYY etc.)
   const d = new Date(val);
-  return isNaN(d.getTime()) ? null : d.toISOString();
+  if (isNaN(d.getTime())) return null;
+  // Extract local date components to avoid UTC timezone shift
+  // This preserves the original date without subtracting timezone offset
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 }
 function toNum(val) { return parseFloat(val) || 0; }
 function toStr(val) { return val ? String(val) : ''; }

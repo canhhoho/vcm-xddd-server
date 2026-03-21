@@ -40,30 +40,43 @@ router.get('/', async (req, res) => {
   try {
     const data = await CacheService.getOrSet('CONTRACTS_LIST', async () => {
       const result = await query(`
-        SELECT c.*, b.name as branch_name, b.code as branch_code
+        SELECT c.*, b.name as branch_name, b.code as branch_code,
+               COALESCE(inv.total_payment, 0) as total_payment
         FROM contracts c
         LEFT JOIN branches b ON c.branch_id = b.id
+        LEFT JOIN (
+          SELECT contract_id, SUM(payment) as total_payment
+          FROM invoices
+          GROUP BY contract_id
+        ) inv ON inv.contract_id = c.id
         ORDER BY c.created_at DESC
       `);
 
-      const contracts = result.rows.map(r => ({
-        id: r.id,
-        code: r.code,
-        name: r.name,
-        branchId: r.branch_id,
-        branchName: r.branch_name || '',
-        branchCode: r.branch_code || '',
-        businessField: r.business_field,
-        value: parseFloat(r.value) || 0,
-        startDate: r.start_date,
-        endDate: r.end_date,
-        status: r.status,
-        fileUrls: r.file_urls || '',
-        note: r.note || '',
-        progress: r.progress || 0,
-        createdAt: r.created_at,
-        createdBy: r.created_by || '',
-      }));
+      const contracts = result.rows.map(r => {
+        const value = parseFloat(r.value) || 0;
+        const totalPayment = parseFloat(r.total_payment) || 0;
+        // Calculate progress from invoices (same as App Script)
+        const progress = value > 0 ? Math.round((totalPayment / value) * 100) : 0;
+
+        return {
+          id: r.id,
+          code: r.code,
+          name: r.name,
+          branchId: r.branch_id,
+          branchName: r.branch_name || '',
+          branchCode: r.branch_code || '',
+          businessField: r.business_field,
+          value,
+          startDate: r.start_date,
+          endDate: r.end_date,
+          status: r.status,
+          fileUrls: r.file_urls || '',
+          note: r.note || '',
+          progress,
+          createdAt: r.created_at,
+          createdBy: r.created_by || '',
+        };
+      });
 
       return { success: true, data: contracts };
     }, CacheService.TTL.SHORT);
