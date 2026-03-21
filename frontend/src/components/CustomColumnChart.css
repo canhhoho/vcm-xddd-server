@@ -1,0 +1,194 @@
+/* Custom Column Chart Styles */
+.custom-chart-container {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    padding: 10px 0;
+    font-family: 'Inter', sans-serif;
+    position: relative;
+    box-sizing: border-box;
+}
+
+/* Legend */
+.custom-chart-legend {
+    display: flex;
+    justify-content: flex-end;
+    gap: 16px;
+    margin-bottom: 10px;
+    font-size: 12px;
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: #6B7280;
+}
+
+.legend-color {
+    width: 10px;
+    height: 10px;
+    border-radius: 2px;
+}
+
+/* Chart Area */
+.chart-area {
+    flex: 1;
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    padding-bottom: 24px;
+    /* Space for X labels */
+    border-bottom: 1px solid #E5E7EB;
+    position: relative;
+    gap: 8px;
+    /* Gap between groups */
+}
+
+/* Y Axis */
+.y-axis {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding-right: 10px;
+    font-size: 11px;
+    color: #9CA3AF;
+    text-align: right;
+    min-width: 40px;
+    position: relative;
+    /* Adjust height to match chart area's plot area roughly */
+    padding-bottom: 24px;
+    /* Space for X axis matches chart-area padding-bottom */
+}
+
+.y-axis-label {
+    position: absolute;
+    right: 10px;
+    white-space: nowrap;
+}
+
+
+/* Y Axis Lines (Optional - simplified as grid) */
+.grid-lines {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 0;
+}
+
+.grid-line {
+    width: 100%;
+    border-top: 1px dashed #F3F4F6;
+    height: 0;
+    position: absolute;
+    left: 0;
+}
+
+/* Column Group */
+.column-group {
+    flex: 1;
+    height: 100%;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    gap: 4px;
+    /* Gap between bars in a group */
+    position: relative;
+    z-index: 1;
+    cursor: pointer;
+}
+
+/* Individual Bar Wrapper */
+.bar-wrapper {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    transition: all 0.2s ease;
+}
+
+.bar {
+    width: 100%;
+    max-width: 24px;
+    /* Max column width */
+    min-width: 8px;
+    background-color: #D1D5DB;
+    border-radius: 4px 4px 0 0;
+    transition: height 1s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.2s;
+    animation: slideUp 0.8s ease-out forwards;
+    position: relative;
+}
+
+.bar:hover {
+    opacity: 0.85;
+}
+
+@keyframes slideUp {
+    from {
+        height: 0;
+    }
+}
+
+/* X Axis Label */
+.x-label {
+    position: absolute;
+    bottom: -24px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 11px;
+    color: #9CA3AF;
+    white-space: nowrap;
+}
+
+/* Tooltip */
+.custom-tooltip {
+    position: absolute;
+    background: rgba(0, 0, 0, 0.85);
+    color: #fff;
+    padding: 8px 12px;
+    border-radius: 4px;
+    font-size: 12px;
+    pointer-events: none;
+    z-index: 100;
+    white-space: nowrap;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    transform: translate(-50%, -100%);
+    margin-top: -8px;
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+
+.custom-tooltip.visible {
+    opacity: 1;
+}
+
+.tooltip-title {
+    font-weight: 600;
+    margin-bottom: 4px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+    padding-bottom: 4px;
+}
+
+.tooltip-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 2px;
+}
+
+.empty-state {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #9CA3AF;
+    font-size: 13px;
+    background: #F9FAFB;
+    border-radius: 8px;
+}

@@ -1,0 +1,25 @@
+/* Page specific styles - Global styles handle the header and filters */
+.contracts-card {
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.contracts-card .ant-btn-primary {
+    background: #E11D2E;
+    border-color: #E11D2E;
+}
+
+.contracts-card .ant-btn-primary:hover {
+    background: #C51624;
+    border-color: #C51624;
+}
+
+.contracts-card .ant-table-thead>tr>th {
+    background: #F9FAFB;
+    color: #374151;
+    font-weight: 600;
+}
+
+.contracts-card .ant-table-tbody>tr:hover>td {
+    background: #F9FAFB;
+}

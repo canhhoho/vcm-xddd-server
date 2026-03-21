@@ -1,0 +1,124 @@
+.dark-input::placeholder {
+    color: rgba(255, 255, 255, 0.5) !important;
+}
+
+.dark-input input::placeholder {
+    color: rgba(255, 255, 255, 0.5) !important;
+}
+
+/* Target Tab Styles */
+.targets-card {
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.targets-card .ant-tabs-nav {
+    margin-bottom: 0;
+    padding: 0 8px;
+}
+
+.targets-card .ant-tabs-tab {
+    padding: 12px 20px !important;
+    font-weight: 500;
+}
+
+.targets-card .ant-tabs-tab-active {
+    font-weight: 600 !important;
+}
+
+.targets-card .ant-tabs-ink-bar {
+    background: #E11D2E !important;
+    height: 3px !important;
+}
+
+/* Filter section - đồng bộ style với Branches, Contracts, User */
+.targets-filters {
+    margin-bottom: 16px;
+    padding: 16px;
+    background: #FAFAFA;
+    border-radius: 8px;
+    border: 1px solid #E5E7EB;
+}
+
+/* Table row hover */
+.ant-table-tbody>tr:hover>td {
+    background: #fafafa !important;
+}
+
+/* Progress bar in table */
+.ant-progress-text {
+    font-size: 12px !important;
+    font-weight: 500;
+}
+
+/* Summary row */
+.ant-table-summary {
+    background: #f9f9f9;
+}
+
+.ant-table-summary>tr>td {
+    border-bottom: none !important;
+    font-weight: 600;
+}
+
+/* Branch row without target */
+.branch-no-target {
+    background: #fffbe6;
+}
+
+/* 2-Column Layout Styles */
+.targets-column {
+    background: #fff;
+    border-radius: 8px;
+    border: 1px solid #E5E7EB;
+    overflow: hidden;
+}
+
+.targets-column-header {
+    background: linear-gradient(135deg, #1890ff 0%, #40a9ff 100%);
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.targets-column-header.doanh-thu {
+    background: linear-gradient(135deg, #52c41a 0%, #73d13d 100%);
+}
+
+.targets-column-header .column-title {
+    color: #fff;
+    font-weight: 600;
+    font-size: 14px;
+    letter-spacing: 0.5px;
+}
+
+.targets-column .targets-filters {
+    margin: 0;
+    border-radius: 0;
+    border: none;
+    border-bottom: 1px solid #E5E7EB;
+}
+
+.targets-column .ant-table {
+    border-radius: 0;
+}
+
+.targets-column .ant-table-thead>tr>th {
+    background: #fafafa;
+    font-size: 12px;
+    padding: 8px 12px !important;
+}
+
+.targets-column .ant-table-tbody>tr>td {
+    font-size: 12px;
+    padding: 6px 12px !important;
+    height: 42px !important;
+}
+
+/* Responsive: Stack columns on mobile */
+@media (max-width: 991px) {
+    .targets-column {
+        margin-bottom: 16px;
+    }
+}

@@ -1,0 +1,617 @@
+/* ==========================================
+   Dashboard - Executive BI Style
+   VCM Construction Management
+   ========================================== */
+
+/* Container */
+.dash-container {
+    width: 100%;
+    padding: 0;
+}
+
+.dash-loading {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 400px;
+}
+
+/* Dashboard Header */
+.dashboard-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+}
+
+.dash-header-left h2 {
+    font-size: 20px;
+    font-weight: 800;
+    color: #171717;
+    margin: 0;
+}
+
+.dash-header-left p {
+    font-size: 13px;
+    color: #9CA3AF;
+    margin: 2px 0 0;
+}
+
+.dash-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: #F5F5F5;
+    border-radius: 10px;
+    padding: 4px;
+}
+
+.dash-refresh-btn {
+    width: 32px !important;
+    height: 32px !important;
+    border-radius: 8px !important;
+    border: none !important;
+    background: #fff !important;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06) !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    color: #374151 !important;
+    transition: all 0.2s ease !important;
+}
+
+.dash-refresh-btn:hover {
+    background: #171717 !important;
+    color: #fff !important;
+}
+
+.dash-date-picker {
+    border: none !important;
+    background: #fff !important;
+    border-radius: 8px !important;
+    height: 32px !important;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06) !important;
+    font-size: 13px !important;
+    font-weight: 600 !important;
+    color: #374151 !important;
+    width: 120px !important;
+}
+
+.dash-date-picker .ant-picker-input>input {
+    font-size: 13px !important;
+    font-weight: 600 !important;
+    color: #374151 !important;
+    text-align: center;
+}
+
+/* Unified Row Spacing */
+.dash-row {
+    margin-bottom: 20px !important;
+}
+
+/* ==========================================
+   ROW 1: KPI Cards
+   ========================================== */
+.dash-kpi-card {
+    background: #fff;
+    border-radius: 16px;
+    padding: 20px 20px 16px;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+    transition: all 0.25s ease;
+    cursor: default;
+    height: 100%;
+    border: 1px solid #F3F4F6;
+}
+
+.dash-kpi-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+}
+
+.dash-kpi-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 14px;
+}
+
+.dash-kpi-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    flex-shrink: 0;
+}
+
+.dash-kpi-label {
+    font-size: 12px;
+    font-weight: 700;
+    color: #6B7280;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.dash-kpi-main {
+    display: flex;
+    align-items: baseline;
+    gap: 4px;
+    margin-bottom: 10px;
+}
+
+.dash-kpi-value {
+    font-size: 32px;
+    font-weight: 900;
+    color: #171717;
+    line-height: 1;
+    font-family: 'Inter', 'Montserrat', sans-serif;
+}
+
+.dash-kpi-unit {
+    font-size: 16px;
+    font-weight: 700;
+    color: #9CA3AF;
+}
+
+.dash-kpi-suffix {
+    font-size: 18px;
+    font-weight: 700;
+    color: #9CA3AF;
+    margin-left: 2px;
+}
+
+.dash-kpi-fraction {
+    font-size: 13px;
+    font-weight: 600;
+    color: #6B7280;
+    margin-bottom: 4px;
+}
+
+.dash-kpi-meta {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 14px;
+    font-size: 13px;
+}
+
+/* Sub info (MoM + Year) */
+.dash-kpi-sub {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: #6B7280;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+}
+
+.dash-mom {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    font-weight: 700;
+    font-size: 12px;
+}
+
+.dash-mom.up {
+    color: #10B981;
+}
+
+.dash-mom.down {
+    color: #EF4444;
+}
+
+.dash-mom-label {
+    font-size: 11px;
+    color: #9CA3AF;
+}
+
+.dash-year-pct {
+    font-size: 12px;
+    color: #6B7280;
+}
+
+.dash-year-pct b {
+    color: #171717;
+}
+
+.dash-kpi-achieved {
+    color: #6B7280;
+    font-weight: 500;
+    font-size: 12px;
+}
+
+/* Detail line (Dự án card) */
+.dash-kpi-detail {
+    font-size: 12px;
+    color: #6B7280;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+}
+
+.dash-kpi-detail b {
+    color: #171717;
+    margin-right: 2px;
+}
+
+/* Progress wrap */
+.dash-progress-wrap {
+    margin-top: auto;
+}
+
+.dash-progress-label {
+    display: flex;
+    justify-content: space-between;
+    font-size: 11px;
+    color: #9CA3AF;
+    margin-bottom: 4px;
+    font-weight: 500;
+}
+
+.dash-kpi-progress-only {
+    margin-top: 4px;
+}
+
+/* KPI Bar Section */
+.dash-kpi-bar-section {
+    margin-bottom: 12px;
+}
+
+.dash-kpi-bar-info {
+    display: flex;
+    justify-content: space-between;
+    font-size: 10px;
+    color: #9CA3AF;
+    margin-top: 4px;
+    font-weight: 500;
+}
+
+/* KPI Footer: MoM badge + Year circle */
+.dash-kpi-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-top: 10px;
+    border-top: 1px solid #F5F5F5;
+}
+
+.dash-kpi-mom-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: #F9FAFB;
+    border-radius: 20px;
+    padding: 3px 10px;
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.mom-up {
+    color: #10B981;
+}
+
+.mom-down {
+    color: #EF4444;
+}
+
+.mom-label {
+    color: #9CA3AF;
+    font-weight: 500;
+    font-size: 10px;
+}
+
+/* Mini circle text */
+.dash-circle-text {
+    font-size: 9px !important;
+    font-weight: 800 !important;
+    color: #374151 !important;
+}
+
+/* Dots */
+.dash-dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    margin-right: 5px;
+    vertical-align: middle;
+}
+
+.dot-success {
+    background: #10B981;
+}
+
+.dot-warning {
+    background: #F59E0B;
+}
+
+.dot-danger {
+    background: #EF4444;
+}
+
+.dot-muted {
+    background: #D1D5DB;
+}
+
+/* ==========================================
+   Chart Cards (Shared)
+   ========================================== */
+.dash-chart-card {
+    border-radius: 16px !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04) !important;
+    border: 1px solid #F3F4F6 !important;
+    overflow: hidden;
+    transition: all 0.25s ease;
+    height: 100%;
+}
+
+.dash-chart-card:hover {
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08) !important;
+}
+
+.dash-chart-card .ant-card-head {
+    border-bottom: 1px solid #F3F4F6;
+    padding: 14px 20px 10px;
+    min-height: auto;
+}
+
+.dash-chart-card .ant-card-head-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: #171717;
+    padding: 0;
+}
+
+.dash-chart-card .ant-card-body {
+    padding: 16px 20px;
+}
+
+/* ==========================================
+   ROW 4: Execution Progress
+   ========================================== */
+.dash-exec-progress {
+    margin-bottom: 8px;
+}
+
+.dash-exec-bar-wrap {
+    display: flex;
+    height: 10px;
+    border-radius: 5px;
+    overflow: hidden;
+    background: #F3F4F6;
+}
+
+.dash-exec-seg {
+    height: 100%;
+    transition: width 0.8s ease;
+}
+
+.dash-exec-seg.done {
+    background: #10B981;
+}
+
+.dash-exec-seg.in-progress {
+    background: #F59E0B;
+}
+
+.dash-exec-seg.waiting {
+    background: #D1D5DB;
+}
+
+.dash-exec-legend {
+    display: flex;
+    gap: 16px;
+    margin-top: 10px;
+    font-size: 11px;
+    color: #6B7280;
+    font-weight: 500;
+}
+
+.dash-exec-legend span {
+    display: flex;
+    align-items: center;
+}
+
+.dash-exec-kpi {
+    text-align: center;
+    padding: 14px 8px;
+    border-radius: 12px;
+    background: #F9FAFB;
+    transition: all 0.25s ease;
+}
+
+.dash-exec-kpi:hover {
+    background: #F3F4F6;
+    transform: translateY(-2px);
+}
+
+.dash-exec-icon {
+    font-size: 24px;
+    margin-bottom: 6px;
+}
+
+.dash-exec-num {
+    font-size: 24px;
+    font-weight: 900;
+    color: #171717;
+    line-height: 1.2;
+}
+
+.dash-exec-label {
+    font-size: 11px;
+    color: #6B7280;
+    font-weight: 600;
+    margin-top: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* Donut wrapper */
+.dash-donut-wrap {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+/* ==========================================
+   ROW 5: Activity Table
+   ========================================== */
+.dash-activity-table .ant-table-thead>tr>th {
+    background: #F9FAFB !important;
+    font-weight: 700;
+    font-size: 11px;
+    text-transform: uppercase;
+    color: #6B7280;
+    letter-spacing: 0.5px;
+    padding: 10px 14px;
+    border-bottom: 1px solid #F3F4F6;
+}
+
+.dash-activity-table .ant-table-tbody>tr>td {
+    padding: 10px 14px;
+    border-bottom: 1px solid #F9FAFB;
+}
+
+.dash-activity-table .ant-table-tbody>tr:hover>td {
+    background: #F9FAFB !important;
+}
+
+.dash-activity-text {
+    font-size: 13px;
+    color: #171717;
+    font-weight: 500;
+}
+
+.dash-time {
+    font-size: 12px;
+    color: #6B7280;
+    font-weight: 600;
+}
+
+.dash-date {
+    font-size: 11px;
+    color: #9CA3AF;
+}
+
+/* ==========================================
+   ROW 5: Priority Tasks
+   ========================================== */
+.dash-priority-card .ant-card-body {
+    padding: 12px 16px !important;
+}
+
+.dash-priority-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.dash-priority-item {
+    background: #F9FAFB;
+    border-radius: 12px;
+    padding: 12px 14px;
+    transition: all 0.25s ease;
+    cursor: pointer;
+    border: 1px solid transparent;
+}
+
+.dash-priority-item:hover {
+    background: #fff;
+    border-color: #E5E7EB;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+}
+
+.dash-priority-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 4px;
+}
+
+.dash-priority-tag {
+    font-size: 10px !important;
+    font-weight: 700 !important;
+    border-radius: 6px !important;
+    padding: 1px 8px !important;
+    line-height: 18px !important;
+    border: none !important;
+}
+
+.dash-priority-due {
+    font-size: 11px;
+    color: #9CA3AF;
+    font-weight: 500;
+}
+
+.dash-priority-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: #171717;
+    margin-bottom: 2px;
+    line-height: 1.4;
+}
+
+.dash-priority-project {
+    font-size: 11px;
+    color: #6B7280;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+/* ==========================================
+   Responsive
+   ========================================== */
+@media (max-width: 768px) {
+    .dash-kpi-value {
+        font-size: 26px;
+    }
+
+    .dash-kpi-card {
+        border-radius: 12px;
+        padding: 16px 16px 12px;
+    }
+
+    .dash-chart-card {
+        border-radius: 12px !important;
+    }
+
+    .dash-exec-kpi {
+        padding: 10px 4px;
+    }
+
+    .dash-exec-num {
+        font-size: 20px;
+    }
+
+    .dash-row {
+        margin-bottom: 16px !important;
+    }
+}
+
+@media (max-width: 480px) {
+    .dash-kpi-icon {
+        width: 30px;
+        height: 30px;
+        font-size: 14px;
+    }
+
+    .dash-kpi-value {
+        font-size: 22px;
+    }
+
+    .dash-kpi-label {
+        font-size: 10px;
+    }
+
+    .dash-row {
+        margin-bottom: 12px !important;
+    }
+}

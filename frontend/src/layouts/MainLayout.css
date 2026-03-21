@@ -1,0 +1,246 @@
+.main-sider {
+  background: linear-gradient(180deg, #E11D2E 0%, #C51624 100%) !important;
+  box-shadow: 2px 0 8px rgba(0, 0, 0, 0.15);
+  height: 100vh;
+  position: sticky;
+  top: 0;
+}
+
+.logo-container {
+  display: flex;
+  align-items: center;
+  padding: 16px 12px;
+  gap: 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  margin-bottom: 4px;
+}
+
+.logo-icon {
+  width: 34px;
+  height: 34px;
+  background: white;
+  color: #E11D2E;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+.logo-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  overflow: hidden;
+}
+
+.logo-title {
+  color: white;
+  font-weight: 600;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.logo-subtitle {
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 10px;
+  white-space: nowrap;
+}
+
+.main-menu.ant-menu-dark {
+  background: transparent !important;
+  border: none;
+}
+
+.main-menu.ant-menu-dark .ant-menu-item {
+  color: rgba(255, 255, 255, 0.85);
+  margin: 4px 8px;
+  border-radius: 8px;
+  transition: all 0.3s;
+}
+
+.main-menu.ant-menu-dark .ant-menu-item:hover {
+  background: rgba(255, 255, 255, 0.15) !important;
+  color: white;
+}
+
+.main-menu.ant-menu-dark .ant-menu-item-selected {
+  background: rgba(255, 255, 255, 0.2) !important;
+  color: white;
+  font-weight: 500;
+}
+
+.main-header {
+  background: white;
+  padding: 0 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  height: 64px;
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  width: 100%;
+}
+
+.header-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #111827;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+
+.header-icon {
+  font-size: 20px;
+  color: #4B5563;
+  cursor: pointer;
+  transition: color 0.3s;
+}
+
+.header-icon:hover {
+  color: #E11D2E;
+}
+
+.notification-badge .ant-badge-count {
+  background: #E11D2E;
+}
+
+.user-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 8px;
+  transition: background 0.3s;
+}
+
+.user-info:hover {
+  background: #F3F4F6;
+}
+
+.user-avatar {
+  background: #E11D2E;
+}
+
+.user-name {
+  color: #111827;
+  font-weight: 500;
+}
+
+.main-content {
+  background: #F3F4F6;
+  padding: 24px;
+  flex: 1;
+  overflow-y: auto;
+  position: relative;
+}
+
+.inner-layout {
+  height: 100vh;
+  overflow: hidden;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.mobile-toggle {
+  font-size: 18px;
+  color: #111827;
+  padding: 0;
+  height: 32px;
+  width: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.drawer-footer {
+  padding: 24px 16px;
+  text-align: center;
+  border-top: 1px solid #F3F4F6;
+  background: #F9FAFB;
+  margin-top: auto;
+}
+
+/* Sidebar Footer Layout */
+.main-sider .ant-layout-sider-children {
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+.main-menu {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.sidebar-footer {
+  padding: 12px;
+  text-align: center;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(0, 0, 0, 0.1);
+  margin-top: auto;
+  overflow: hidden;
+}
+
+.sidebar-version {
+  color: white;
+  font-weight: 700;
+  font-size: 13px;
+  letter-spacing: 0.5px;
+  margin-bottom: 4px;
+}
+
+.sidebar-signature {
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 11px;
+  font-style: italic;
+  font-weight: 300;
+  word-wrap: break-word;
+  /* Ensure long email wraps */
+  line-height: 1.4;
+  white-space: normal;
+}
+
+/* Responsive Adjustments */
+@media (max-width: 768px) {
+  .main-header {
+    padding: 0 16px;
+  }
+
+  .header-actions {
+    gap: 12px;
+  }
+
+  .main-content {
+    padding: 16px;
+  }
+
+  .header-title {
+    font-size: 16px;
+  }
+}
+
+@media (max-width: 480px) {
+  .header-actions {
+    gap: 8px;
+  }
+
+  .header-title {
+    max-width: 120px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}

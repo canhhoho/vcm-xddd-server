@@ -1,0 +1,52 @@
+/* Page specific styles - Global styles handle the container/header */
+.branches-card {
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+/* Filters - đồng bộ với Contracts */
+
+/* Compact table styles */
+.branches-table .ant-table-thead>tr>th {
+    background: #F9FAFB;
+    color: #374151;
+    font-weight: 600;
+    padding: 10px 12px;
+    font-size: 13px;
+}
+
+.branches-table .ant-table-tbody>tr>td {
+    padding: 8px 12px;
+    font-size: 13px;
+}
+
+.branches-table .ant-table-tbody>tr:hover>td {
+    background: #F9FAFB;
+}
+
+.branches-card .ant-btn-primary {
+    background: #E11D2E;
+    border-color: #E11D2E;
+}
+
+.branches-card .ant-btn-primary:hover {
+    background: #C51624;
+    border-color: #C51624;
+}
+
+/* Tabs styling */
+.branches-card .ant-tabs-nav {
+    margin-bottom: 16px;
+}
+
+.branches-card .ant-tabs-tab {
+    font-weight: 500;
+}
+
+.branches-card .ant-tabs-tab-active {
+    font-weight: 600;
+}
+
+.branches-card .ant-tabs-ink-bar {
+    background: #E11D2E;
+}
