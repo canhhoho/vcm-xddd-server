@@ -169,7 +169,7 @@ router.get('/stats', async (req, res) => {
         doanhThuTrend.push({ month: `T${m}`, actual: dtTrendMap[m] || 0, plan: dtMonthTargetMap[m] || 0 });
       }
 
-      // Branch breakdown
+      // Branch breakdown — include targets
       const branchBreak = await query(`
         SELECT c.branch_id, b.code as branch_code, b.name as branch_name,
           COALESCE(SUM(c.value)/1000000, 0) as actual
@@ -179,6 +179,58 @@ router.get('/stats', async (req, res) => {
         GROUP BY c.branch_id, b.code, b.name
         ORDER BY actual DESC
       `, [year]);
+
+      // Query DOANH_THU branch targets for this year
+      const branchTargets = await query(`
+        SELECT t.unit_id, b.code as branch_code, b.name as branch_name,
+          COALESCE(t.target_value, 0) as target_value
+        FROM targets t
+        LEFT JOIN branches b ON t.unit_id = b.id OR t.unit_id = b.code
+        WHERE (t.type = 'DOANH_THU' OR t.type ILIKE '%DOANH%')
+          AND t.period_type LIKE '%YEAR%'
+          AND t.period LIKE '%' || $1 || '%'
+          AND t.unit_type = 'BRANCH'
+      `, [String(year)]);
+
+      // Build maps
+      const branchActualMap = {};
+      branchBreak.rows.forEach(r => {
+        branchActualMap[r.branch_code] = {
+          branchCode: r.branch_code || '',
+          branchName: r.branch_name || '',
+          actual: parseFloat(r.actual),
+        };
+      });
+
+      const branchTargetMap = {};
+      branchTargets.rows.forEach(r => {
+        const code = r.branch_code || r.unit_id || '';
+        const tv = parseFloat(r.target_value) || 0;
+        // Branch targets are already in triệu — no conversion needed
+        branchTargetMap[code] = tv;
+      });
+
+      // Merge: all branches with actuals OR targets
+      const allBranchCodes = new Set([
+        ...Object.keys(branchActualMap),
+        ...Object.keys(branchTargetMap),
+      ]);
+
+      // Get all branch info for codes that only exist in targets
+      const allBranches = await query('SELECT code, name FROM branches ORDER BY code');
+      const branchInfoMap = {};
+      allBranches.rows.forEach(r => { branchInfoMap[r.code] = r.name; });
+
+      const branchBreakdown = Array.from(allBranchCodes)
+        .filter(code => code) // skip empty
+        .map(code => ({
+          branchCode: code,
+          branchName: branchActualMap[code]?.branchName || branchInfoMap[code] || code,
+          actual: branchActualMap[code]?.actual || 0,
+          actualDT: branchActualMap[code]?.actual || 0,
+          planDT: branchTargetMap[code] || 0,
+        }))
+        .sort((a, b) => (b.planDT + b.actualDT) - (a.planDT + a.actualDT));
 
       // Business structure
       const bizStruct = await query(`
@@ -273,12 +325,7 @@ router.get('/stats', async (req, res) => {
           },
           nguonViecTrend,
           doanhThuTrend,
-          branchBreakdown: branchBreak.rows.map(r => ({
-            branchCode: r.branch_code || '', branchName: r.branch_name || '',
-            actual: parseFloat(r.actual),
-            actualDT: parseFloat(r.actual),
-            planDT: 0,
-          })),
+          branchBreakdown,
           businessStructure: { b2b: Math.round(b2b / bizTotal * 100), b2c: Math.round(b2c / bizTotal * 100) },
           projectExecution: { ...projectExecution, delayed: 0 },
           recentActivities,

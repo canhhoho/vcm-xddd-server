@@ -147,10 +147,10 @@ router.get('/', async (req, res) => {
         const autoName = r.name || `${typeLabel} - ${period}`;
 
         // Target value normalization:
-        // GAS migration stored YEAR/QUARTER targets in tỷ (e.g. 6.8 tỷ) while MONTH targets in triệu (e.g. 488)
-        // Actual values are always in triệu → normalize targets to triệu for consistency
+        // GAS migration stored GENERAL YEAR/QUARTER targets in tỷ (e.g. 6.8 tỷ) while BRANCH targets in triệu
+        // Actual values are always in triệu → normalize GENERAL targets to triệu for consistency
         let targetVal = parseFloat(r.target_value) || 0;
-        if ((pType === 'YEAR' || pType === 'QUARTER') && targetVal > 0 && targetVal < 100) {
+        if (isGeneral && (pType === 'YEAR' || pType === 'QUARTER') && targetVal > 0 && targetVal < 100) {
           targetVal = Math.round(targetVal * 1000 * 100) / 100; // tỷ → triệu (×1000), round 2 decimals
         }
 
