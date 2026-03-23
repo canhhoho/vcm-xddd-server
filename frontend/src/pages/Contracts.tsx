@@ -221,26 +221,10 @@ const Contracts: React.FC = () => {
             const newFiles = fileList.filter(file => file.originFileObj);
             if (newFiles.length > 0) {
                 try {
-                    const filesToUpload = await Promise.all(newFiles.map(async (file) => {
-                        return new Promise((resolve, reject) => {
-                            const reader = new FileReader();
-                            reader.readAsDataURL(file.originFileObj);
-                            reader.onload = () => {
-                                const result = reader.result as string;
-                                const base64 = result.split(',')[1];
-                                resolve({
-                                    name: file.name,
-                                    mimeType: file.type,
-                                    data: base64
-                                });
-                            };
-                            reader.onerror = error => reject(error);
-                        });
-                    }));
-
+                    const filesToUpload = newFiles.map(file => file.originFileObj);
                     const uploadRes = await apiService.uploadContractFiles(filesToUpload);
                     if (uploadRes.success) {
-                        uploadedUrls = uploadRes.urls;
+                        uploadedUrls = uploadRes.data?.urls?.join('\n') || '';
                     } else {
                         message.error(t('contracts.uploadError') + uploadRes.error);
                         setSubmitting(false);

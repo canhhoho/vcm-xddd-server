@@ -116,14 +116,9 @@ export class RestApiService implements IApiService {
     }
 
     async uploadContractFiles(files: any[]) {
-        // File upload sẽ dùng multipart/form-data
         const formData = new FormData();
-        files.forEach((file, index) => {
-            if (file instanceof File) {
-                formData.append(`files`, file);
-            } else {
-                formData.append(`file_data_${index}`, JSON.stringify(file));
-            }
+        files.forEach((file) => {
+            formData.append('files', file);
         });
         try {
             const response = await this.http.post('/contracts/upload', formData, {
