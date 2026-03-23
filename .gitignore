@@ -1,35 +1,37 @@
-# Dependencies
-node_modules/
+# ==================================
+# CHỈ UPLOAD FOLDER server/ LÊN GITHUB
+# Các file khác chỉ dùng local
+# ==================================
 
-# Build output
-dist/
+# --- BỎ QUA TẤT CẢ MẶC ĐỊNH ---
+*
 
-# Environment files (contain secrets)
-.env
-.env.local
-.env.*.local
+# --- CHỈ CHO PHÉP CÁC FILE DEPLOY ---
+!.gitignore
 
-# IDE
-.vscode/
-.idea/
+# Server source code (code chính)
+!server/
+!server/src/
+!server/src/**
 
-# OS
-.DS_Store
-Thumbs.db
+# Server dependencies
+!server/package.json
+!server/package-lock.json
+!server/.env.example
 
-# Logs
-*.log
+# DB init scripts (cần cho lần đầu setup)
+!server/scripts/
+!server/scripts/init-db.sql
+!server/scripts/seed-data.sql
+!server/scripts/auto-migrate.js
 
-# Uploads (user data)
-server/uploads/*
+# Upload folder structure
+!server/uploads/
 !server/uploads/.gitkeep
 
-# Agent/AI config
-.agent/
-.gemini/
-skills/
-templates/
-antigravity-rules.md
-
-# Backup files
+# --- LUÔN BỎ QUA ---
+node_modules/
+.env
+.env.local
+*.log
 *.bak
