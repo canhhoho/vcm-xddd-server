@@ -105,13 +105,15 @@ router.get('/stats', async (req, res) => {
       const nvTargetMtdVal = nvTargetMonth.rows[0]?.tv || 0;
       const dtTargetMtdVal = dtTargetMonth.rows[0]?.tv || 0;
 
-      const nvActual = parseFloat(nvYtd.rows[0].total) / 1000000;
-      const dtActual = parseFloat(dtYtd.rows[0].total) / 1000000;
-      const ttActual = parseFloat(ttYtd.rows[0].total) / 1000000;
+      // All values in triệu (millions) — round to 2 decimals for consistency
+      const round2 = (v) => Math.round(v * 100) / 100;
+      const nvActual = round2(parseFloat(nvYtd.rows[0].total) / 1000000);
+      const dtActual = round2(parseFloat(dtYtd.rows[0].total) / 1000000);
+      const ttActual = round2(parseFloat(ttYtd.rows[0].total) / 1000000);
 
-      const nvMtdVal = parseFloat(nvMtd.rows[0].total) / 1000000;
-      const dtMtdValActual = parseFloat(dtMtd.rows[0].total) / 1000000;
-      const ttMtdValActual = parseFloat(ttMtd.rows[0].total) / 1000000;
+      const nvMtdVal = round2(parseFloat(nvMtd.rows[0].total) / 1000000);
+      const dtMtdValActual = round2(parseFloat(dtMtd.rows[0].total) / 1000000);
+      const ttMtdValActual = round2(parseFloat(ttMtd.rows[0].total) / 1000000);
 
       // Monthly trend: nguồn việc
       const nvTrend = await query(`
@@ -221,9 +223,9 @@ router.get('/stats', async (req, res) => {
         data: {
           kpi: {
             nguonViec: {
-              value: Math.round(nvMtdVal),
-              valueYTD: Math.round(nvActual),
-              valueAllTime: Math.round(parseFloat(nvAllTime.rows[0].total)),
+              value: round2(nvMtdVal),
+              valueYTD: round2(nvActual),
+              valueAllTime: round2(parseFloat(nvAllTime.rows[0].total)),
               achievedPct: nvTargetMtdVal > 0 ? Math.round(nvMtdVal / nvTargetMtdVal * 100 * 10) / 10 : 0,
               target: parseFloat(nvTargetMtdVal),
               targetYTD: parseFloat(nvTargetVal),
@@ -231,9 +233,9 @@ router.get('/stats', async (req, res) => {
               mom: nvMom,
             },
             doanhThu: {
-              value: Math.round(dtMtdValActual),
-              valueYTD: Math.round(dtActual),
-              valueAllTime: Math.round(parseFloat(dtAllTime.rows[0].total)),
+              value: round2(dtMtdValActual),
+              valueYTD: round2(dtActual),
+              valueAllTime: round2(parseFloat(dtAllTime.rows[0].total)),
               valueSuffix: 'Tr',
               achievedPct: dtTargetMtdVal > 0 ? Math.round(dtMtdValActual / dtTargetMtdVal * 100 * 10) / 10 : 0,
               target: parseFloat(dtTargetMtdVal),
@@ -242,9 +244,9 @@ router.get('/stats', async (req, res) => {
               mom: dtMom,
             },
             thuTien: {
-              value: Math.round(ttMtdValActual),
-              valueYTD: Math.round(ttActual),
-              valueAllTime: Math.round(parseFloat(ttAllTime.rows[0].total)),
+              value: round2(ttMtdValActual),
+              valueYTD: round2(ttActual),
+              valueAllTime: round2(parseFloat(ttAllTime.rows[0].total)),
               target: parseFloat(dtTargetMtdVal),
               targetYTD: parseFloat(dtTargetVal),
               achievedPct: dtTargetMtdVal > 0 ? Math.round(ttMtdValActual / dtTargetMtdVal * 100) : 0,
@@ -303,11 +305,15 @@ router.get('/branch-performance', async (req, res) => {
         GROUP BY m
       `, [b.id, y]);
 
+      // All values in triệu — round to 2 decimals for consistency
+      const round2 = (v) => Math.round(v * 100) / 100;
       const sourceWork = { total: 0, months: {} };
-      nvByMonth.rows.forEach(r => { sourceWork.months[r.m] = parseFloat(r.total); sourceWork.total += parseFloat(r.total); });
+      nvByMonth.rows.forEach(r => { const v = parseFloat(r.total); sourceWork.months[r.m] = round2(v); sourceWork.total += v; });
+      sourceWork.total = round2(sourceWork.total);
 
       const revenue = { total: 0, months: {} };
-      dtByMonth.rows.forEach(r => { revenue.months[r.m] = parseFloat(r.total); revenue.total += parseFloat(r.total); });
+      dtByMonth.rows.forEach(r => { const v = parseFloat(r.total); revenue.months[r.m] = round2(v); revenue.total += v; });
+      revenue.total = round2(revenue.total);
 
       result[b.id] = { id: b.id, name: b.name, code: b.code, sourceWork, revenue };
     }
@@ -334,13 +340,17 @@ router.get('/general-performance', async (req, res) => {
       FROM invoices WHERE EXTRACT(YEAR FROM issued_date) = $1 GROUP BY m
     `, [y]);
 
+    // All values in triệu (millions) — round to 2 decimals for consistency with calcActualValue
+    const round2 = (v) => Math.round(v * 100) / 100;
     const buildPerf = (rows) => {
       const months = {}; const quarters = { 1: 0, 2: 0, 3: 0, 4: 0 }; let yearTotal = 0;
       rows.forEach(r => {
         const m = r.m; const v = parseFloat(r.total);
-        months[m] = v; quarters[Math.ceil(m / 3)] += v; yearTotal += v;
+        months[m] = round2(v); quarters[Math.ceil(m / 3)] += v; yearTotal += v;
       });
-      return { year: Math.round(yearTotal), quarters, months };
+      // Round quarters and year total to 2 decimal places
+      for (const q of [1,2,3,4]) quarters[q] = round2(quarters[q]);
+      return { year: round2(yearTotal), quarters, months };
     };
 
     res.json({

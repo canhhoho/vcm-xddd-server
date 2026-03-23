@@ -15,14 +15,27 @@ router.get('/app', async (req, res) => {
 
     // Get positions from DB
     const posResult = await query('SELECT id, name, code, default_role, category, description FROM positions ORDER BY name');
-    const positions = posResult.rows.map(p => ({
-      id: p.id,
-      name: p.name,
-      code: p.code,
-      defaultRole: p.default_role,
-      category: p.category,
-      description: p.description,
-    }));
+    // Lookup position names from users table for positions with missing/UUID names
+    const userPosResult = await query(`
+      SELECT DISTINCT position_id, position_name, position_code
+      FROM users WHERE position_id IS NOT NULL AND position_id != ''
+        AND position_name IS NOT NULL AND position_name != ''
+    `);
+    const userPosMap = {};
+    userPosResult.rows.forEach(r => { userPosMap[r.position_id] = { name: r.position_name, code: r.position_code }; });
+
+    const positions = posResult.rows.map(p => {
+      const isNameMissing = !p.name || p.name === p.id || /^[0-9a-f]{8}-[0-9a-f]{4}-/.test(p.name);
+      const userPos = userPosMap[p.id];
+      return {
+        id: p.id,
+        name: isNameMissing && userPos ? userPos.name : (p.name || p.id),
+        code: (!p.code && userPos) ? userPos.code : (p.code || ''),
+        defaultRole: p.default_role,
+        category: p.category,
+        description: p.description,
+      };
+    });
 
     res.json({
       success: true,

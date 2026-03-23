@@ -11,13 +11,33 @@ router.get('/', async (req, res) => {
   try {
     const data = await CacheService.getOrSet('POSITIONS_LIST', async () => {
       const result = await query('SELECT * FROM positions ORDER BY name');
+
+      // Lookup position names from users table for positions with missing/UUID names
+      const userPosResult = await query(`
+        SELECT DISTINCT position_id, position_name, position_code
+        FROM users
+        WHERE position_id IS NOT NULL AND position_id != ''
+          AND position_name IS NOT NULL AND position_name != ''
+      `);
+      const userPosMap = {};
+      userPosResult.rows.forEach(r => {
+        userPosMap[r.position_id] = { name: r.position_name, code: r.position_code };
+      });
+
       return {
         success: true,
-        data: result.rows.map(r => ({
-          id: r.id, name: r.name, code: r.code,
-          defaultRole: r.default_role, category: r.category,
-          description: r.description || '', createdAt: r.created_at,
-        }))
+        data: result.rows.map(r => {
+          // If name is empty or looks like a UUID, try to get from users table
+          const isNameMissing = !r.name || r.name === r.id || /^[0-9a-f]{8}-[0-9a-f]{4}-/.test(r.name);
+          const userPos = userPosMap[r.id];
+          return {
+            id: r.id,
+            name: isNameMissing && userPos ? userPos.name : (r.name || r.id),
+            code: (!r.code && userPos) ? userPos.code : (r.code || ''),
+            defaultRole: r.default_role, category: r.category,
+            description: r.description || '', createdAt: r.created_at,
+          };
+        })
       };
     }, CacheService.TTL.STATIC);
     res.json(data);

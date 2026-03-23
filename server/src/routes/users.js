@@ -34,7 +34,11 @@ router.get('/', async (req, res) => {
       const result = await query(`
         SELECT u.id, u.email, u.name, u.position_id,
           COALESCE(p.code, u.position_code) as position_code,
-          COALESCE(p.name, u.position_name) as position_name,
+          CASE
+            WHEN p.name IS NOT NULL AND p.name != '' AND p.name !~ '^[0-9a-f]{8}-[0-9a-f]{4}-' THEN p.name
+            WHEN u.position_name IS NOT NULL AND u.position_name != '' THEN u.position_name
+            ELSE COALESCE(p.name, '')
+          END as position_name,
           COALESCE(p.category, u.category) as category,
           u.description, u.role, u.branches, u.contracts, u.projects, u.targets, u.business, u.created_at
         FROM users u
