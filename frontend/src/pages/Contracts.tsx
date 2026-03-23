@@ -217,11 +217,11 @@ const Contracts: React.FC = () => {
             setSubmitting(true);
             let uploadedUrls = '';
 
-            // Handle file upload - chỉ upload files MỚI (có originFileObj)
-            const newFiles = fileList.filter(file => file.originFileObj);
+            // Handle file upload - upload files mới
+            const newFiles = fileList.filter(file => file.originFileObj || file instanceof File);
             if (newFiles.length > 0) {
                 try {
-                    const filesToUpload = newFiles.map(file => file.originFileObj);
+                    const filesToUpload = newFiles.map(file => file.originFileObj || file);
                     const uploadRes = await apiService.uploadContractFiles(filesToUpload);
                     if (uploadRes.success) {
                         uploadedUrls = uploadRes.data?.urls?.join('\n') || '';
