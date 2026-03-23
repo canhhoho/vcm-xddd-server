@@ -154,17 +154,25 @@ const Dashboard: React.FC = () => {
         },
         {
             title: t('dashboard.time'),
-            dataIndex: 'timestamp',
+            dataIndex: 'createdAt',
             key: 'timestamp',
             width: 80,
-            render: (time: string) => <span className="dash-time">{time}</span>,
+            render: (text: string) => {
+                if (!text) return '-';
+                const d = new Date(text);
+                return <span className="dash-time">{isNaN(d.getTime()) ? '-' : d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>;
+            },
         },
         {
             title: t('dashboard.date'),
-            dataIndex: 'date',
+            dataIndex: 'createdAt',
             key: 'date',
             width: 110,
-            render: (date: string) => <span className="dash-date">{date}</span>,
+            render: (text: string) => {
+                if (!text) return '-';
+                const d = new Date(text);
+                return <span className="dash-date">{isNaN(d.getTime()) ? '-' : d.toLocaleDateString('vi-VN')}</span>;
+            },
         },
     ], [t]);
 

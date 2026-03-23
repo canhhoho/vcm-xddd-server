@@ -225,17 +225,13 @@ router.get('/stats', async (req, res) => {
       const recentActs = await query(
         'SELECT id, email, action, description, created_at FROM activities ORDER BY created_at DESC LIMIT 10'
       );
-      const recentActivities = recentActs.rows.map(r => {
-        const d = r.created_at ? new Date(r.created_at) : null;
-        return {
-          id: r.id,
-          userName: r.email || '',
-          description: `${r.action}: ${r.description || ''}`,
-          type: r.action || '',
-          timestamp: d ? d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '',
-          date: d ? d.toLocaleDateString('vi-VN') : '',
-        };
-      });
+      const recentActivities = recentActs.rows.map(r => ({
+        id: r.id,
+        userName: r.email || '',
+        description: `${r.action}: ${r.description || ''}`,
+        type: r.action || '',
+        createdAt: r.created_at,
+      }));
 
       return {
         success: true,
