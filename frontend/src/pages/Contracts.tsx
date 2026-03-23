@@ -652,7 +652,7 @@ const Contracts: React.FC = () => {
                     dataSource={filteredContracts}
                     rowKey="id"
                     loading={loading}
-                    scroll={{ x: 1200 }}
+                    scroll={{ x: 1400 }}
                     pagination={{
                         pageSize: 10,
                         showSizeChanger: true,
