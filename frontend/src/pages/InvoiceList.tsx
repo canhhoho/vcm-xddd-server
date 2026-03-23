@@ -323,8 +323,8 @@ const InvoiceList: React.FC<InvoiceListProps> = ({ contractId, onStatsChange, ap
 
     return (
         <div className="mt-4">
-            <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-semibold">{t('invoices.listTitle')}</h3>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                <h3 style={{ fontSize: 16, fontWeight: 600, margin: 0 }}>{t('invoices.listTitle')}</h3>
                 {canEdit && (
                     <Button type="primary" icon={<PlusOutlined />} onClick={handleCreate} className="vcm-btn-premium">
                         {t('invoices.createInvoice')}
