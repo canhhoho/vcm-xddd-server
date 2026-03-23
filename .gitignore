@@ -9,6 +9,10 @@
 # --- CHỈ CHO PHÉP CÁC FILE DEPLOY ---
 !.gitignore
 
+# Frontend build output
+!dist/
+!dist/**
+
 # Server source code (code chính)
 !server/
 !server/src/
