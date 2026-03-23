@@ -218,10 +218,10 @@ const UserManagement: React.FC = () => {
 
     const exportActivities = async () => {
         const dataToExport = filteredActivities.map((a: Activity) => ({
-            [t('users.activities.colTime')]: new Date(a.timestamp).toLocaleString('vi-VN'),
+            [t('users.activities.colTime')]: new Date(a.createdAt).toLocaleString('vi-VN'),
             [t('users.activities.colUser')]: a.email,
             [t('users.activities.colAction')]: a.action,
-            [t('users.activities.colDetail')]: a.details
+            [t('users.activities.colDetail')]: a.description
         }));
 
         // Use global XLSX from CDN
@@ -920,8 +920,8 @@ const UserManagement: React.FC = () => {
                                         columns={[
                                             {
                                                 title: t('users.activities.colTime'),
-                                                dataIndex: 'timestamp',
-                                                key: 'timestamp',
+                                                dataIndex: 'createdAt',
+                                                key: 'createdAt',
                                                 width: 180,
                                                 render: (text) => {
                                                     if (!text) return '-';
@@ -952,12 +952,12 @@ const UserManagement: React.FC = () => {
                                             },
                                             {
                                                 title: t('users.activities.colDetail'),
-                                                dataIndex: 'details',
-                                                key: 'details',
+                                                dataIndex: 'description',
+                                                key: 'description',
                                             }
                                         ]}
                                         dataSource={filteredActivities}
-                                        rowKey="timestamp" // Timestamp as ID for now
+                                        rowKey="id"
                                         loading={activitiesLoading}
                                         pagination={{ pageSize: 20, showSizeChanger: true }}
                                         scroll={{ x: 900 }}

@@ -183,10 +183,11 @@ export interface DashboardStats {
 }
 
 export interface Activity {
-    timestamp: string;
+    id: string;
+    createdAt: string;
     email: string;
     action: string;
-    details: string;
+    description: string;
 }
 
 export interface Invoice {
