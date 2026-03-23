@@ -65,7 +65,7 @@ router.post('/', async (req, res) => {
     ]);
 
     await logActivity(d.userId || req.user?.email || '', 'INVOICE_CREATE', `Created invoice ${d.invoiceNumber}`);
-    CacheService.clear(['DASHBOARD_STATS']);
+    CacheService.clear(['DASHBOARD_STATS', 'CONTRACTS_LIST']);
 
     res.json({ success: true, data: { id } });
   } catch (err) {
@@ -104,7 +104,7 @@ router.put('/:id', async (req, res) => {
     await query(`UPDATE invoices SET ${fields.join(', ')} WHERE id = $${idx}`, values);
 
     await logActivity(req.user?.email || '', 'INVOICE_UPDATE', `Updated invoice ${id}`);
-    CacheService.clear(['DASHBOARD_STATS']);
+    CacheService.clear(['DASHBOARD_STATS', 'CONTRACTS_LIST']);
 
     res.json({ success: true });
   } catch (err) {
@@ -119,7 +119,7 @@ router.delete('/:id', async (req, res) => {
     if (result.rowCount === 0) return res.json({ success: false, error: 'Invoice not found' });
 
     await logActivity(req.user?.email || '', 'INVOICE_DELETE', `Deleted invoice ${result.rows[0].invoice_number}`);
-    CacheService.clear(['DASHBOARD_STATS']);
+    CacheService.clear(['DASHBOARD_STATS', 'CONTRACTS_LIST']);
 
     res.json({ success: true });
   } catch (err) {
