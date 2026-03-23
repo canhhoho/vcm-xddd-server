@@ -150,32 +150,46 @@ const InvoiceList: React.FC<InvoiceListProps> = ({ contractId, onStatsChange, ap
     const handleSubmit = async (values: any) => {
         setUploading(true);
         try {
-            // Process files
-            const uploadedFiles = [];
-            for (const file of fileList) {
-                if (file.originFileObj) {
-                    const base64 = await getFileBase64(file.originFileObj);
-                    uploadedFiles.push({
-                        name: file.name,
-                        mimeType: file.type,
-                        data: base64
-                    });
+            // Upload new files via multipart endpoint
+            let uploadedUrls = '';
+            const newFiles = fileList.filter((file: any) => file.originFileObj || file instanceof File);
+            if (newFiles.length > 0) {
+                try {
+                    const filesToUpload = newFiles.map((file: any) => file.originFileObj || file);
+                    const uploadRes = await apiService.uploadContractFiles(filesToUpload);
+                    if (uploadRes.success) {
+                        uploadedUrls = uploadRes.data?.urls?.join('\n') || '';
+                    } else {
+                        message.error(t('invoices.submitError') + ': ' + uploadRes.error);
+                        setUploading(false);
+                        return;
+                    }
+                } catch (uploadError) {
+                    console.error('Upload Error:', uploadError);
+                    message.error(t('invoices.systemError'));
+                    setUploading(false);
+                    return;
                 }
             }
 
             // Auto-set status: nếu có giá trị thanh toán > 0 thì PAID, ngược lại UNPAID
             const paidVal = Number(values.paidAmount) || 0;
 
-            // Merge existing files (kept after deletions) into 'files' string
+            // Merge existing files (kept after deletions) + newly uploaded URLs
             const keptFilesStr = editingInvoice ? existingFiles.join('\n') : '';
+            let finalFiles = '';
+            if (uploadedUrls && keptFilesStr) {
+                finalFiles = keptFilesStr + '\n' + uploadedUrls;
+            } else {
+                finalFiles = uploadedUrls || keptFilesStr;
+            }
 
             const data = {
                 ...values,
                 contractId,
                 issuedDate: values.issuedDate.format('YYYY-MM-DD'),
                 status: paidVal > 0 ? 'PAID' : 'UNPAID',
-                fileList: uploadedFiles,
-                files: keptFilesStr || undefined
+                files: finalFiles || undefined
             };
 
             let response;
