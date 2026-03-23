@@ -39,7 +39,7 @@ router.get('/', async (req, res) => {
             WHEN u.position_name IS NOT NULL AND u.position_name != '' THEN u.position_name
             ELSE COALESCE(p.name, '')
           END as position_name,
-          COALESCE(p.category, u.category) as category,
+          COALESCE(NULLIF(p.category, ''), u.category) as category,
           u.description, u.role, u.branches, u.contracts, u.projects, u.targets, u.business, u.created_at
         FROM users u
         LEFT JOIN positions p ON u.position_id = p.id
