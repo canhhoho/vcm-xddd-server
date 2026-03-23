@@ -4,9 +4,15 @@
  */
 const router = require('express').Router();
 const { query } = require('../config/database');
+const { v4: uuidv4 } = require('uuid');
 const SecurityService = require('../services/securityService');
 
-// POST /auth/login
+async function logActivity(email, action, description) {
+  try {
+    await query('INSERT INTO activities (id, email, action, description) VALUES ($1, $2, $3, $4)',
+      [uuidv4(), email, action, description]);
+  } catch (e) { console.error('logActivity:', e.message); }
+}
 router.post('/login', async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -48,6 +54,9 @@ router.post('/login', async (req, res) => {
 
     // Generate JWT token
     const token = SecurityService.generateToken(user);
+
+    // Log login activity
+    await logActivity(user.email, 'LOGIN', `User logged in`);
 
     // Response (never return password)
     const { password: _, ...safeUser } = user;
