@@ -195,4 +195,34 @@ router.post('/upload', upload.array('files', 20), async (req, res) => {
   }
 });
 
+// GET /contracts/:contractId/invoices — invoices for a specific contract
+router.get('/:contractId/invoices', async (req, res) => {
+  try {
+    const { contractId } = req.params;
+    const result = await query(`
+      SELECT * FROM invoices
+      WHERE contract_id = $1
+      ORDER BY created_at ASC
+    `, [contractId]);
+
+    const invoices = result.rows.map(r => ({
+      id: r.id,
+      contractId: r.contract_id,
+      invoiceNumber: r.invoice_number,
+      installment: r.installment || '',
+      value: parseFloat(r.value) || 0,
+      issuedDate: r.issued_date,
+      paidAmount: r.payment !== null && r.payment !== undefined ? parseFloat(r.payment) : null,
+      payment: parseFloat(r.payment) || 0,
+      createdAt: r.created_at,
+      files: r.files || '',
+    }));
+
+    res.json({ success: true, data: invoices });
+  } catch (err) {
+    res.json({ success: false, error: err.message });
+  }
+});
+
 module.exports = router;
+
