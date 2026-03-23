@@ -100,8 +100,11 @@ router.get('/stats', async (req, res) => {
         LIMIT 1
       `, [currentMonthStr]);
 
-      const nvTargetVal = nvTarget.rows[0]?.tv || 0;
-      const dtTargetVal = dtTarget.rows[0]?.tv || 0;
+      // YEAR targets from GAS may be in tỷ (e.g. 6.8) → convert to triệu (×1000)
+      let nvTargetVal = parseFloat(nvTarget.rows[0]?.tv) || 0;
+      let dtTargetVal = parseFloat(dtTarget.rows[0]?.tv) || 0;
+      if (nvTargetVal > 0 && nvTargetVal < 100) nvTargetVal = Math.round(nvTargetVal * 1000 * 100) / 100;
+      if (dtTargetVal > 0 && dtTargetVal < 100) dtTargetVal = Math.round(dtTargetVal * 1000 * 100) / 100;
       const nvTargetMtdVal = nvTargetMonth.rows[0]?.tv || 0;
       const dtTargetMtdVal = dtTargetMonth.rows[0]?.tv || 0;
 

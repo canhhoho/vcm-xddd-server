@@ -146,13 +146,21 @@ router.get('/', async (req, res) => {
         const typeLabel = tType === 'NGUON_VIEC' ? 'Nguồn việc' : tType === 'DOANH_THU' ? 'Doanh thu' : 'Thu tiền';
         const autoName = r.name || `${typeLabel} - ${period}`;
 
+        // Target value normalization:
+        // GAS migration stored YEAR/QUARTER targets in tỷ (e.g. 6.8 tỷ) while MONTH targets in triệu (e.g. 488)
+        // Actual values are always in triệu → normalize targets to triệu for consistency
+        let targetVal = parseFloat(r.target_value) || 0;
+        if ((pType === 'YEAR' || pType === 'QUARTER') && targetVal > 0 && targetVal < 100) {
+          targetVal = Math.round(targetVal * 1000 * 100) / 100; // tỷ → triệu (×1000), round 2 decimals
+        }
+
         targets.push({
           id: r.id, name: autoName, type: tType,
           periodType: pType, period: period,
           unitType: isGeneral ? 'GENERAL' : 'BRANCH',
           unitId: resolvedUnitId || '',
           unitName: branch ? branch.name : (isGeneral ? 'Chung' : unitIdStr),
-          targetValue: parseFloat(r.target_value) || 0,
+          targetValue: targetVal,
           actualValue,
           createdAt: r.created_at,
         });
