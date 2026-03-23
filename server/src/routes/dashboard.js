@@ -181,7 +181,7 @@ router.get('/stats', async (req, res) => {
       `, [year]);
 
       // Query DOANH_THU branch targets for this year
-      // period_type may be stored as 'YEAR', 'Năm', 'NĂM' etc. from GAS migration
+      // GAS migration may store period as empty for YEAR targets
       const branchTargets = await query(`
         SELECT t.unit_id, b.code as branch_code, b.name as branch_name,
           COALESCE(t.target_value, 0) as target_value
@@ -189,7 +189,7 @@ router.get('/stats', async (req, res) => {
         LEFT JOIN branches b ON t.unit_id = b.id OR t.unit_id = b.code
         WHERE (t.type = 'DOANH_THU' OR t.type ILIKE '%DOANH%')
           AND (t.period_type ILIKE '%YEAR%' OR t.period_type ILIKE '%NĂM%' OR t.period_type ILIKE '%NAM%')
-          AND t.period LIKE '%' || $1 || '%'
+          AND (t.period LIKE '%' || $1 || '%' OR t.period IS NULL OR t.period = '')
           AND t.unit_id IS NOT NULL AND t.unit_id != ''
       `, [String(year)]);
 
