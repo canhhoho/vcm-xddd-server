@@ -63,6 +63,7 @@ router.get('/', async (req, res) => {
           code: r.code,
           name: r.name,
           branchId: r.branch_id,
+          provinceId: r.branch_id,       // alias for frontend Contract type
           branchName: r.branch_name || '',
           branchCode: r.branch_code || '',
           businessField: r.business_field,
@@ -71,6 +72,7 @@ router.get('/', async (req, res) => {
           endDate: r.end_date,
           status: r.status,
           fileUrls: r.file_urls || '',
+          fileUrl: r.file_urls || '',    // alias for frontend Contract type
           note: r.note || '',
           progress,
           createdAt: r.created_at,
