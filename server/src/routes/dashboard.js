@@ -221,6 +221,22 @@ router.get('/stats', async (req, res) => {
       const dtMom = Math.round((dtMtdValActual - parseFloat(dtPrevMonth.rows[0].total)) * 100) / 100;
       const ttMom = Math.round((ttMtdValActual - parseFloat(ttPrevMonth.rows[0].total)) * 100) / 100;
 
+      // Recent activities
+      const recentActs = await query(
+        'SELECT id, email, action, description, created_at FROM activities ORDER BY created_at DESC LIMIT 10'
+      );
+      const recentActivities = recentActs.rows.map(r => {
+        const d = r.created_at ? new Date(r.created_at) : null;
+        return {
+          id: r.id,
+          userName: r.email || '',
+          description: `${r.action}: ${r.description || ''}`,
+          type: r.action || '',
+          timestamp: d ? d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '',
+          date: d ? d.toLocaleDateString('vi-VN') : '',
+        };
+      });
+
       return {
         success: true,
         data: {
@@ -269,7 +285,7 @@ router.get('/stats', async (req, res) => {
           })),
           businessStructure: { b2b: Math.round(b2b / bizTotal * 100), b2c: Math.round(b2c / bizTotal * 100) },
           projectExecution: { ...projectExecution, delayed: 0 },
-          recentActivities: [],
+          recentActivities,
           priorityTasks: [],
           totalContracts: parseInt(nvYtd.rows[0].count),
           totalValue: parseFloat(nvYtd.rows[0].total),
