@@ -181,18 +181,16 @@ router.get('/stats', async (req, res) => {
       `, [year]);
 
       // Query DOANH_THU branch targets for this year
-      // GAS stores unit_type as branch code or Vietnamese text, not 'BRANCH'
-      // So filter by: has unit_id AND unit_type is NOT general
+      // period_type may be stored as 'YEAR', 'Năm', 'NĂM' etc. from GAS migration
       const branchTargets = await query(`
         SELECT t.unit_id, b.code as branch_code, b.name as branch_name,
           COALESCE(t.target_value, 0) as target_value
         FROM targets t
         LEFT JOIN branches b ON t.unit_id = b.id OR t.unit_id = b.code
         WHERE (t.type = 'DOANH_THU' OR t.type ILIKE '%DOANH%')
-          AND t.period_type LIKE '%YEAR%'
+          AND (t.period_type ILIKE '%YEAR%' OR t.period_type ILIKE '%NĂM%' OR t.period_type ILIKE '%NAM%')
           AND t.period LIKE '%' || $1 || '%'
           AND t.unit_id IS NOT NULL AND t.unit_id != ''
-          AND (t.unit_type IS NULL OR t.unit_type != 'GENERAL')
       `, [String(year)]);
 
       // Build maps
