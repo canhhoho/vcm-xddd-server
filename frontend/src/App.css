@@ -164,3 +164,224 @@ body {
   color: #EF4444 !important;
   background-color: #FEF2F2 !important;
 }
+
+/* ==========================================
+   RESPONSIVE: Tablet (≤992px)
+   ========================================== */
+@media (max-width: 992px) {
+  .vcm-premium-header {
+    padding: 14px;
+    border-radius: 12px;
+    min-height: 60px;
+  }
+
+  .vcm-header-title {
+    font-size: 20px;
+  }
+
+  .vcm-header-content {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .vcm-filter-bar {
+    padding: 12px;
+  }
+
+  .vcm-filter-bar .ant-col {
+    flex: 1 1 45% !important;
+    max-width: 50% !important;
+  }
+}
+
+/* ==========================================
+   RESPONSIVE: Mobile (≤768px)
+   ========================================== */
+@media (max-width: 768px) {
+  .vcm-page-container {
+    padding: 2px;
+  }
+
+  .vcm-premium-header {
+    padding: 12px;
+    border-radius: 10px;
+    min-height: auto;
+    margin-bottom: 12px;
+  }
+
+  .vcm-header-title {
+    font-size: 17px;
+    letter-spacing: -0.3px;
+  }
+
+  .vcm-header-content {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  /* Decorative circles: hide on mobile for cleaner look */
+  .vcm-header-decorative-circle {
+    display: none;
+  }
+
+  /* Filter bar: stack vertically */
+  .vcm-filter-bar {
+    padding: 10px;
+    margin-bottom: 12px;
+  }
+
+  .vcm-filter-bar .ant-row {
+    row-gap: 8px !important;
+  }
+
+  .vcm-filter-bar .ant-col {
+    flex: 1 1 100% !important;
+    max-width: 100% !important;
+  }
+
+  /* Buttons: smaller on mobile */
+  .vcm-btn-premium,
+  .vcm-btn-secondary {
+    height: 36px !important;
+    padding-left: 14px !important;
+    padding-right: 14px !important;
+    font-size: 13px !important;
+  }
+
+  /* Tables: horizontal scroll wrapper */
+  .ant-table-wrapper {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .ant-table {
+    min-width: 600px;
+  }
+
+  .ant-table-thead > tr > th,
+  .ant-table-tbody > tr > td {
+    padding: 8px 10px !important;
+    font-size: 12px !important;
+  }
+
+  /* Cards: compact on mobile */
+  .ant-card {
+    border-radius: 10px !important;
+  }
+
+  .ant-card-body {
+    padding: 12px !important;
+  }
+
+  .ant-card-head {
+    padding: 8px 12px !important;
+    min-height: auto !important;
+  }
+
+  .ant-card-head-title {
+    font-size: 14px !important;
+    padding: 6px 0 !important;
+  }
+
+  /* Modals: near full-width on mobile */
+  .ant-modal {
+    max-width: calc(100vw - 24px) !important;
+    margin: 12px auto !important;
+    top: 20px !important;
+  }
+
+  .ant-modal-body {
+    padding: 16px !important;
+  }
+
+  /* Ant Design Row gutter override for tighter mobile spacing */
+  .ant-row {
+    row-gap: 12px !important;
+  }
+
+  /* Tabs: scrollable on mobile */
+  .ant-tabs-nav {
+    margin-bottom: 12px !important;
+  }
+
+  .ant-tabs-tab {
+    padding: 8px 12px !important;
+    font-size: 13px !important;
+  }
+
+  /* Pagination: compact */
+  .ant-pagination {
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+
+  .ant-pagination-item,
+  .ant-pagination-prev,
+  .ant-pagination-next {
+    min-width: 28px !important;
+    height: 28px !important;
+    line-height: 28px !important;
+  }
+
+  /* Segmented control */
+  .ant-segmented {
+    font-size: 12px !important;
+  }
+
+  .ant-segmented-item-label {
+    padding: 0 8px !important;
+    min-height: 28px !important;
+    line-height: 28px !important;
+  }
+}
+
+/* ==========================================
+   RESPONSIVE: Small Mobile (≤480px)
+   ========================================== */
+@media (max-width: 480px) {
+  .vcm-page-container {
+    padding: 0;
+  }
+
+  .vcm-premium-header {
+    padding: 10px;
+    border-radius: 8px;
+    margin-bottom: 8px;
+  }
+
+  .vcm-header-title {
+    font-size: 15px;
+  }
+
+  /* Buttons: full width on very small screens */
+  .vcm-btn-premium,
+  .vcm-btn-secondary {
+    width: 100% !important;
+    justify-content: center !important;
+  }
+
+  /* Smaller table text */
+  .ant-table-thead > tr > th,
+  .ant-table-tbody > tr > td {
+    padding: 6px 8px !important;
+    font-size: 11px !important;
+  }
+
+  /* Form items: tighter */
+  .ant-form-item {
+    margin-bottom: 12px !important;
+  }
+
+  /* Modal: full width */
+  .ant-modal {
+    max-width: 100vw !important;
+    margin: 0 !important;
+    top: 0 !important;
+  }
+
+  .ant-modal-content {
+    border-radius: 0 !important;
+    min-height: 100vh;
+  }
+}

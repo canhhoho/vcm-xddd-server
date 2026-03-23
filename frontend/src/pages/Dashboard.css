@@ -570,6 +570,18 @@
    Responsive
    ========================================== */
 @media (max-width: 768px) {
+    .dashboard-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+        margin-bottom: 16px;
+    }
+
+    .dash-header-actions {
+        width: 100%;
+        justify-content: center;
+    }
+
     .dash-kpi-value {
         font-size: 26px;
     }
@@ -591,8 +603,17 @@
         font-size: 20px;
     }
 
+    .dash-exec-legend {
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
     .dash-row {
         margin-bottom: 16px !important;
+    }
+
+    .dash-header-left h2 {
+        font-size: 17px;
     }
 }
 
@@ -611,7 +632,24 @@
         font-size: 10px;
     }
 
+    .dash-kpi-footer {
+        flex-wrap: wrap;
+        gap: 6px;
+    }
+
     .dash-row {
         margin-bottom: 12px !important;
+    }
+
+    .dashboard-header {
+        margin-bottom: 12px;
+    }
+
+    .dash-header-left h2 {
+        font-size: 15px;
+    }
+
+    .dash-header-left p {
+        font-size: 11px;
     }
 }
