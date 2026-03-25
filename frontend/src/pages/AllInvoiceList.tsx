@@ -119,18 +119,9 @@ const AllInvoiceList: React.FC = () => {
         }
     };
 
-    // Active filters for chips
     const activeFilters = useMemo(() => {
-        const contractObj = contracts.find((c: Contract) => c.id === selectedContract);
         return [
             { key: 'iq', label: t('common.search'), value: searchText, onRemove: () => setSearchText('') },
-            {
-                key: 'contract',
-                label: t('invoices.filterContract'),
-                value: selectedContract,
-                displayValue: contractObj ? contractObj.code : undefined,
-                onRemove: () => setSelectedContract(undefined),
-            },
             {
                 key: 'ibranch',
                 label: t('invoices.filterBranch'),
@@ -159,16 +150,15 @@ const AllInvoiceList: React.FC = () => {
                 onRemove: () => setSelectedProgress(undefined),
             },
         ];
-    }, [searchText, selectedContract, selectedBranch, selectedMonth, selectedInstallment, selectedProgress, contracts, branches, t, setSearchText, setSelectedContract, setSelectedBranch, setSelectedMonth, setSelectedInstallment, setSelectedProgress]);
+    }, [searchText, selectedBranch, selectedMonth, selectedInstallment, selectedProgress, branches, t, setSearchText, setSelectedBranch, setSelectedMonth, setSelectedInstallment, setSelectedProgress]);
 
     const clearAllFilters = useCallback(() => {
         setSearchText('');
-        setSelectedContract(undefined);
         setSelectedBranch(undefined);
         setSelectedMonth(null);
         setSelectedInstallment(undefined);
         setSelectedProgress(undefined);
-    }, [setSearchText, setSelectedContract, setSelectedBranch, setSelectedMonth, setSelectedInstallment, setSelectedProgress]);
+    }, [setSearchText, setSelectedBranch, setSelectedMonth, setSelectedInstallment, setSelectedProgress]);
 
     // Filtered & sorted invoices
     const filteredInvoices = useMemo(() => {
@@ -418,28 +408,7 @@ const AllInvoiceList: React.FC = () => {
                         allowClear
                     />
                 </Col>
-                <Col xs={24} sm={12} md={6}>
-                    <Select
-                        placeholder={t('invoices.filterContract')}
-                        value={selectedContract === 'ALL' ? undefined : selectedContract}
-                        onChange={setSelectedContract}
-                        allowClear
-                        showSearch
-                        filterOption={(input, option) => {
-                            const label = (option?.children as unknown as string) || '';
-                            return label.toLowerCase().includes(input.toLowerCase());
-                        }}
-                        style={{ width: '100%' }}
-                    >
-                        <Option value="ALL">{t('common.all')}</Option>
-                        {contracts.map((c: Contract) => (
-                            <Option key={c.id} value={c.id}>
-                                {c.code} - {c.name}
-                            </Option>
-                        ))}
-                    </Select>
-                </Col>
-                <Col xs={24} sm={12} md={6}>
+                <Col xs={24} sm={12} md={4}>
                     <Select
                         placeholder={t('invoices.filterBranch')}
                         value={selectedBranch === 'ALL' ? undefined : selectedBranch}
@@ -455,7 +424,7 @@ const AllInvoiceList: React.FC = () => {
                         ))}
                     </Select>
                 </Col>
-                <Col xs={24} sm={12} md={6}>
+                <Col xs={24} sm={12} md={4}>
                     <DatePicker
                         picker="month"
                         placeholder={t('invoices.filterTime')}
@@ -466,7 +435,7 @@ const AllInvoiceList: React.FC = () => {
                         allowClear={true}
                     />
                 </Col>
-                <Col xs={24} sm={12} md={6}>
+                <Col xs={24} sm={12} md={5}>
                     <Select
                         placeholder={t('invoices.colInstallment')}
                         value={selectedInstallment === 'ALL' ? undefined : selectedInstallment}
@@ -484,7 +453,7 @@ const AllInvoiceList: React.FC = () => {
                         <Option value="Final">Final</Option>
                     </Select>
                 </Col>
-                <Col xs={24} sm={12} md={6}>
+                <Col xs={24} sm={12} md={5}>
                     <Select
                         placeholder={t('contracts.colProgress')}
                         value={selectedProgress === 'ALL' ? undefined : selectedProgress}
