@@ -159,7 +159,7 @@ const MainLayout: React.FC = () => {
                     collapsible
                     collapsed={collapsed}
                     onCollapse={setCollapsed}
-                    width={220}
+                    width={180}
                     className="main-sider"
                 >
                     <div className="logo-container">

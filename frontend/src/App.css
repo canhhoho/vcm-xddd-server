@@ -166,6 +166,55 @@ body {
 }
 
 /* ==========================================
+   GLOBAL PREMIUM TABS — applies to all pages
+   ========================================== */
+.vcm-page-container .ant-tabs > .ant-tabs-nav {
+  margin-bottom: 0;
+  padding: 0 8px;
+}
+
+.vcm-page-container .ant-tabs > .ant-tabs-nav .ant-tabs-tab {
+  padding: 10px 20px;
+  margin: 0 3px;
+  border-radius: 10px 10px 0 0;
+  font-weight: 500;
+  font-size: 13.5px;
+  transition: all 0.25s ease;
+  color: #64748b;
+  border: 1px solid transparent;
+  border-bottom: none;
+  background: transparent;
+}
+
+.vcm-page-container .ant-tabs > .ant-tabs-nav .ant-tabs-tab:hover {
+  color: #E11D2E;
+  background: rgba(225, 29, 46, 0.04);
+}
+
+.vcm-page-container .ant-tabs > .ant-tabs-nav .ant-tabs-tab-active {
+  background: #fff;
+  color: #E11D2E;
+  font-weight: 600;
+  border-color: #f1f5f9;
+  box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.vcm-page-container .ant-tabs > .ant-tabs-nav .ant-tabs-tab-active .ant-tabs-tab-btn {
+  color: #E11D2E;
+}
+
+.vcm-page-container .ant-tabs > .ant-tabs-nav .ant-tabs-ink-bar {
+  background: linear-gradient(90deg, #E11D2E, #ff4d6a);
+  height: 3px;
+  border-radius: 3px 3px 0 0;
+}
+
+.vcm-page-container .ant-tabs > .ant-tabs-nav .ant-tabs-tab .anticon {
+  margin-right: 6px;
+  font-size: 15px;
+}
+
+/* ==========================================
    RESPONSIVE: Tablet (≤992px)
    ========================================== */
 @media (max-width: 992px) {

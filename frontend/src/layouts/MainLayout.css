@@ -56,9 +56,10 @@
 
 .main-menu.ant-menu-dark .ant-menu-item {
   color: rgba(255, 255, 255, 0.85);
-  margin: 4px 8px;
+  margin: 4px 6px;
   border-radius: 8px;
   transition: all 0.3s;
+  font-size: 13px;
 }
 
 .main-menu.ant-menu-dark .ant-menu-item:hover {

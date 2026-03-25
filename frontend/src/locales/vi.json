@@ -527,6 +527,16 @@
         "searchPlaceholder": "Tìm kiếm tên, email, chức danh...",
         "filterPosition": "Chức danh",
         "filterGroup": "Nhóm",
+        "groups": {
+            "LEADER": "Lãnh đạo",
+            "CONSTRUCTION": "Xây dựng",
+            "BUSINESS": "Kinh doanh",
+            "MARKETING": "Marketing",
+            "QS": "QS",
+            "DESIGN": "Thiết kế",
+            "PROJECT": "Dự án",
+            "OTHER": "Khác"
+        },
         "totalUsers": "Tổng {{total}} người dùng",
         "legendTitle": "Chú thích: ",
         "legendEdit": "✏️ Chỉnh sửa - Xem, thêm, sửa, xóa",

@@ -27,7 +27,7 @@ const APP_CONFIG = {
   ],
 
   // Professional Groups
-  GROUPS: ['Lãnh đạo', 'Xây dựng', 'Kinh doanh', 'QS', 'Dự án', 'Khác'],
+  GROUPS: ['LEADER', 'CONSTRUCTION', 'BUSINESS', 'MARKETING', 'QS', 'DESIGN', 'PROJECT', 'OTHER'],
 
   // Standard Action Buttons
   ACTIONS: {

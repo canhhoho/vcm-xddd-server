@@ -540,7 +540,7 @@ const UserManagement: React.FC = () => {
                 >
                     {categories.map((cat: string) => (
                         <Option key={cat} value={cat}>
-                            {cat}
+                            {t(`users.groups.${cat}`, cat)}
                         </Option>
                     ))}
                 </Select>
@@ -575,7 +575,7 @@ const UserManagement: React.FC = () => {
             dataIndex: 'category',
             key: 'category',
             width: 120,
-            render: (text: string) => <Text>{text || '-'}</Text>
+            render: (text: string) => <Text>{text ? t(`users.groups.${text}`, text) : '-'}</Text>
         },
         {
             title: t('users.colDescription'),
@@ -709,7 +709,7 @@ const UserManagement: React.FC = () => {
             dataIndex: 'category',
             key: 'category',
             width: 150,
-            filters: (categories as string[]).map(c => ({ text: c, value: c })),
+            filters: (categories as string[]).map(c => ({ text: t(`users.groups.${c}`, c), value: c })),
             onFilter: (value: any, record: Position) => record.category === value,
         },
         {
@@ -1032,7 +1032,7 @@ const UserManagement: React.FC = () => {
                     <Form.Item name="category" label={t('users.formGroup')}>
                         <Select placeholder={t('users.formGroupPlaceholder')}>
                             {categories.map((cat: string) => (
-                                <Option key={cat} value={cat}>{cat}</Option>
+                                <Option key={cat} value={cat}>{t(`users.groups.${cat}`, cat)}</Option>
                             ))}
                         </Select>
                     </Form.Item>
@@ -1139,7 +1139,7 @@ const UserManagement: React.FC = () => {
                     >
                         <Select placeholder={t('users.formGroupPlaceholder')}>
                             {categories.map((cat: string) => (
-                                <Option key={cat} value={cat}>{cat}</Option>
+                                <Option key={cat} value={cat}>{t(`users.groups.${cat}`, cat)}</Option>
                             ))}
                         </Select>
                     </Form.Item>

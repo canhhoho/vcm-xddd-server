@@ -77,7 +77,7 @@ export class GasApiService implements IApiService {
                                     { code: 'LEADER', name: 'Quản lý', color: '#fa8c16', icon: 'SolutionOutlined' },
                                     { code: 'STAFF', name: 'Nhân viên', color: '#595959', icon: 'UserOutlined' }
                                 ],
-                                GROUPS: ['Lãnh đạo', 'Xây dựng', 'Kinh doanh', 'QS', 'Dự án', 'Khác'],
+                                GROUPS: ['LEADER', 'CONSTRUCTION', 'BUSINESS', 'MARKETING', 'QS', 'DESIGN', 'PROJECT', 'OTHER'],
                                 ACTIONS: {
                                     VIEW: { code: 'VIEW', label: 'Chi tiết', icon: 'EyeOutlined', color: '#52c41a', backgroundColor: '#f6ffed' },
                                     EDIT: { code: 'EDIT', label: 'Chỉnh sửa', icon: 'EditOutlined', color: '#1890ff', backgroundColor: '#e6f7ff' },
