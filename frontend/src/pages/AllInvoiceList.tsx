@@ -58,6 +58,8 @@ const AllInvoiceList: React.FC = () => {
     const [selectedContract, setSelectedContract] = useFilterSync<string | undefined>('contract', undefined);
     const [selectedBranch, setSelectedBranch] = useFilterSync<string | undefined>('ibranch', undefined);
     const [selectedMonth, setSelectedMonth] = useFilterSyncDate('imonth', null);
+    const [selectedInstallment, setSelectedInstallment] = useFilterSync<string | undefined>('installment', undefined);
+    const [selectedProgress, setSelectedProgress] = useFilterSync<string | undefined>('progress', undefined);
 
     useEffect(() => {
         if (appConfig?.BRANCHES) {
@@ -142,15 +144,30 @@ const AllInvoiceList: React.FC = () => {
                 displayValue: selectedMonth?.format('MM/YYYY'),
                 onRemove: () => setSelectedMonth(null),
             },
+            {
+                key: 'installment',
+                label: t('invoices.colInstallment'),
+                value: selectedInstallment,
+                onRemove: () => setSelectedInstallment(undefined),
+            },
+            {
+                key: 'progress',
+                label: t('contracts.colProgress'),
+                value: selectedProgress,
+                displayValue: selectedProgress === 'unpaid' ? '0%' : selectedProgress === 'partial' ? '1-99%' : selectedProgress === 'paid' ? '100%' : undefined,
+                onRemove: () => setSelectedProgress(undefined),
+            },
         ];
-    }, [searchText, selectedContract, selectedBranch, selectedMonth, contracts, branches, t, setSearchText, setSelectedContract, setSelectedBranch, setSelectedMonth]);
+    }, [searchText, selectedContract, selectedBranch, selectedMonth, selectedInstallment, selectedProgress, contracts, branches, t, setSearchText, setSelectedContract, setSelectedBranch, setSelectedMonth, setSelectedInstallment, setSelectedProgress]);
 
     const clearAllFilters = useCallback(() => {
         setSearchText('');
         setSelectedContract(undefined);
         setSelectedBranch(undefined);
         setSelectedMonth(null);
-    }, [setSearchText, setSelectedContract, setSelectedBranch, setSelectedMonth]);
+        setSelectedInstallment(undefined);
+        setSelectedProgress(undefined);
+    }, [setSearchText, setSelectedContract, setSelectedBranch, setSelectedMonth, setSelectedInstallment, setSelectedProgress]);
 
     // Filtered & sorted invoices
     const filteredInvoices = useMemo(() => {
@@ -181,13 +198,28 @@ const AllInvoiceList: React.FC = () => {
                     matchMonth = invoiceDate.isSame(selectedMonth, 'month') && invoiceDate.isSame(selectedMonth, 'year');
                 }
 
-                return matchSearch && matchContract && matchBranch && matchMonth;
+                // Installment filter
+                const matchInstallment = !selectedInstallment || selectedInstallment === 'ALL' ||
+                    (inv.installment || '').toLowerCase() === selectedInstallment.toLowerCase();
+
+                // Progress filter
+                let matchProgress = true;
+                if (selectedProgress && selectedProgress !== 'ALL') {
+                    const paid = inv.paidAmount ?? 0;
+                    const value = inv.value || 0;
+                    const pct = value > 0 ? Math.round((paid / value) * 100) : 0;
+                    if (selectedProgress === 'unpaid') matchProgress = pct === 0;
+                    else if (selectedProgress === 'partial') matchProgress = pct > 0 && pct < 100;
+                    else if (selectedProgress === 'paid') matchProgress = pct >= 100;
+                }
+
+                return matchSearch && matchContract && matchBranch && matchMonth && matchInstallment && matchProgress;
             })
             .sort((a: Invoice, b: Invoice) => {
                 // Sort newest first by issuedDate
                 return dayjs(b.issuedDate).valueOf() - dayjs(a.issuedDate).valueOf();
             });
-    }, [invoices, searchText, selectedContract, selectedBranch, selectedMonth, branches]);
+    }, [invoices, searchText, selectedContract, selectedBranch, selectedMonth, selectedInstallment, selectedProgress, branches]);
 
     const columns: ColumnsType<Invoice> = useMemo(() => [
         {
@@ -440,6 +472,38 @@ const AllInvoiceList: React.FC = () => {
                         format="MM/YYYY"
                         allowClear={true}
                     />
+                </Col>
+                <Col xs={24} sm={12} md={6}>
+                    <Select
+                        placeholder={t('invoices.colInstallment')}
+                        value={selectedInstallment === 'ALL' ? undefined : selectedInstallment}
+                        onChange={setSelectedInstallment}
+                        allowClear
+                        style={{ width: '100%' }}
+                    >
+                        <Option value="ALL">{t('common.all')}</Option>
+                        <Option value="Adv">Adv</Option>
+                        <Option value="1st">1st</Option>
+                        <Option value="2nd">2nd</Option>
+                        <Option value="3rd">3rd</Option>
+                        <Option value="4th">4th</Option>
+                        <Option value="5th">5th</Option>
+                        <Option value="Final">Final</Option>
+                    </Select>
+                </Col>
+                <Col xs={24} sm={12} md={6}>
+                    <Select
+                        placeholder={t('contracts.colProgress')}
+                        value={selectedProgress === 'ALL' ? undefined : selectedProgress}
+                        onChange={setSelectedProgress}
+                        allowClear
+                        style={{ width: '100%' }}
+                    >
+                        <Option value="ALL">{t('common.all')}</Option>
+                        <Option value="unpaid">{t('invoices.statusUnpaid')} (0%)</Option>
+                        <Option value="partial">1% - 99%</Option>
+                        <Option value="paid">{t('invoices.statusPaid')} (100%)</Option>
+                    </Select>
                 </Col>
             </VcmFilterBar>
 
