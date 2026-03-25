@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import {
-    Card, Table, Button, Select, Modal, Form, Input, Tag, message, Col, Row, Empty, DatePicker, Checkbox, Tooltip,
+    Card, Table, Button, Select, Modal, Form, Input, Tag, message, DatePicker, Empty, Tooltip,
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { PlusOutlined, SyncOutlined } from '@ant-design/icons';
@@ -17,22 +17,22 @@ dayjs.extend(isoWeek);
 const { Option } = Select;
 const { TextArea } = Input;
 
-const DEPARTMENTS = ['BD', 'MKT', 'QS', 'PM', 'DES'] as const;
-
 const STATUS_COLORS: Record<string, string> = {
     TODO: 'default', IN_PROGRESS: 'processing', DONE: 'success', CARRIED_OVER: 'warning',
 };
 
-// Get Monday of a given week
 const getWeekStart = (date: dayjs.Dayjs) => date.isoWeekday(1).startOf('day');
 const getWeekEnd = (date: dayjs.Dayjs) => date.isoWeekday(7).startOf('day');
 
-const WeeklyPlanList: React.FC = () => {
+interface DepartmentPlanProps {
+    department: string;
+}
+
+const DepartmentPlan: React.FC<DepartmentPlanProps> = ({ department }) => {
     const { t } = useTranslation();
     const { permissions, isAdmin } = usePermissions();
     const canEdit = isAdmin || permissions.business === 'EDIT';
 
-    const [selectedDept, setSelectedDept] = useState<string>('BD');
     const [selectedWeek, setSelectedWeek] = useState<dayjs.Dayjs>(getWeekStart(dayjs()));
     const [plans, setPlans] = useState<WeeklyPlan[]>([]);
     const [items, setItems] = useState<WeeklyPlanItem[]>([]);
@@ -42,21 +42,19 @@ const WeeklyPlanList: React.FC = () => {
     const [users, setUsers] = useState<User[]>([]);
     const [form] = Form.useForm();
 
-    // Current plan for selected week + department
     const currentPlan = useMemo(() => {
         const ws = selectedWeek.format('YYYY-MM-DD');
-        return plans.find(p => dayjs(p.weekStart).format('YYYY-MM-DD') === ws && p.department === selectedDept);
-    }, [plans, selectedWeek, selectedDept]);
+        return plans.find(p => dayjs(p.weekStart).format('YYYY-MM-DD') === ws && p.department === department);
+    }, [plans, selectedWeek, department]);
 
-    // Previous week plan (for carry-over)
     const prevPlan = useMemo(() => {
         const prevWeek = selectedWeek.subtract(7, 'day').format('YYYY-MM-DD');
-        return plans.find(p => dayjs(p.weekStart).format('YYYY-MM-DD') === prevWeek && p.department === selectedDept);
-    }, [plans, selectedWeek, selectedDept]);
+        return plans.find(p => dayjs(p.weekStart).format('YYYY-MM-DD') === prevWeek && p.department === department);
+    }, [plans, selectedWeek, department]);
 
     const loadPlans = async () => {
         try {
-            const res = await apiService.getWeeklyPlans({ department: selectedDept });
+            const res = await apiService.getWeeklyPlans({ department });
             if (res.success) setPlans(res.data || []);
         } catch { /* ignore */ }
     };
@@ -79,7 +77,7 @@ const WeeklyPlanList: React.FC = () => {
     };
 
     useEffect(() => { loadUsers(); }, []);
-    useEffect(() => { loadPlans(); }, [selectedDept]);
+    useEffect(() => { loadPlans(); }, [department]);
     useEffect(() => { loadItems(); }, [currentPlan]);
 
     const handleCreatePlan = async (withCarryOver: boolean) => {
@@ -89,7 +87,7 @@ const WeeklyPlanList: React.FC = () => {
             const payload: any = {
                 weekStart: ws.format('YYYY-MM-DD'),
                 weekEnd: we.format('YYYY-MM-DD'),
-                department: selectedDept,
+                department,
             };
             if (withCarryOver && prevPlan) {
                 payload.carryOverFromPlanId = prevPlan.id;
@@ -119,17 +117,26 @@ const WeeklyPlanList: React.FC = () => {
 
     const handleEditItem = (record: WeeklyPlanItem) => {
         setEditingItem(record);
-        form.setFieldsValue(record);
+        form.setFieldsValue({
+            ...record,
+            startDate: record.startDate ? dayjs(record.startDate) : null,
+            endDate: record.endDate ? dayjs(record.endDate) : null,
+        });
         setModalVisible(true);
     };
 
     const handleSubmitItem = async (values: any) => {
         try {
+            const payload = {
+                ...values,
+                startDate: values.startDate?.format('YYYY-MM-DD') || null,
+                endDate: values.endDate?.format('YYYY-MM-DD') || null,
+            };
             if (editingItem) {
-                const res = await apiService.updateWeeklyPlanItem(editingItem.id, values);
+                const res = await apiService.updateWeeklyPlanItem(editingItem.id, payload);
                 if (res.success) message.success(t('common.saveSuccess'));
             } else if (currentPlan) {
-                const res = await apiService.createWeeklyPlanItem(currentPlan.id, values);
+                const res = await apiService.createWeeklyPlanItem(currentPlan.id, payload);
                 if (res.success) message.success(t('common.saveSuccess'));
             }
             setModalVisible(false);
@@ -154,37 +161,51 @@ const WeeklyPlanList: React.FC = () => {
 
     const columns: ColumnsType<WeeklyPlanItem> = [
         {
-            title: '#', dataIndex: 'sortOrder', key: 'sortOrder', width: 50, align: 'center' as const,
+            title: '#', dataIndex: 'sortOrder', key: 'sortOrder', width: 45, align: 'center' as const,
         },
         {
-            title: t('business.weeklyPlan.itemTitle'), dataIndex: 'title', key: 'title', width: 250,
+            title: t('business.weeklyPlan.what'), dataIndex: 'title', key: 'title', width: 200,
             render: (val: string, record: WeeklyPlanItem) => (
                 <span>
                     {val}
                     {record.carriedFrom && (
-                        <Tag color="orange" style={{ marginLeft: 8, fontSize: 10 }}>
-                            <SyncOutlined spin={false} /> {t('business.weeklyPlan.carriedTag')}
+                        <Tag color="orange" style={{ marginLeft: 6, fontSize: 10 }}>
+                            <SyncOutlined /> {t('business.weeklyPlan.carriedTag')}
                         </Tag>
                     )}
                 </span>
             ),
         },
         {
-            title: t('business.weeklyPlan.description'), dataIndex: 'description', key: 'description', width: 200, ellipsis: true,
+            title: t('business.weeklyPlan.why'), dataIndex: 'why', key: 'why', width: 150, ellipsis: true,
         },
         {
-            title: t('business.weeklyPlan.assignee'), key: 'assignee', width: 130,
+            title: t('business.weeklyPlan.who'), key: 'assignee', width: 120,
             render: (_: any, record: WeeklyPlanItem) => record.assigneeName || users.find(u => u.id === record.assigneeId)?.name || '',
         },
         {
-            title: t('business.weeklyPlan.status'), dataIndex: 'status', key: 'status', width: 140, align: 'center' as const,
+            title: t('business.weeklyPlan.when'), key: 'when', width: 140, align: 'center' as const,
+            render: (_: any, record: WeeklyPlanItem) => {
+                const s = record.startDate ? dayjs(record.startDate).format('DD/MM') : '';
+                const e = record.endDate ? dayjs(record.endDate).format('DD/MM') : '';
+                return s && e ? `${s} - ${e}` : s || e || '-';
+            },
+        },
+        {
+            title: t('business.weeklyPlan.where'), dataIndex: 'location', key: 'location', width: 120, ellipsis: true,
+        },
+        {
+            title: t('business.weeklyPlan.how'), dataIndex: 'method', key: 'method', width: 130, ellipsis: true,
+        },
+        {
+            title: t('business.weeklyPlan.status'), dataIndex: 'status', key: 'status', width: 130, align: 'center' as const,
             render: (val: string) => {
                 const key = val === 'IN_PROGRESS' ? 'statusInProgress' : val === 'CARRIED_OVER' ? 'statusCarriedOver' : val === 'DONE' ? 'statusDone' : 'statusTodo';
                 return <Tag color={STATUS_COLORS[val]}>{t(`business.weeklyPlan.${key}`)}</Tag>;
             },
         },
         {
-            title: t('business.weeklyPlan.result'), dataIndex: 'result', key: 'result', width: 200, ellipsis: true,
+            title: t('business.weeklyPlan.result'), dataIndex: 'result', key: 'result', width: 160, ellipsis: true,
         },
         {
             title: t('invoices.colActions'), key: 'action', width: 90, align: 'center' as const,
@@ -202,11 +223,6 @@ const WeeklyPlanList: React.FC = () => {
     return (
         <Card className="contracts-card">
             <div style={{ padding: '16px', display: 'flex', gap: 16, alignItems: 'center', flexWrap: 'wrap' }}>
-                <Select value={selectedDept} onChange={setSelectedDept} style={{ width: 160 }}>
-                    {DEPARTMENTS.map(d => (
-                        <Option key={d} value={d}>{t(`business.weeklyPlan.dept${d}`)}</Option>
-                    ))}
-                </Select>
                 <DatePicker
                     picker="week"
                     value={selectedWeek}
@@ -249,7 +265,7 @@ const WeeklyPlanList: React.FC = () => {
                         loading={loading}
                         size="small"
                         pagination={false}
-                        scroll={{ x: 1100 }}
+                        scroll={{ x: 1400 }}
                     />
                 )}
             </div>
@@ -259,7 +275,7 @@ const WeeklyPlanList: React.FC = () => {
                 open={modalVisible}
                 onCancel={() => { setModalVisible(false); form.resetFields(); }}
                 onOk={() => form.submit()}
-                width={600}
+                width={650}
                 destroyOnClose
             >
                 <Form form={form} layout="vertical" onFinish={handleSubmitItem}>
@@ -268,19 +284,33 @@ const WeeklyPlanList: React.FC = () => {
                             {[1, 2, 3, 4, 5].map(n => <Option key={n} value={n}>{n}</Option>)}
                         </Select>
                     </Form.Item>
-                    <Form.Item name="title" label={t('business.weeklyPlan.itemTitle')} rules={[{ required: true }]}>
-                        <Input />
+                    <Form.Item name="title" label={t('business.weeklyPlan.what')} rules={[{ required: true }]}>
+                        <Input placeholder="What — Nội dung công việc" />
                     </Form.Item>
-                    <Form.Item name="description" label={t('business.weeklyPlan.description')}>
-                        <TextArea rows={3} />
+                    <Form.Item name="why" label={t('business.weeklyPlan.why')}>
+                        <Input placeholder="Why — Mục đích" />
                     </Form.Item>
-                    <Form.Item name="assigneeId" label={t('business.weeklyPlan.assignee')}>
-                        <Select allowClear showSearch filterOption={(input, option) => {
+                    <Form.Item name="assigneeId" label={t('business.weeklyPlan.who')}>
+                        <Select allowClear showSearch placeholder="Who — Người phụ trách" filterOption={(input, option) => {
                             const label = (option?.children as unknown as string) || '';
                             return label.toLowerCase().includes(input.toLowerCase());
                         }}>
                             {users.map(u => <Option key={u.id} value={u.id}>{u.name}</Option>)}
                         </Select>
+                    </Form.Item>
+                    <div style={{ display: 'flex', gap: 16 }}>
+                        <Form.Item name="startDate" label={t('business.weeklyPlan.whenStart')} style={{ flex: 1 }}>
+                            <DatePicker style={{ width: '100%' }} format="DD/MM/YYYY" />
+                        </Form.Item>
+                        <Form.Item name="endDate" label={t('business.weeklyPlan.whenEnd')} style={{ flex: 1 }}>
+                            <DatePicker style={{ width: '100%' }} format="DD/MM/YYYY" />
+                        </Form.Item>
+                    </div>
+                    <Form.Item name="location" label={t('business.weeklyPlan.where')}>
+                        <Input placeholder="Where — Địa điểm" />
+                    </Form.Item>
+                    <Form.Item name="method" label={t('business.weeklyPlan.how')}>
+                        <Input placeholder="How — Phương pháp" />
                     </Form.Item>
                     <Form.Item name="status" label={t('business.weeklyPlan.status')} initialValue="TODO">
                         <Select>
@@ -290,7 +320,7 @@ const WeeklyPlanList: React.FC = () => {
                         </Select>
                     </Form.Item>
                     <Form.Item name="result" label={t('business.weeklyPlan.result')}>
-                        <TextArea rows={2} />
+                        <TextArea rows={2} placeholder="Kết quả đánh giá" />
                     </Form.Item>
                 </Form>
             </Modal>
@@ -298,4 +328,4 @@ const WeeklyPlanList: React.FC = () => {
     );
 };
 
-export default WeeklyPlanList;
+export default DepartmentPlan;

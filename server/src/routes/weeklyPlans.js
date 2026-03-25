@@ -32,8 +32,13 @@ function toItem(row) {
     sortOrder: row.sort_order,
     title: row.title,
     description: row.description,
+    why: row.why || '',
     assigneeId: row.assignee_id,
     assigneeName: row.assignee_name || '',
+    startDate: row.start_date,
+    endDate: row.end_date,
+    location: row.location || '',
+    method: row.method || '',
     status: row.status,
     result: row.result,
     carriedFrom: row.carried_from,
@@ -88,9 +93,9 @@ router.post('/', async (req, res) => {
         const item = incompleteItems.rows[i];
         const newItemId = uuidv4();
         await pool.query(
-          `INSERT INTO weekly_plan_items (id, plan_id, sort_order, title, description, assignee_id, status, carried_from)
-           VALUES ($1,$2,$3,$4,$5,$6,'TODO',$7)`,
-          [newItemId, id, i + 1, item.title, item.description, item.assignee_id, item.id]
+          `INSERT INTO weekly_plan_items (id, plan_id, sort_order, title, description, why, assignee_id, start_date, end_date, location, method, status, carried_from)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,'TODO',$12)`,
+          [newItemId, id, i + 1, item.title, item.description, item.why || '', item.assignee_id, item.start_date, item.end_date, item.location || '', item.method || '', item.id]
         );
         // Mark original item as CARRIED_OVER
         await pool.query(
@@ -143,12 +148,12 @@ router.post('/:planId/items', async (req, res) => {
       return res.status(400).json({ success: false, error: `Maximum ${MAX_ITEMS} items per plan` });
     }
 
-    const { sortOrder, title, description, assigneeId, status } = req.body;
+    const { sortOrder, title, description, why, assigneeId, startDate, endDate, location, method, status } = req.body;
     const id = uuidv4();
     await pool.query(
-      `INSERT INTO weekly_plan_items (id, plan_id, sort_order, title, description, assignee_id, status)
-       VALUES ($1,$2,$3,$4,$5,$6,$7)`,
-      [id, req.params.planId, sortOrder || 1, title, description || '', assigneeId || '', status || 'TODO']
+      `INSERT INTO weekly_plan_items (id, plan_id, sort_order, title, description, why, assignee_id, start_date, end_date, location, method, status)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)`,
+      [id, req.params.planId, sortOrder || 1, title, description || '', why || '', assigneeId || '', startDate || null, endDate || null, location || '', method || '', status || 'TODO']
     );
     res.json({ success: true, data: { id } });
   } catch (err) {
@@ -159,10 +164,10 @@ router.post('/:planId/items', async (req, res) => {
 // PUT /weekly-plan-items/:id
 router.put('/items/:id', async (req, res) => {
   try {
-    const { sortOrder, title, description, assigneeId, status, result } = req.body;
+    const { sortOrder, title, description, why, assigneeId, startDate, endDate, location, method, status, result } = req.body;
     await pool.query(
-      `UPDATE weekly_plan_items SET sort_order=$1, title=$2, description=$3, assignee_id=$4, status=$5, result=$6 WHERE id=$7`,
-      [sortOrder, title, description || '', assigneeId || '', status || 'TODO', result || '', req.params.id]
+      `UPDATE weekly_plan_items SET sort_order=$1, title=$2, description=$3, why=$4, assignee_id=$5, start_date=$6, end_date=$7, location=$8, method=$9, status=$10, result=$11 WHERE id=$12`,
+      [sortOrder, title, description || '', why || '', assigneeId || '', startDate || null, endDate || null, location || '', method || '', status || 'TODO', result || '', req.params.id]
     );
     res.json({ success: true });
   } catch (err) {

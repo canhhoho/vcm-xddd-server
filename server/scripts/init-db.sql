@@ -174,14 +174,19 @@ CREATE TABLE IF NOT EXISTS weekly_plans (
   created_at  TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 13. weekly_plan_items
+-- 13. weekly_plan_items (5W1H format)
 CREATE TABLE IF NOT EXISTS weekly_plan_items (
   id           VARCHAR(50) PRIMARY KEY,
   plan_id      VARCHAR(50) REFERENCES weekly_plans(id) ON DELETE CASCADE,
   sort_order   INTEGER DEFAULT 1,
   title        TEXT NOT NULL,
   description  TEXT DEFAULT '',
+  why          TEXT DEFAULT '',
   assignee_id  VARCHAR(50) DEFAULT '',
+  start_date   DATE,
+  end_date     DATE,
+  location     TEXT DEFAULT '',
+  method       TEXT DEFAULT '',
   status       VARCHAR(20) DEFAULT 'TODO',
   result       TEXT DEFAULT '',
   carried_from VARCHAR(50) DEFAULT '',
@@ -205,3 +210,15 @@ CREATE INDEX IF NOT EXISTS idx_prospects_status ON prospects(status);
 CREATE INDEX IF NOT EXISTS idx_prospects_branch ON prospects(branch_id);
 CREATE INDEX IF NOT EXISTS idx_weekly_plans_week ON weekly_plans(week_start, department);
 CREATE INDEX IF NOT EXISTS idx_weekly_plan_items_plan ON weekly_plan_items(plan_id);
+
+-- ============================================================
+-- Migrations (safe to re-run: ADD COLUMN IF NOT EXISTS)
+-- ============================================================
+DO $$ BEGIN
+  ALTER TABLE weekly_plan_items ADD COLUMN IF NOT EXISTS why TEXT DEFAULT '';
+  ALTER TABLE weekly_plan_items ADD COLUMN IF NOT EXISTS start_date DATE;
+  ALTER TABLE weekly_plan_items ADD COLUMN IF NOT EXISTS end_date DATE;
+  ALTER TABLE weekly_plan_items ADD COLUMN IF NOT EXISTS location TEXT DEFAULT '';
+  ALTER TABLE weekly_plan_items ADD COLUMN IF NOT EXISTS method TEXT DEFAULT '';
+END $$;
+

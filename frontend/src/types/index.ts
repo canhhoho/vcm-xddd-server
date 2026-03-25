@@ -246,8 +246,13 @@ export interface WeeklyPlanItem {
     sortOrder: number;
     title: string;
     description: string;
+    why: string;
     assigneeId: string;
     assigneeName?: string;
+    startDate: string;
+    endDate: string;
+    location: string;
+    method: string;
     status: PlanItemStatus;
     result: string;
     carriedFrom: string;
