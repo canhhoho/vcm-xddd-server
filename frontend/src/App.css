@@ -24,14 +24,13 @@ body {
 /* Global Premium Header Style */
 .vcm-premium-header {
   background: linear-gradient(135deg, #1F2937 0%, #374151 50%, #4B5563 100%);
-  border-radius: 16px;
-  padding: 16px;
-  margin-bottom: 16px;
+  border-radius: 10px;
+  padding: 12px;
+  margin-bottom: 10px;
   position: relative;
   overflow: hidden;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
-  min-height: 72px;
-  /* Standard height to ensure consistency across pages */
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.12);
+  min-height: 52px;
   display: flex;
   align-items: center;
 }
@@ -68,12 +67,12 @@ body {
 }
 
 .vcm-header-title {
-  font-size: 24px;
+  font-size: 20px;
   font-weight: 700;
   color: #FFFFFF;
   margin: 0;
-  letter-spacing: -0.5px;
-  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  letter-spacing: -0.3px;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
 }
 
 .mt-4 {
@@ -219,9 +218,9 @@ body {
    ========================================== */
 @media (max-width: 992px) {
   .vcm-premium-header {
-    padding: 14px;
-    border-radius: 12px;
-    min-height: 60px;
+    padding: 10px;
+    border-radius: 8px;
+    min-height: 48px;
   }
 
   .vcm-header-title {
