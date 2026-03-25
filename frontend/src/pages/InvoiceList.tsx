@@ -387,7 +387,7 @@ const InvoiceList: React.FC<InvoiceListProps> = ({ contractId, onStatsChange, ap
                         <AutoComplete
                             placeholder={t('invoices.formInstallmentPlaceholder')}
                             options={[
-                                { value: 'Adv', label: 'Adv (Advance)' },
+                                { value: 'Adv', label: 'Adv' },
                                 { value: '1st', label: '1st' },
                                 { value: '2nd', label: '2nd' },
                                 { value: '3rd', label: '3rd' },

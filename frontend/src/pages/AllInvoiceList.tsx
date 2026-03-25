@@ -24,6 +24,7 @@ import type { Invoice, Contract, Province } from '../types';
 import { useTranslation } from 'react-i18next';
 import { VcmFilterBar } from '../components/VcmFilterBar';
 import { FilterChips } from '../components/FilterChips';
+import { VcmActionGroup } from '../components/VcmActionGroup';
 import { useFilterSync, useFilterSyncDate } from '../hooks/useFilterSync';
 import { useContracts } from '../hooks/useContracts';
 import { useAppConfig } from '../hooks/useAppConfig';
@@ -373,41 +374,33 @@ const AllInvoiceList: React.FC = () => {
                 };
 
                 return (
-                    <Space size={4}>
-                        {canEdit && (
-                            <Tooltip title={t('common.edit')}>
-                                <Button
-                                    type="text"
-                                    size="small"
-                                    icon={<EditOutlined />}
-                                    onClick={() => handleEdit(record)}
-                                    style={{ color: '#1890ff' }}
-                                />
-                            </Tooltip>
-                        )}
+                    <VcmActionGroup
+                        onEdit={canEdit ? () => handleEdit(record) : undefined}
+                        canEdit={canEdit}
+                    >
                         {fileUrls.length > 0 && (
                             <>
                                 <Tooltip title={t('common.view')}>
                                     <Button
                                         type="text"
                                         size="small"
+                                        className="vcm-table-action-btn vcm-table-action-view"
                                         icon={<EyeOutlined />}
-                                        onClick={handleView}
-                                        style={{ color: '#1890ff' }}
+                                        onClick={(e) => { e.stopPropagation(); handleView(); }}
                                     />
                                 </Tooltip>
                                 <Tooltip title={t('common.download')}>
                                     <Button
                                         type="text"
                                         size="small"
+                                        className="vcm-table-action-btn vcm-table-action-view"
                                         icon={<DownloadOutlined />}
-                                        onClick={handleDownload}
-                                        style={{ color: '#52c41a' }}
+                                        onClick={(e) => { e.stopPropagation(); handleDownload(); }}
                                     />
                                 </Tooltip>
                             </>
                         )}
-                    </Space>
+                    </VcmActionGroup>
                 );
             },
         },
@@ -541,7 +534,7 @@ const AllInvoiceList: React.FC = () => {
                         <AutoComplete
                             placeholder={t('invoices.formInstallmentPlaceholder')}
                             options={[
-                                { value: 'Adv', label: 'Adv (Advance)' },
+                                { value: 'Adv', label: 'Adv' },
                                 { value: '1st', label: '1st' },
                                 { value: '2nd', label: '2nd' },
                                 { value: '3rd', label: '3rd' },
