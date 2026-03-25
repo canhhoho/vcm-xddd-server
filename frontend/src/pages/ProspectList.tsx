@@ -8,7 +8,7 @@ import { useTranslation } from 'react-i18next';
 import dayjs from 'dayjs';
 import { usePermissions } from '../hooks/usePermissions';
 import { useAppConfig } from '../hooks/useAppConfig';
-import { apiService } from '../services/api.service';
+import { apiService } from '../services/api';
 import { VcmFilterBar } from '../components/VcmFilterBar';
 import { VcmActionGroup } from '../components/VcmActionGroup';
 import type { Prospect, Province } from '../types';
@@ -23,7 +23,7 @@ const PRIORITY_COLORS: Record<string, string> = { HIGH: 'red', MEDIUM: 'gold', L
 const ProspectList: React.FC = () => {
     const { t } = useTranslation();
     const { permissions, isAdmin } = usePermissions();
-    const { appConfig } = useAppConfig();
+    const appConfigQuery = useAppConfig();
     const canEdit = isAdmin || permissions.business === 'EDIT';
 
     const [prospects, setProspects] = useState<Prospect[]>([]);
@@ -35,7 +35,7 @@ const ProspectList: React.FC = () => {
     const [filterPriority, setFilterPriority] = useState<string | undefined>(undefined);
     const [form] = Form.useForm();
 
-    const branches: Province[] = appConfig?.BRANCHES || [];
+    const branches: Province[] = appConfigQuery.data?.BRANCHES || [];
 
     const loadData = async () => {
         setLoading(true);

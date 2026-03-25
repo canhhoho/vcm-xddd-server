@@ -8,7 +8,7 @@ import { useTranslation } from 'react-i18next';
 import dayjs from 'dayjs';
 import isoWeek from 'dayjs/plugin/isoWeek';
 import { usePermissions } from '../hooks/usePermissions';
-import { apiService } from '../services/api.service';
+import { apiService } from '../services/api';
 import { VcmActionGroup } from '../components/VcmActionGroup';
 import type { WeeklyPlan, WeeklyPlanItem, User } from '../types';
 

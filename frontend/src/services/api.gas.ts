@@ -588,4 +588,50 @@ export class GasApiService implements IApiService {
     async getActivities() {
         return this.runGasFunction('getActivities', {});
     }
+
+    // ==================== PROSPECTS ====================
+    async getProspects() {
+        return this.runGasFunction('getProspects', {});
+    }
+
+    async createProspect(data: any) {
+        return this.runGasFunction('createProspect', data);
+    }
+
+    async updateProspect(id: string, data: any) {
+        return this.runGasFunction('updateProspect', { id, ...data });
+    }
+
+    async deleteProspect(id: string) {
+        return this.runGasFunction('deleteProspect', { id });
+    }
+
+    // ==================== WEEKLY PLANS ====================
+    async getWeeklyPlans(params?: any) {
+        return this.runGasFunction('getWeeklyPlans', params || {});
+    }
+
+    async createWeeklyPlan(data: any) {
+        return this.runGasFunction('createWeeklyPlan', data);
+    }
+
+    async deleteWeeklyPlan(id: string) {
+        return this.runGasFunction('deleteWeeklyPlan', { id });
+    }
+
+    async getWeeklyPlanItems(planId: string) {
+        return this.runGasFunction('getWeeklyPlanItems', { planId });
+    }
+
+    async createWeeklyPlanItem(planId: string, data: any) {
+        return this.runGasFunction('createWeeklyPlanItem', { planId, ...data });
+    }
+
+    async updateWeeklyPlanItem(id: string, data: any) {
+        return this.runGasFunction('updateWeeklyPlanItem', { id, ...data });
+    }
+
+    async deleteWeeklyPlanItem(id: string) {
+        return this.runGasFunction('deleteWeeklyPlanItem', { id });
+    }
 }
