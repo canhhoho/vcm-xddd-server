@@ -10,8 +10,13 @@ import {
     Button,
     Space,
     Progress,
+    Modal,
+    Form,
+    InputNumber,
+    AutoComplete,
+    message,
 } from 'antd';
-import { SearchOutlined, EyeOutlined, DownloadOutlined } from '@ant-design/icons';
+import { SearchOutlined, EyeOutlined, DownloadOutlined, EditOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import dayjs from 'dayjs';
 import { apiService } from '../services/api';
@@ -43,6 +48,10 @@ const AllInvoiceList: React.FC = () => {
     const [invoices, setInvoices] = useState<Invoice[]>([]);
     const [loading, setLoading] = useState(false);
     const [branches, setBranches] = useState<Province[]>([]);
+    const [editModalVisible, setEditModalVisible] = useState(false);
+    const [editingInvoice, setEditingInvoice] = useState<Invoice | null>(null);
+    const [form] = Form.useForm();
+    const canEdit = isAdmin || permissions.contracts === 'EDIT';
 
     // Filters (synced with URL)
     const [searchText, setSearchText] = useFilterSync('iq', '');
@@ -71,6 +80,39 @@ const AllInvoiceList: React.FC = () => {
             console.error('Failed to load invoices:', error);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleEdit = (record: Invoice) => {
+        setEditingInvoice(record);
+        form.setFieldsValue({
+            invoiceNumber: record.invoiceNumber,
+            installment: record.installment,
+            value: record.value,
+            paidAmount: record.paidAmount ?? 0,
+            issuedDate: record.issuedDate ? dayjs(record.issuedDate) : null,
+        });
+        setEditModalVisible(true);
+    };
+
+    const handleEditSubmit = async (values: any) => {
+        if (!editingInvoice) return;
+        try {
+            const payload = {
+                id: editingInvoice.id,
+                ...values,
+                issuedDate: values.issuedDate?.format('YYYY-MM-DD'),
+            };
+            const res = await apiService.updateInvoice(payload);
+            if (res.success) {
+                message.success(t('invoices.updateSuccess'));
+                setEditModalVisible(false);
+                setEditingInvoice(null);
+                form.resetFields();
+                loadInvoices();
+            }
+        } catch {
+            message.error(t('invoices.submitError'));
         }
     };
 
@@ -275,12 +317,11 @@ const AllInvoiceList: React.FC = () => {
         {
             title: t('invoices.colActions'),
             key: 'action',
-            width: 100,
+            width: 130,
             align: 'center' as const,
             fixed: 'right' as const,
             render: (_: any, record: Invoice) => {
                 const fileUrls = parseFileUrls(record.files);
-                if (fileUrls.length === 0) return <span style={{ color: '#d9d9d9' }}>—</span>;
 
                 const handleView = () => {
                     fileUrls.forEach((url: string) => window.open(url, '_blank'));
@@ -301,24 +342,39 @@ const AllInvoiceList: React.FC = () => {
 
                 return (
                     <Space size={4}>
-                        <Tooltip title={t('common.view')}>
-                            <Button
-                                type="text"
-                                size="small"
-                                icon={<EyeOutlined />}
-                                onClick={handleView}
-                                style={{ color: '#1890ff' }}
-                            />
-                        </Tooltip>
-                        <Tooltip title={t('common.download')}>
-                            <Button
-                                type="text"
-                                size="small"
-                                icon={<DownloadOutlined />}
-                                onClick={handleDownload}
-                                style={{ color: '#52c41a' }}
-                            />
-                        </Tooltip>
+                        {canEdit && (
+                            <Tooltip title={t('common.edit')}>
+                                <Button
+                                    type="text"
+                                    size="small"
+                                    icon={<EditOutlined />}
+                                    onClick={() => handleEdit(record)}
+                                    style={{ color: '#1890ff' }}
+                                />
+                            </Tooltip>
+                        )}
+                        {fileUrls.length > 0 && (
+                            <>
+                                <Tooltip title={t('common.view')}>
+                                    <Button
+                                        type="text"
+                                        size="small"
+                                        icon={<EyeOutlined />}
+                                        onClick={handleView}
+                                        style={{ color: '#1890ff' }}
+                                    />
+                                </Tooltip>
+                                <Tooltip title={t('common.download')}>
+                                    <Button
+                                        type="text"
+                                        size="small"
+                                        icon={<DownloadOutlined />}
+                                        onClick={handleDownload}
+                                        style={{ color: '#52c41a' }}
+                                    />
+                                </Tooltip>
+                            </>
+                        )}
                     </Space>
                 );
             },
@@ -403,6 +459,49 @@ const AllInvoiceList: React.FC = () => {
                     showTotal: (total) => t('invoices.totalInvoices', { total }),
                 }}
             />
+
+            <Modal
+                title={t('invoices.modalTitleEdit')}
+                open={editModalVisible}
+                onCancel={() => { setEditModalVisible(false); setEditingInvoice(null); form.resetFields(); }}
+                onOk={() => form.submit()}
+                okText={t('common.save')}
+                cancelText={t('common.cancel')}
+                destroyOnClose
+            >
+                <Form form={form} layout="vertical" onFinish={handleEditSubmit}>
+                    <Form.Item name="invoiceNumber" label={t('invoices.formInvoiceNumber')} rules={[{ required: true, message: t('invoices.formInvoiceNumberRequired') }]}>
+                        <Input placeholder={t('invoices.formInvoiceNumberPlaceholder')} />
+                    </Form.Item>
+                    <Form.Item name="installment" label={t('invoices.formInstallment')} rules={[{ required: true, message: t('invoices.formInstallmentRequired') }]}>
+                        <AutoComplete
+                            placeholder={t('invoices.formInstallmentPlaceholder')}
+                            options={[
+                                { value: 'Adv', label: 'Adv (Advance)' },
+                                { value: '1st', label: '1st' },
+                                { value: '2nd', label: '2nd' },
+                                { value: '3rd', label: '3rd' },
+                                { value: '4th', label: '4th' },
+                                { value: '5th', label: '5th' },
+                                { value: 'Final', label: 'Final' },
+                            ]}
+                            filterOption={(inputValue, option) =>
+                                (option?.value as string).toLowerCase().includes(inputValue.toLowerCase()) ||
+                                (option?.label as string).toLowerCase().includes(inputValue.toLowerCase())
+                            }
+                        />
+                    </Form.Item>
+                    <Form.Item name="value" label={t('invoices.formValue')} rules={[{ required: true, message: t('invoices.formValueRequired') }]}>
+                        <InputNumber style={{ width: '100%' }} formatter={v => `${v}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')} parser={v => v?.replace(/\$\s?|(,*)/g, '') as unknown as number} />
+                    </Form.Item>
+                    <Form.Item name="paidAmount" label={t('invoices.formPaidAmount')} tooltip={t('invoices.formPaidAmountTooltip')} initialValue={0}>
+                        <InputNumber style={{ width: '100%' }} min={0} formatter={v => `${v}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')} parser={(v: any) => Number(v?.replace(/\$\s?|(,*)/g, '')) || 0} />
+                    </Form.Item>
+                    <Form.Item name="issuedDate" label={t('invoices.formIssuedDate')} rules={[{ required: true, message: t('invoices.formIssuedDateRequired') }]}>
+                        <DatePicker style={{ width: '100%' }} format="DD/MM/YYYY" placeholder={t('common.selectDate')} />
+                    </Form.Item>
+                </Form>
+            </Modal>
         </Card>
     );
 };
