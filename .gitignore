@@ -13,6 +13,23 @@
 !dist/
 !dist/**
 
+# Frontend source code
+!frontend/
+!frontend/src/
+!frontend/src/**
+!frontend/public/
+!frontend/public/**
+!frontend/index.html
+!frontend/package.json
+!frontend/package-lock.json
+!frontend/tsconfig.json
+!frontend/tsconfig.app.json
+!frontend/tsconfig.node.json
+!frontend/vite.config.ts
+!frontend/eslint.config.js
+!frontend/.env.development
+!frontend/.env.production
+
 # Server source code (code chính)
 !server/
 !server/src/
