@@ -138,6 +138,8 @@
     },
     "contracts": {
         "pageTitle": "Contract Management",
+        "tabContracts": "Contract List",
+        "tabInvoices": "Invoice List",
         "exportExcel": "EXPORT EXCEL",
         "createContract": "CREATE CONTRACT",
         "noAccess": "Access Denied",
@@ -264,7 +266,16 @@
         "exportInvoiceValue": "Invoice Value (MMK)",
         "exportPaymentValue": "Payment Value (MMK)",
         "exportIssuedDate": "Issued Date",
-        "exportCreatedDate": "Created Date"
+        "exportCreatedDate": "Created Date",
+        "colContractCode": "Contract Code",
+        "colContractName": "Contract Name",
+        "colBranch": "Branch",
+        "filterContract": "Contract",
+        "filterBranch": "Branch",
+        "filterTime": "Time",
+        "searchPlaceholder": "Search contract code, invoice...",
+        "totalInvoices": "Total {{total}} invoices",
+        "filterContractPlaceholder": "Search contract code..."
     },
     "projects": {
         "pageTitle": "Project Management",

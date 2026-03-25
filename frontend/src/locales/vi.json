@@ -137,6 +137,8 @@
     },
     "contracts": {
         "pageTitle": "Quản lý Hợp đồng",
+        "tabContracts": "Danh sách Hợp đồng",
+        "tabInvoices": "Danh sách Hóa đơn",
         "exportExcel": "XUẤT FILE EXCEL",
         "createContract": "TẠO HỢP ĐỒNG",
         "noAccess": "Không có quyền truy cập",
@@ -263,7 +265,16 @@
         "exportInvoiceValue": "Giá trị hóa đơn (MMK)",
         "exportPaymentValue": "Giá trị thanh toán (MMK)",
         "exportIssuedDate": "Ngày xuất",
-        "exportCreatedDate": "Ngày tạo"
+        "exportCreatedDate": "Ngày tạo",
+        "colContractCode": "Mã HĐ",
+        "colContractName": "Tên hợp đồng",
+        "colBranch": "Chi nhánh",
+        "filterContract": "Hợp đồng",
+        "filterBranch": "Chi nhánh",
+        "filterTime": "Thời gian",
+        "searchPlaceholder": "Tìm kiếm mã HĐ, mã hóa đơn...",
+        "totalInvoices": "Tổng {{total}} hóa đơn",
+        "filterContractPlaceholder": "Tìm kiếm mã HĐ..."
     },
     "projects": {
         "pageTitle": "Quản lý Dự án",

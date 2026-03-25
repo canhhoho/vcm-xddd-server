@@ -201,4 +201,7 @@ export interface Invoice {
     status: 'PAID' | 'UNPAID' | 'OVERDUE';
     createdAt: string;
     files?: string;
+    contractCode?: string;
+    contractName?: string;
+    branchCode?: string;
 }

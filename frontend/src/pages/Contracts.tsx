@@ -3,6 +3,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import {
     Card,
     Table,
+    Tabs,
     Button,
     Input,
     Select,
@@ -46,6 +47,7 @@ import './Contracts.css';
 
 
 import ContractDetailModal from './ContractDetailModal';
+import AllInvoiceList from './AllInvoiceList';
 import { useFilterSync, useFilterSyncDate } from '../hooks/useFilterSync';
 import { usePermissions } from '../hooks/usePermissions';
 import { useContracts, useContractMutations, CONTRACT_KEYS } from '../hooks/useContracts';
@@ -97,6 +99,9 @@ const Contracts: React.FC = () => {
     const canView = isAdmin || permissions.contracts === 'VIEW' || permissions.contracts === 'EDIT';
 
     const queryClient = useQueryClient();
+
+    // Tab state synced with URL
+    const [activeTab, setActiveTab] = useFilterSync('tab', 'contracts');
 
     // React Query Hooks
     const { data: contracts = [], isLoading: isLoadingContracts } = useContracts(canView);
@@ -590,6 +595,15 @@ const Contracts: React.FC = () => {
                 </div>
             </div>
 
+            <Tabs
+                activeKey={activeTab}
+                onChange={setActiveTab}
+                items={[
+                    {
+                        key: 'contracts',
+                        label: t('contracts.tabContracts'),
+                        children: (
+                            <>
             <Card className="contracts-card">
                 <VcmFilterBar>
                     <Col xs={24} sm={12} md={6}>
@@ -660,6 +674,16 @@ const Contracts: React.FC = () => {
                     }}
                 />
             </Card>
+                            </>
+                        ),
+                    },
+                    {
+                        key: 'invoices',
+                        label: t('contracts.tabInvoices'),
+                        children: <AllInvoiceList />,
+                    },
+                ]}
+            />
 
             <Modal
                 title={editingContract ? t('contracts.modalTitleEdit') : t('contracts.modalTitleAdd')}

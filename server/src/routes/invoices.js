@@ -30,6 +30,7 @@ function toInvoice(r) {
     // joined fields
     contractCode: r.contract_code || '',
     contractName: r.contract_name || '',
+    branchCode: r.branch_code || '',
   };
 }
 
@@ -37,9 +38,11 @@ function toInvoice(r) {
 router.get('/', async (req, res) => {
   try {
     const result = await query(`
-      SELECT i.*, c.code as contract_code, c.name as contract_name
+      SELECT i.*, c.code as contract_code, c.name as contract_name,
+             b.code as branch_code
       FROM invoices i
       LEFT JOIN contracts c ON i.contract_id = c.id
+      LEFT JOIN branches b ON c.branch_id = b.id
       ORDER BY i.created_at DESC
     `);
     res.json({ success: true, data: result.rows.map(toInvoice) });
