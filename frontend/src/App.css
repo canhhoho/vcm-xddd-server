@@ -94,15 +94,16 @@ body {
 
 /* Premium Buttons */
 .vcm-btn-premium {
-  height: 40px !important;
-  border-radius: 10px !important;
+  height: 28px !important;
+  border-radius: 6px !important;
   background: linear-gradient(135deg, #E11D2E 0%, #FF4D5A 100%) !important;
   border: none !important;
   font-weight: 600 !important;
-  box-shadow: 0 4px 15px rgba(225, 29, 46, 0.4) !important;
+  font-size: 13px !important;
+  box-shadow: 0 3px 10px rgba(225, 29, 46, 0.35) !important;
   color: white !important;
-  padding-left: 20px !important;
-  padding-right: 20px !important;
+  padding-left: 12px !important;
+  padding-right: 12px !important;
   transition: all 0.3s ease !important;
   display: inline-flex !important;
   align-items: center !important;
@@ -115,11 +116,12 @@ body {
 }
 
 .vcm-btn-secondary {
-  height: 40px !important;
-  border-radius: 10px !important;
+  height: 28px !important;
+  border-radius: 6px !important;
   font-weight: 600 !important;
-  padding-left: 20px !important;
-  padding-right: 20px !important;
+  font-size: 13px !important;
+  padding-left: 12px !important;
+  padding-right: 12px !important;
   border: 1px solid #D1D5DB !important;
   transition: all 0.3s ease !important;
   display: inline-flex !important;
@@ -291,10 +293,10 @@ body {
   /* Buttons: smaller on mobile */
   .vcm-btn-premium,
   .vcm-btn-secondary {
-    height: 36px !important;
-    padding-left: 14px !important;
-    padding-right: 14px !important;
-    font-size: 13px !important;
+    height: 30px !important;
+    padding-left: 10px !important;
+    padding-right: 10px !important;
+    font-size: 12px !important;
   }
 
   /* Tables: horizontal scroll wrapper */
