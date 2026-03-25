@@ -9,6 +9,7 @@ import {
     Tooltip,
     Button,
     Space,
+    Progress,
 } from 'antd';
 import { SearchOutlined, EyeOutlined, DownloadOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
@@ -257,6 +258,18 @@ const AllInvoiceList: React.FC = () => {
                         )}
                     </span>
                 );
+            },
+        },
+        {
+            title: t('contracts.colProgress'),
+            key: 'progress',
+            width: 110,
+            align: 'center' as const,
+            render: (_: any, record: Invoice) => {
+                const paid = record.paidAmount ?? 0;
+                const value = record.value || 0;
+                const pct = value > 0 ? Math.round((paid / value) * 100) : 0;
+                return <Progress percent={pct} size="small" status={pct >= 100 ? 'success' : 'active'} />;
             },
         },
         {

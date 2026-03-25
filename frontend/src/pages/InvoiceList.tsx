@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Table, Button, Tag, Space, Modal, Form, Input, InputNumber, DatePicker, Select, message, Popconfirm, Tooltip, Upload, List } from 'antd';
+import { Table, Button, Tag, Space, Modal, Form, Input, InputNumber, DatePicker, Select, message, Popconfirm, Tooltip, Upload, List, AutoComplete } from 'antd';
 import {
     PlusOutlined,
     EditOutlined,
@@ -384,7 +384,22 @@ const InvoiceList: React.FC<InvoiceListProps> = ({ contractId, onStatsChange, ap
                         label={t('invoices.formInstallment')}
                         rules={[{ required: true, message: t('invoices.formInstallmentRequired') }]}
                     >
-                        <Input placeholder={t('invoices.formInstallmentPlaceholder')} />
+                        <AutoComplete
+                            placeholder={t('invoices.formInstallmentPlaceholder')}
+                            options={[
+                                { value: 'Adv', label: 'Adv (Advance)' },
+                                { value: '1st', label: '1st' },
+                                { value: '2nd', label: '2nd' },
+                                { value: '3rd', label: '3rd' },
+                                { value: '4th', label: '4th' },
+                                { value: '5th', label: '5th' },
+                                { value: 'Final', label: 'Final' },
+                            ]}
+                            filterOption={(inputValue, option) =>
+                                (option?.value as string).toLowerCase().includes(inputValue.toLowerCase()) ||
+                                (option?.label as string).toLowerCase().includes(inputValue.toLowerCase())
+                            }
+                        />
                     </Form.Item>
                     <Form.Item
                         name="value"
