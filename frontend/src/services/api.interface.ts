@@ -127,4 +127,19 @@ export interface IApiService {
 
     // ==================== ACTIVITIES (ADMIN) ====================
     getActivities(): Promise<ApiResponse>;
+
+    // ==================== PROSPECTS ====================
+    getProspects(): Promise<ApiResponse>;
+    createProspect(data: any): Promise<ApiResponse>;
+    updateProspect(id: string, data: any): Promise<ApiResponse>;
+    deleteProspect(id: string): Promise<ApiResponse>;
+
+    // ==================== WEEKLY PLANS ====================
+    getWeeklyPlans(params?: any): Promise<ApiResponse>;
+    createWeeklyPlan(data: any): Promise<ApiResponse>;
+    deleteWeeklyPlan(id: string): Promise<ApiResponse>;
+    getWeeklyPlanItems(planId: string): Promise<ApiResponse>;
+    createWeeklyPlanItem(planId: string, data: any): Promise<ApiResponse>;
+    updateWeeklyPlanItem(id: string, data: any): Promise<ApiResponse>;
+    deleteWeeklyPlanItem(id: string): Promise<ApiResponse>;
 }

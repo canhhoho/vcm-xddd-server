@@ -205,3 +205,51 @@ export interface Invoice {
     contractName?: string;
     branchCode?: string;
 }
+
+export type ProspectSource = 'BIDDING' | 'REFERRAL' | 'DIRECT' | 'OTHER';
+export type ProspectStatus = 'NEW' | 'CONTACTED' | 'PROPOSAL' | 'NEGOTIATION' | 'WON' | 'LOST';
+export type ProspectPriority = 'HIGH' | 'MEDIUM' | 'LOW';
+export type Department = 'BD' | 'MKT' | 'QS' | 'PM' | 'DES';
+export type PlanItemStatus = 'TODO' | 'IN_PROGRESS' | 'DONE' | 'CARRIED_OVER';
+
+export interface Prospect {
+    id: string;
+    name: string;
+    client: string;
+    location: string;
+    branchId: string;
+    branchCode?: string;
+    estimatedValue: number;
+    contactPerson: string;
+    contactPhone: string;
+    source: ProspectSource;
+    status: ProspectStatus;
+    priority: ProspectPriority;
+    note: string;
+    expectedDate: string;
+    createdBy: string;
+    createdAt: string;
+}
+
+export interface WeeklyPlan {
+    id: string;
+    weekStart: string;
+    weekEnd: string;
+    department: Department;
+    createdBy: string;
+    createdAt: string;
+}
+
+export interface WeeklyPlanItem {
+    id: string;
+    planId: string;
+    sortOrder: number;
+    title: string;
+    description: string;
+    assigneeId: string;
+    assigneeName?: string;
+    status: PlanItemStatus;
+    result: string;
+    carriedFrom: string;
+    createdAt: string;
+}

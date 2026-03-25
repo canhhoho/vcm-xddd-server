@@ -3,8 +3,26 @@
  */
 const app = require('./app');
 const { testConnection, query } = require('./config/database');
+const fs = require('fs');
+const path = require('path');
 
 const PORT = process.env.PORT || 3001;
+
+// Auto-create tables from init-db.sql (safe: uses IF NOT EXISTS)
+async function autoCreateTables() {
+  try {
+    const sqlPath = path.join(__dirname, '..', 'scripts', 'init-db.sql');
+    if (!fs.existsSync(sqlPath)) {
+      console.log('⚠️  init-db.sql not found, skipping auto-create tables');
+      return;
+    }
+    const sql = fs.readFileSync(sqlPath, 'utf-8');
+    await query(sql);
+    console.log('✅ Auto-create tables: OK (init-db.sql)');
+  } catch (e) {
+    console.error('⚠️  Auto-create tables error:', e.message);
+  }
+}
 
 // Auto-cleanup: delete activities older than 7 days
 async function cleanupOldActivities() {
@@ -27,12 +45,14 @@ async function start() {
   if (!dbOk) {
     console.error('❌ Cannot connect to PostgreSQL. Please check your .env settings.');
     console.error('   DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASSWORD');
-    // Still start server so you can test non-DB routes
     console.log('⚠️  Starting without DB connection...');
   }
 
-  // Run cleanup on startup and every 6 hours
   if (dbOk) {
+    // Auto-create any missing tables
+    await autoCreateTables();
+
+    // Run cleanup on startup and every 6 hours
     cleanupOldActivities();
     setInterval(cleanupOldActivities, 6 * 60 * 60 * 1000);
   }
@@ -46,3 +66,4 @@ async function start() {
 }
 
 start();
+

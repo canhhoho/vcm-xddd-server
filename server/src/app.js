@@ -28,6 +28,8 @@ const staffRoutes = require('./routes/staff');
 const dashboardRoutes = require('./routes/dashboard');
 const activityRoutes = require('./routes/activities');
 const provinceRoutes = require('./routes/provinces');
+const prospectRoutes = require('./routes/prospects');
+const weeklyPlanRoutes = require('./routes/weeklyPlans');
 
 const app = express();
 
@@ -76,6 +78,8 @@ app.use('/api/staff', staffRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/activities', activityRoutes);
 app.use('/api/provinces', provinceRoutes);
+app.use('/api/prospects', prospectRoutes);
+app.use('/api/weekly-plans', weeklyPlanRoutes);
 
 // ==================== ERROR HANDLER ====================
 app.use(errorHandler);

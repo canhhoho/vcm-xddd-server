@@ -145,6 +145,49 @@ CREATE TABLE IF NOT EXISTS positions (
   created_at   TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- 11. prospects (Business Pipeline)
+CREATE TABLE IF NOT EXISTS prospects (
+  id              VARCHAR(50) PRIMARY KEY,
+  name            TEXT NOT NULL,
+  client          TEXT DEFAULT '',
+  location        TEXT DEFAULT '',
+  branch_id       VARCHAR(50) DEFAULT '',
+  estimated_value NUMERIC(18,2) DEFAULT 0,
+  contact_person  VARCHAR(255) DEFAULT '',
+  contact_phone   VARCHAR(50) DEFAULT '',
+  source          VARCHAR(50) DEFAULT 'DIRECT',
+  status          VARCHAR(50) DEFAULT 'NEW',
+  priority        VARCHAR(20) DEFAULT 'MEDIUM',
+  note            TEXT DEFAULT '',
+  expected_date   DATE,
+  created_by      VARCHAR(50) DEFAULT '',
+  created_at      TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 12. weekly_plans
+CREATE TABLE IF NOT EXISTS weekly_plans (
+  id          VARCHAR(50) PRIMARY KEY,
+  week_start  DATE NOT NULL,
+  week_end    DATE NOT NULL,
+  department  VARCHAR(50) NOT NULL,
+  created_by  VARCHAR(50) DEFAULT '',
+  created_at  TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 13. weekly_plan_items
+CREATE TABLE IF NOT EXISTS weekly_plan_items (
+  id           VARCHAR(50) PRIMARY KEY,
+  plan_id      VARCHAR(50) REFERENCES weekly_plans(id) ON DELETE CASCADE,
+  sort_order   INTEGER DEFAULT 1,
+  title        TEXT NOT NULL,
+  description  TEXT DEFAULT '',
+  assignee_id  VARCHAR(50) DEFAULT '',
+  status       VARCHAR(20) DEFAULT 'TODO',
+  result       TEXT DEFAULT '',
+  carried_from VARCHAR(50) DEFAULT '',
+  created_at   TIMESTAMPTZ DEFAULT NOW()
+);
+
 -- ============================================================
 -- Indexes
 -- ============================================================
@@ -158,3 +201,7 @@ CREATE INDEX IF NOT EXISTS idx_staff_branch ON staff(branch_id);
 CREATE INDEX IF NOT EXISTS idx_targets_type ON targets(type, period_type);
 CREATE INDEX IF NOT EXISTS idx_activities_created ON activities(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
+CREATE INDEX IF NOT EXISTS idx_prospects_status ON prospects(status);
+CREATE INDEX IF NOT EXISTS idx_prospects_branch ON prospects(branch_id);
+CREATE INDEX IF NOT EXISTS idx_weekly_plans_week ON weekly_plans(week_start, department);
+CREATE INDEX IF NOT EXISTS idx_weekly_plan_items_plan ON weekly_plan_items(plan_id);

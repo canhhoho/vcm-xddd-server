@@ -318,4 +318,51 @@ export class RestApiService implements IApiService {
     async getActivities() {
         return this.request('GET', '/activities');
     }
+
+    // ==================== PROSPECTS ====================
+    async getProspects() {
+        return this.request('GET', '/prospects');
+    }
+
+    async createProspect(data: any) {
+        return this.request('POST', '/prospects', data);
+    }
+
+    async updateProspect(id: string, data: any) {
+        return this.request('PUT', `/prospects/${id}`, data);
+    }
+
+    async deleteProspect(id: string) {
+        return this.request('DELETE', `/prospects/${id}`);
+    }
+
+    // ==================== WEEKLY PLANS ====================
+    async getWeeklyPlans(params?: any) {
+        const query = params ? '?' + new URLSearchParams(params).toString() : '';
+        return this.request('GET', `/weekly-plans${query}`);
+    }
+
+    async createWeeklyPlan(data: any) {
+        return this.request('POST', '/weekly-plans', data);
+    }
+
+    async deleteWeeklyPlan(id: string) {
+        return this.request('DELETE', `/weekly-plans/${id}`);
+    }
+
+    async getWeeklyPlanItems(planId: string) {
+        return this.request('GET', `/weekly-plans/${planId}/items`);
+    }
+
+    async createWeeklyPlanItem(planId: string, data: any) {
+        return this.request('POST', `/weekly-plans/${planId}/items`, data);
+    }
+
+    async updateWeeklyPlanItem(id: string, data: any) {
+        return this.request('PUT', `/weekly-plans/items/${id}`, data);
+    }
+
+    async deleteWeeklyPlanItem(id: string) {
+        return this.request('DELETE', `/weekly-plans/items/${id}`);
+    }
 }
