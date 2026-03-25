@@ -300,14 +300,14 @@ const Dashboard: React.FC = () => {
                                 {renderMom(kpi.nguonViec.mom)}
                                 <span className="mom-label">MoM</span>
                             </div>
-                            <Tooltip title={`${t('dashboard.year')}: ${kpi.nguonViec.yearPct}%`}>
+                            <Tooltip title={`${viewMode === 'YEAR' ? t('dashboard.year', 'Năm') : t('dashboard.month', 'Tháng')}: ${viewMode === 'YEAR' ? kpi.nguonViec.yearPct : kpi.nguonViec.achievedPct}%`}>
                                 <Progress
                                     type="circle"
-                                    percent={Math.min(kpi.nguonViec.yearPct, 100)}
+                                    percent={Math.min(viewMode === 'YEAR' ? kpi.nguonViec.yearPct : kpi.nguonViec.achievedPct, 100)}
                                     size={38}
                                     strokeColor="#EE0033"
                                     trailColor="#FFE8EC"
-                                    format={() => <span className="dash-circle-text">{kpi.nguonViec.yearPct}%</span>}
+                                    format={() => <span className="dash-circle-text">{viewMode === 'YEAR' ? kpi.nguonViec.yearPct : kpi.nguonViec.achievedPct}%</span>}
                                 />
                             </Tooltip>
                         </div>
@@ -345,14 +345,14 @@ const Dashboard: React.FC = () => {
                                 {renderMom(kpi.doanhThu.mom)}
                                 <span className="mom-label">MoM</span>
                             </div>
-                            <Tooltip title={`${t('dashboard.year')}: ${kpi.doanhThu.yearPct}%`}>
+                            <Tooltip title={`${viewMode === 'YEAR' ? t('dashboard.year', 'Năm') : t('dashboard.month', 'Tháng')}: ${viewMode === 'YEAR' ? kpi.doanhThu.yearPct : kpi.doanhThu.achievedPct}%`}>
                                 <Progress
                                     type="circle"
-                                    percent={Math.min(kpi.doanhThu.yearPct, 100)}
+                                    percent={Math.min(viewMode === 'YEAR' ? kpi.doanhThu.yearPct : kpi.doanhThu.achievedPct, 100)}
                                     size={38}
                                     strokeColor="#F59E0B"
                                     trailColor="#FFF8E1"
-                                    format={() => <span className="dash-circle-text">{kpi.doanhThu.yearPct}%</span>}
+                                    format={() => <span className="dash-circle-text">{viewMode === 'YEAR' ? kpi.doanhThu.yearPct : kpi.doanhThu.achievedPct}%</span>}
                                 />
                             </Tooltip>
                         </div>
@@ -390,14 +390,14 @@ const Dashboard: React.FC = () => {
                                 {renderMom(kpi.thuTien.mom || 0)}
                                 <span className="mom-label">MoM</span>
                             </div>
-                            <Tooltip title={`${t('dashboard.year')}: ${kpi.thuTien.yearPct || 0}%`}>
+                            <Tooltip title={`${viewMode === 'YEAR' ? t('dashboard.year', 'Năm') : t('dashboard.month', 'Tháng')}: ${viewMode === 'YEAR' ? (kpi.thuTien.yearPct || 0) : (kpi.thuTien.achievedPct || 0)}%`}>
                                 <Progress
                                     type="circle"
-                                    percent={Math.min(kpi.thuTien.yearPct || 0, 100)}
+                                    percent={Math.min(viewMode === 'YEAR' ? (kpi.thuTien.yearPct || 0) : (kpi.thuTien.achievedPct || 0), 100)}
                                     size={38}
                                     strokeColor="#00C853"
                                     trailColor="#E8F5E9"
-                                    format={() => <span className="dash-circle-text">{kpi.thuTien.yearPct || 0}%</span>}
+                                    format={() => <span className="dash-circle-text">{viewMode === 'YEAR' ? (kpi.thuTien.yearPct || 0) : (kpi.thuTien.achievedPct || 0)}%</span>}
                                 />
                             </Tooltip>
                         </div>
