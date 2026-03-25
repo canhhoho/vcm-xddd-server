@@ -525,7 +525,7 @@ const UserManagement: React.FC = () => {
                     <Select.Option value="ALL">{t('common.all')}</Select.Option>
                     {positions.map((p: Position) => (
                         <Select.Option key={p.id} value={p.id}>
-                            {p.name}
+                            {t(`users.positions.${p.code}`, p.name)}
                         </Select.Option>
                     ))}
                 </Select>
@@ -555,7 +555,11 @@ const UserManagement: React.FC = () => {
             dataIndex: 'positionName',
             key: 'positionName',
             width: 150,
-            render: (text: string) => text || <Text type="secondary">-</Text>
+            render: (text: string, record: User) => {
+                const pos = positions.find((p: Position) => p.id === record.positionId);
+                const label = pos ? t(`users.positions.${pos.code}`, pos.name) : text;
+                return label || <Text type="secondary">-</Text>;
+            }
         },
         {
             title: t('users.colName'),
@@ -702,7 +706,7 @@ const UserManagement: React.FC = () => {
             dataIndex: 'name',
             key: 'name',
             width: 200,
-            render: (text: string) => <Text strong>{text}</Text>
+            render: (text: string, record: Position) => <Text strong>{t(`users.positions.${record.code}`, text)}</Text>
         },
         {
             title: t('users.colGroup'),
@@ -1024,7 +1028,7 @@ const UserManagement: React.FC = () => {
                         >
                             {(positions || []).map((p: Position) => (
                                 <Option key={p.id} value={p.id}>
-                                    {p.name}
+                                    {t(`users.positions.${p.code}`, p.name)}
                                 </Option>
                             ))}
                         </Select>

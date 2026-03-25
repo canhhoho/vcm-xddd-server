@@ -509,7 +509,9 @@
             "statusTodo": "Chưa bắt đầu",
             "statusInProgress": "Đang thực hiện",
             "statusDone": "Hoàn thành",
-            "statusCarriedOver": "Chuyển sang tuần sau"
+            "statusCarriedOver": "Chuyển sang tuần sau",
+            "currentWeek": "Tuần hiện tại",
+            "items": "đầu việc"
         }
     },
     "users": {
@@ -536,6 +538,14 @@
             "DESIGN": "Thiết kế",
             "PROJECT": "Dự án",
             "OTHER": "Khác"
+        },
+        "positions": {
+            "GD": "Giám đốc",
+            "PGD": "Phó Giám đốc",
+            "TP": "Trưởng phòng",
+            "PP": "Phó phòng",
+            "QL": "Quản lý",
+            "NV": "Nhân viên"
         },
         "totalUsers": "Tổng {{total}} người dùng",
         "legendTitle": "Chú thích: ",

@@ -1,9 +1,9 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import {
-    Card, Table, Button, Select, Modal, Form, Input, Tag, message, DatePicker, Empty, Tooltip,
+    Card, Table, Button, Select, Modal, Form, Input, Tag, message, DatePicker, Empty, Tooltip, Collapse,
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
-import { PlusOutlined, SyncOutlined } from '@ant-design/icons';
+import { PlusOutlined, SyncOutlined, CalendarOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import dayjs from 'dayjs';
 import isoWeek from 'dayjs/plugin/isoWeek';
@@ -33,24 +33,29 @@ const DepartmentPlan: React.FC<DepartmentPlanProps> = ({ department }) => {
     const { permissions, isAdmin } = usePermissions();
     const canEdit = isAdmin || permissions.business === 'EDIT';
 
-    const [selectedWeek, setSelectedWeek] = useState<dayjs.Dayjs>(getWeekStart(dayjs()));
     const [plans, setPlans] = useState<WeeklyPlan[]>([]);
-    const [items, setItems] = useState<WeeklyPlanItem[]>([]);
-    const [loading, setLoading] = useState(false);
+    const [planItemsMap, setPlanItemsMap] = useState<Record<string, WeeklyPlanItem[]>>({});
+    const [loadingPlanId, setLoadingPlanId] = useState<string | null>(null);
     const [modalVisible, setModalVisible] = useState(false);
     const [editingItem, setEditingItem] = useState<WeeklyPlanItem | null>(null);
+    const [activePlanId, setActivePlanId] = useState<string | null>(null);
     const [users, setUsers] = useState<User[]>([]);
     const [form] = Form.useForm();
 
-    const currentPlan = useMemo(() => {
-        const ws = selectedWeek.format('YYYY-MM-DD');
-        return plans.find(p => dayjs(p.weekStart).format('YYYY-MM-DD') === ws && p.department === department);
-    }, [plans, selectedWeek, department]);
+    const thisWeekStart = getWeekStart(dayjs());
 
-    const prevPlan = useMemo(() => {
-        const prevWeek = selectedWeek.subtract(7, 'day').format('YYYY-MM-DD');
-        return plans.find(p => dayjs(p.weekStart).format('YYYY-MM-DD') === prevWeek && p.department === department);
-    }, [plans, selectedWeek, department]);
+    // Sorted plans: newest first
+    const sortedPlans = useMemo(() =>
+        [...plans].sort((a, b) => dayjs(b.weekStart).diff(dayjs(a.weekStart)))
+    , [plans]);
+
+    // Check if current week already has a plan
+    const currentWeekPlan = useMemo(() =>
+        plans.find(p => dayjs(p.weekStart).format('YYYY-MM-DD') === thisWeekStart.format('YYYY-MM-DD')),
+    [plans, thisWeekStart]);
+
+    // Most recent plan (for carry-over)
+    const latestPlan = sortedPlans[0] || null;
 
     const loadPlans = async () => {
         try {
@@ -59,14 +64,25 @@ const DepartmentPlan: React.FC<DepartmentPlanProps> = ({ department }) => {
         } catch { /* ignore */ }
     };
 
-    const loadItems = async () => {
-        if (!currentPlan) { setItems([]); return; }
-        setLoading(true);
+    const loadItemsForPlan = useCallback(async (planId: string) => {
+        if (planItemsMap[planId]) return; // already loaded
+        setLoadingPlanId(planId);
         try {
-            const res = await apiService.getWeeklyPlanItems(currentPlan.id);
-            if (res.success) setItems(res.data || []);
+            const res = await apiService.getWeeklyPlanItems(planId);
+            if (res.success) {
+                setPlanItemsMap(prev => ({ ...prev, [planId]: res.data || [] }));
+            }
         } catch { /* ignore */ }
-        setLoading(false);
+        setLoadingPlanId(null);
+    }, [planItemsMap]);
+
+    const refreshPlanItems = async (planId: string) => {
+        try {
+            const res = await apiService.getWeeklyPlanItems(planId);
+            if (res.success) {
+                setPlanItemsMap(prev => ({ ...prev, [planId]: res.data || [] }));
+            }
+        } catch { /* ignore */ }
     };
 
     const loadUsers = async () => {
@@ -78,24 +94,34 @@ const DepartmentPlan: React.FC<DepartmentPlanProps> = ({ department }) => {
 
     useEffect(() => { loadUsers(); }, []);
     useEffect(() => { loadPlans(); }, [department]);
-    useEffect(() => { loadItems(); }, [currentPlan]);
+
+    // Auto-load items for all plans
+    useEffect(() => {
+        sortedPlans.forEach(p => {
+            if (!planItemsMap[p.id]) loadItemsForPlan(p.id);
+        });
+    }, [sortedPlans]);
 
     const handleCreatePlan = async (withCarryOver: boolean) => {
         try {
-            const ws = selectedWeek;
+            const ws = thisWeekStart;
             const we = getWeekEnd(ws);
             const payload: any = {
                 weekStart: ws.format('YYYY-MM-DD'),
                 weekEnd: we.format('YYYY-MM-DD'),
                 department,
             };
-            if (withCarryOver && prevPlan) {
-                payload.carryOverFromPlanId = prevPlan.id;
+            if (withCarryOver && latestPlan) {
+                payload.carryOverFromPlanId = latestPlan.id;
             }
             const res = await apiService.createWeeklyPlan(payload);
             if (res.success) {
                 message.success(t('common.saveSuccess'));
                 await loadPlans();
+                // Refresh carry-over source plan items too
+                if (withCarryOver && latestPlan) {
+                    refreshPlanItems(latestPlan.id);
+                }
             } else {
                 message.error(res.error || t('common.saveError'));
             }
@@ -104,18 +130,21 @@ const DepartmentPlan: React.FC<DepartmentPlanProps> = ({ department }) => {
         }
     };
 
-    const handleAddItem = () => {
+    const handleAddItem = (planId: string) => {
+        const items = planItemsMap[planId] || [];
         if (items.length >= 5) {
             message.warning(t('business.weeklyPlan.maxItems'));
             return;
         }
+        setActivePlanId(planId);
         setEditingItem(null);
         form.resetFields();
         form.setFieldsValue({ sortOrder: items.length + 1, status: 'TODO' });
         setModalVisible(true);
     };
 
-    const handleEditItem = (record: WeeklyPlanItem) => {
+    const handleEditItem = (planId: string, record: WeeklyPlanItem) => {
+        setActivePlanId(planId);
         setEditingItem(record);
         form.setFieldsValue({
             ...record,
@@ -135,31 +164,29 @@ const DepartmentPlan: React.FC<DepartmentPlanProps> = ({ department }) => {
             if (editingItem) {
                 const res = await apiService.updateWeeklyPlanItem(editingItem.id, payload);
                 if (res.success) message.success(t('common.saveSuccess'));
-            } else if (currentPlan) {
-                const res = await apiService.createWeeklyPlanItem(currentPlan.id, payload);
+            } else if (activePlanId) {
+                const res = await apiService.createWeeklyPlanItem(activePlanId, payload);
                 if (res.success) message.success(t('common.saveSuccess'));
             }
             setModalVisible(false);
             form.resetFields();
-            loadItems();
+            if (activePlanId) refreshPlanItems(activePlanId);
         } catch {
             message.error(t('common.saveError'));
         }
     };
 
-    const handleDeleteItem = async (id: string) => {
+    const handleDeleteItem = async (planId: string, id: string) => {
         try {
             await apiService.deleteWeeklyPlanItem(id);
             message.success(t('common.deleteSuccess'));
-            loadItems();
+            refreshPlanItems(planId);
         } catch {
             message.error(t('common.saveError'));
         }
     };
 
-    const weekLabel = `${selectedWeek.format('DD/MM')} - ${getWeekEnd(selectedWeek).format('DD/MM/YYYY')}`;
-
-    const columns: ColumnsType<WeeklyPlanItem> = [
+    const getColumns = (planId: string): ColumnsType<WeeklyPlanItem> => [
         {
             title: '#', dataIndex: 'sortOrder', key: 'sortOrder', width: 45, align: 'center' as const,
         },
@@ -211,8 +238,8 @@ const DepartmentPlan: React.FC<DepartmentPlanProps> = ({ department }) => {
             title: t('invoices.colActions'), key: 'action', width: 90, align: 'center' as const,
             render: (_: any, record: WeeklyPlanItem) => (
                 <VcmActionGroup
-                    onEdit={canEdit ? () => handleEditItem(record) : undefined}
-                    onDelete={canEdit ? () => handleDeleteItem(record.id) : undefined}
+                    onEdit={canEdit ? () => handleEditItem(planId, record) : undefined}
+                    onDelete={canEdit ? () => handleDeleteItem(planId, record.id) : undefined}
                     canEdit={canEdit}
                     canDelete={canEdit}
                 />
@@ -220,56 +247,94 @@ const DepartmentPlan: React.FC<DepartmentPlanProps> = ({ department }) => {
         },
     ];
 
+    const isCurrentWeek = (plan: WeeklyPlan) =>
+        dayjs(plan.weekStart).format('YYYY-MM-DD') === thisWeekStart.format('YYYY-MM-DD');
+
     return (
-        <Card className="contracts-card">
-            <div style={{ padding: '16px', display: 'flex', gap: 16, alignItems: 'center', flexWrap: 'wrap' }}>
-                <DatePicker
-                    picker="week"
-                    value={selectedWeek}
-                    onChange={(date) => date && setSelectedWeek(getWeekStart(date))}
-                    format={`[${t('business.weeklyPlan.week')}] wo - YYYY`}
-                    style={{ width: 200 }}
-                />
-                <span style={{ fontWeight: 600, color: '#1890ff' }}>{weekLabel}</span>
-                <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
-                    {canEdit && !currentPlan && (
-                        <>
-                            <Button type="primary" icon={<PlusOutlined />} onClick={() => handleCreatePlan(false)}>
-                                {t('business.weeklyPlan.createPlan')}
-                            </Button>
-                            {prevPlan && (
-                                <Tooltip title={t('business.weeklyPlan.carryOver')}>
-                                    <Button icon={<SyncOutlined />} onClick={() => handleCreatePlan(true)}>
-                                        {t('business.weeklyPlan.carryOver')}
-                                    </Button>
-                                </Tooltip>
-                            )}
-                        </>
-                    )}
-                    {canEdit && currentPlan && items.length < 5 && (
-                        <Button type="primary" icon={<PlusOutlined />} onClick={handleAddItem}>
-                            {t('business.weeklyPlan.addItem')}
+        <div>
+            {/* Top action bar */}
+            <div style={{ padding: '16px', display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                {canEdit && !currentWeekPlan && (
+                    <>
+                        <Button type="primary" icon={<PlusOutlined />} onClick={() => handleCreatePlan(false)}>
+                            {t('business.weeklyPlan.createPlan')}
                         </Button>
-                    )}
-                </div>
-            </div>
-
-            <div style={{ padding: '0 16px' }}>
-                {!currentPlan ? (
-                    <Empty description={t('business.weeklyPlan.noPlan')} style={{ padding: 60 }} />
-                ) : (
-                    <Table
-                        dataSource={items}
-                        columns={columns}
-                        rowKey="id"
-                        loading={loading}
-                        size="small"
-                        pagination={false}
-                        scroll={{ x: 1400 }}
-                    />
+                        {latestPlan && (
+                            <Tooltip title={t('business.weeklyPlan.carryOver')}>
+                                <Button icon={<SyncOutlined />} onClick={() => handleCreatePlan(true)}>
+                                    {t('business.weeklyPlan.carryOver')}
+                                </Button>
+                            </Tooltip>
+                        )}
+                    </>
                 )}
+                <span style={{ marginLeft: 8, color: '#64748b', fontSize: 13 }}>
+                    {t('business.weeklyPlan.week')}: {thisWeekStart.format('DD/MM')} - {getWeekEnd(thisWeekStart).format('DD/MM/YYYY')}
+                </span>
             </div>
 
+            {/* Plans list (newest first) */}
+            {sortedPlans.length === 0 ? (
+                <Card className="contracts-card" style={{ margin: '0 16px 16px' }}>
+                    <Empty description={t('business.weeklyPlan.noPlan')} style={{ padding: 60 }} />
+                </Card>
+            ) : (
+                sortedPlans.map((plan) => {
+                    const planItems = planItemsMap[plan.id] || [];
+                    const weekLabel = `${dayjs(plan.weekStart).format('DD/MM')} - ${dayjs(plan.weekEnd).format('DD/MM/YYYY')}`;
+                    const isCurrent = isCurrentWeek(plan);
+
+                    return (
+                        <Card
+                            key={plan.id}
+                            className="contracts-card"
+                            style={{
+                                margin: '0 16px 16px',
+                                border: isCurrent ? '2px solid #E11D2E' : '1px solid #f1f5f9',
+                            }}
+                        >
+                            <div style={{
+                                padding: '12px 16px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 12,
+                                background: isCurrent ? 'rgba(225, 29, 46, 0.03)' : '#fafafa',
+                                borderBottom: '1px solid #f1f5f9',
+                                borderRadius: '11px 11px 0 0',
+                            }}>
+                                <CalendarOutlined style={{ color: isCurrent ? '#E11D2E' : '#64748b', fontSize: 16 }} />
+                                <span style={{ fontWeight: 600, fontSize: 14, color: isCurrent ? '#E11D2E' : '#1e293b' }}>
+                                    {weekLabel}
+                                </span>
+                                {isCurrent && (
+                                    <Tag color="red" style={{ marginLeft: 4 }}>{t('business.weeklyPlan.currentWeek')}</Tag>
+                                )}
+                                <span style={{ color: '#94a3b8', fontSize: 12 }}>
+                                    {planItems.length}/5 {t('business.weeklyPlan.items')}
+                                </span>
+                                <div style={{ marginLeft: 'auto' }}>
+                                    {canEdit && planItems.length < 5 && (
+                                        <Button size="small" type="primary" icon={<PlusOutlined />} onClick={() => handleAddItem(plan.id)}>
+                                            {t('business.weeklyPlan.addItem')}
+                                        </Button>
+                                    )}
+                                </div>
+                            </div>
+                            <Table
+                                dataSource={planItems}
+                                columns={getColumns(plan.id)}
+                                rowKey="id"
+                                loading={loadingPlanId === plan.id}
+                                size="small"
+                                pagination={false}
+                                scroll={{ x: 1400 }}
+                            />
+                        </Card>
+                    );
+                })
+            )}
+
+            {/* Item Modal */}
             <Modal
                 title={editingItem ? t('business.weeklyPlan.editItem') : t('business.weeklyPlan.addItem')}
                 open={modalVisible}
@@ -324,7 +389,7 @@ const DepartmentPlan: React.FC<DepartmentPlanProps> = ({ department }) => {
                     </Form.Item>
                 </Form>
             </Modal>
-        </Card>
+        </div>
     );
 };
 

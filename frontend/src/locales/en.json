@@ -510,7 +510,9 @@
             "statusTodo": "To Do",
             "statusInProgress": "In Progress",
             "statusDone": "Done",
-            "statusCarriedOver": "Carried Over"
+            "statusCarriedOver": "Carried Over",
+            "currentWeek": "Current Week",
+            "items": "tasks"
         }
     },
     "users": {
@@ -537,6 +539,14 @@
             "DESIGN": "Design",
             "PROJECT": "Project",
             "OTHER": "Other"
+        },
+        "positions": {
+            "GD": "Director",
+            "PGD": "Deputy Director",
+            "TP": "Department Head",
+            "PP": "Deputy Head",
+            "QL": "Manager",
+            "NV": "Staff"
         },
         "totalUsers": "Total {{total}} users",
         "legendTitle": "Legend: ",
