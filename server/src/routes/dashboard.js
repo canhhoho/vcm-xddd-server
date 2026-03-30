@@ -172,13 +172,14 @@ router.get('/stats', async (req, res) => {
         doanhThuTrend.push({ month: `T${m}`, actual: dtTrendMap[m] || 0, plan: dtMonthTargetMap[m] || 0 });
       }
 
-      // Branch breakdown — include targets
+      // Branch breakdown — Doanh thu (Revenue from invoices, not contracts)
       const branchBreak = await query(`
         SELECT c.branch_id, b.code as branch_code, b.name as branch_name,
-          COALESCE(SUM(c.value)/1000000, 0) as actual
-        FROM contracts c
+          COALESCE(SUM(i.value)/1000000, 0) as actual
+        FROM invoices i
+        LEFT JOIN contracts c ON i.contract_id = c.id
         LEFT JOIN branches b ON c.branch_id = b.id
-        WHERE ($1::int IS NULL OR EXTRACT(YEAR FROM c.start_date) = $1)
+        WHERE ($1::int IS NULL OR EXTRACT(YEAR FROM i.issued_date) = $1)
         GROUP BY c.branch_id, b.code, b.name
         ORDER BY actual DESC
       `, [bizYear]);
