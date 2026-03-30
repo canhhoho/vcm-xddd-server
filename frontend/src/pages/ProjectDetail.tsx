@@ -178,8 +178,8 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, onBack }) => {
         const delayed = tasks.filter((t: any) => t.status !== 'DONE' && t.endDate && dayjs(t.endDate).isBefore(dayjs(), 'day')).length;
 
         // Contract Code
-        const contract = contracts.find(c => c.id === project.contractId);
-        const contractCode = contract ? contract.code : (project.contractId || 'N/A');
+        const contract = contracts.find(c => c.id === project.contractId || c.code === project.code);
+        const contractCode = contract ? contract.code : (project.contractId || project.code || 'N/A');
 
         return { total, completed, incomplete, delayed, contractCode };
     }, [tasks, project.contractId, contracts]);
@@ -884,19 +884,20 @@ function TeamTab({ projectId, members, users, onRefresh, canEdit }: TeamTabProps
                 )}
             </div>
 
-            <Row gutter={[12, 12]}>
+            <div className="team-panel">
                 {members.map(m => (
-                    <Col xs={24} sm={12} md={12} lg={8} xl={6} xxl={4} key={m.id}>
-                        <div className="member-card">
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                                <Avatar size={36} className="member-avatar">
-                                    {(m.userName || 'U').substring(0, 1)}
-                                </Avatar>
-                                <div>
-                                    <div className="member-info-name">{m.userName || 'Unknown'}</div>
-                                    <Tag className="member-role-tag">{m.role || 'Member'}</Tag>
-                                </div>
+                    <div className="team-list-item" key={m.id}>
+                        <div className="team-member-info">
+                            <Avatar className="member-avatar">
+                                {(m.userName || 'U').substring(0, 1).toUpperCase()}
+                            </Avatar>
+                            <div className="member-info-col">
+                                <div className="member-info-name">{m.userName || 'Unknown'}</div>
+                                <div className="member-role-time">{m.role || 'Member'} • {dayjs(m.createdAt || new Date()).format('hh:mm A')}</div>
                             </div>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                            <div className="pill-tag">Đã xem</div>
                             {canEdit && (
                                 <VcmActionGroup
                                     onDelete={() => handleRemoveMember(m.id)}
@@ -905,10 +906,14 @@ function TeamTab({ projectId, members, users, onRefresh, canEdit }: TeamTabProps
                                 />
                             )}
                         </div>
-                    </Col>
+                    </div>
                 ))}
-                {members.length === 0 && <Col span={24}><Empty description={t('projects.noMember')} /></Col>}
-            </Row>
+                {members.length === 0 && (
+                    <div style={{ padding: '40px 0' }}>
+                        <Empty description={t('projects.noMember')} />
+                    </div>
+                )}
+            </div>
 
             <Modal
                 title={t('projects.addMemberTitle')}

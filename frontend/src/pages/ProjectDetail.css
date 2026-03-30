@@ -122,20 +122,19 @@
 /* --- Summary Tab --- */
 .info-strip {
     display: flex;
-    /* Changed to flex for better distribution */
     justify-content: space-between;
-    background: #fff;
-    border-radius: 16px;
-    border: 1px solid #F1F5F9;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+    background: var(--pd-bg-white);
+    border-radius: 20px;
+    border: 1px solid var(--pd-border);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
     overflow: hidden;
-    padding: 8px 0;
+    padding: 12px 0;
 }
 
 .info-item {
     padding: 16px 24px;
     flex: 1;
-    border-right: 1px solid #F1F5F9;
+    border-right: 1px solid var(--pd-border);
     display: flex;
     flex-direction: column;
     justify-content: center;
@@ -147,7 +146,6 @@
 
 .info-label {
     font-size: 11px;
-    /* Increased font */
     text-transform: uppercase;
     font-weight: 700;
     color: #9CA3AF;
@@ -158,7 +156,6 @@
 
 .info-value {
     font-size: 15px;
-    /* Increased font */
     font-weight: 700;
     color: var(--pd-text-main);
     display: flex;
@@ -171,12 +168,11 @@
 }
 
 .stat-card {
-    background: #fff;
+    background: var(--pd-bg-white);
     border-radius: 16px;
     padding: 24px;
-    /* Increased padding */
-    border: 1px solid #F1F5F9;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+    border: 1px solid var(--pd-border);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
     transition: all 0.2s ease;
     height: 100%;
     display: flex;
@@ -186,7 +182,7 @@
 }
 
 .stat-card:hover {
-    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.06);
     transform: translateY(-2px);
 }
 
@@ -316,50 +312,78 @@
     box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
 }
 
-/* --- Team Tab --- */
-.member-card {
-    background: #fff;
-    border: 1px solid #F1F5F9;
-    border-radius: 12px;
-    padding: 16px;
+/* --- Team Tab Refactored (Zalo List Style) --- */
+.team-panel {
+    background: var(--pd-bg-white);
+    border-radius: 20px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
+    border: 1px solid var(--pd-border);
+    overflow: hidden;
+}
+
+.team-list-item {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    transition: all 0.2s;
+    padding: 16px 24px;
+    border-bottom: 1px solid var(--pd-border);
+    transition: background-color 0.2s ease;
 }
 
-.member-card:hover {
-    border-color: #BFDBFE;
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+.team-list-item:last-child {
+    border-bottom: none;
+}
+
+.team-list-item:hover {
+    background-color: #F8FAFC;
+}
+
+.team-member-info {
+    display: flex;
+    align-items: center;
+    gap: 16px;
 }
 
 .member-avatar {
-    background-color: #EFF6FF;
-    color: #2563EB;
-    border: 2px solid #fff;
+    width: 40px !important;
+    height: 40px !important;
+    line-height: 40px !important;
+    background-color: #F3F4F6;
+    color: #4B5563;
+    border: 1px solid var(--pd-border);
     font-weight: 700;
-    font-size: 14px;
+    font-size: 16px;
+    border-radius: 50% !important;
+}
+
+.member-info-col {
+    display: flex;
+    flex-direction: column;
 }
 
 .member-info-name {
-    font-size: 14px;
-    font-weight: 700;
+    font-size: 15px;
+    font-weight: 600;
     color: var(--pd-text-main);
     line-height: 1.2;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    max-width: 140px;
 }
 
-.member-role-tag {
-    font-size: 10px;
-    font-weight: 700;
-    text-transform: uppercase;
-    padding: 2px 8px;
+.member-role-time {
+    font-size: 12px;
+    font-weight: 500;
+    color: #9CA3AF;
+    margin-top: 4px;
+}
+
+.pill-tag {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 4px 12px;
+    border-radius: 9999px;
     background: #EFF6FF;
     color: #3B82F6;
-    border: none;
-    margin-top: 4px;
-    border-radius: 4px;
+    border: 1px solid #D1E8FF;
+    display: inline-flex;
+    align-items: center;
+    white-space: nowrap;
 }
