@@ -117,18 +117,21 @@ const Dashboard: React.FC = () => {
         return result;
     }, [stats?.branchBreakdown, actualLabel, planLabel]);
 
-    const donutData = useMemo(() => {
-        if (!businessStructure || !Array.isArray(businessStructure) || businessStructure.length === 0) return [];
-        return businessStructure.map((item: any) => {
-            const valInMillions = (item.value / 1000000).toLocaleString(i18n.language === 'en' ? 'en-US' : 'vi-VN');
+    const formatBusinessData = (dataArray: any[]) => {
+        if (!dataArray || !Array.isArray(dataArray) || dataArray.length === 0) return [];
+        return dataArray.map((item: any) => {
             return {
-                type: `${item.field} (${item.percent}% | ${valInMillions} ${t('dashboard.millionUnit')} MMK)`,
+                type: item.field,
                 value: item.value,
                 field: item.field,
                 percent: item.percent
             };
         });
-    }, [businessStructure, t, i18n.language]);
+    };
+
+    const sourceWorkData = useMemo(() => formatBusinessData(businessStructure?.sourceWork || []), [businessStructure]);
+    const revenueData = useMemo(() => formatBusinessData(businessStructure?.revenue || []), [businessStructure]);
+    const paymentData = useMemo(() => formatBusinessData(businessStructure?.payment || []), [businessStructure]);
 
     // Helpers
     const renderMom = (val: number) => {
@@ -224,6 +227,52 @@ const Dashboard: React.FC = () => {
 
     const gridProgress = (val: number, total: number) => {
         return total > 0 ? Math.round((val / total) * 100) : 0;
+    };
+
+    const renderMiniDonut = (title: string, data: any[], colorB2B: string, colorB2C: string) => {
+        const topField = data && data.length > 0 ? data[0] : null;
+        
+        return (
+            <div style={{ textAlign: 'center' }}>
+                <div style={{ fontSize: '13px', fontWeight: 600, marginBottom: '8px', color: '#4B5563' }}>{title}</div>
+                <Pie
+                    data={data}
+                    angleField="value"
+                    colorField="type"
+                    radius={1}
+                    innerRadius={0.7}
+                    color={({ type }: any) => type === 'B2B' ? colorB2B : colorB2C}
+                    label={false}
+                    statistic={{
+                        title: {
+                            content: topField ? `${topField.percent}%` : '0%',
+                            style: { fontSize: '18px', fontWeight: 700, color: '#171717' },
+                        },
+                        content: false,
+                    }}
+                    tooltip={{
+                        formatter: (datum: any) => {
+                            const valInM = (datum.value / 1000000).toLocaleString(i18n.language === 'en' ? 'en-US' : 'vi-VN');
+                            return { name: datum.field, value: `${datum.percent}% | ${valInM} ${t('dashboard.millionUnit')}` };
+                        }
+                    }}
+                    legend={false}
+                    height={150}
+                />
+                <div style={{ marginTop: '12px', fontSize: '11.5px', textAlign: 'left', padding: '0 4px' }}>
+                    {data.map(d => (
+                        <div key={d.field} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                            <span style={{ color: d.field === 'B2B' ? colorB2B : colorB2C, fontWeight: 700 }}>
+                                {d.field}
+                            </span>
+                            <span style={{ color: '#4B5563', fontWeight: 500 }}>
+                                {d.percent}% ({(d.value / 1000000).toLocaleString(i18n.language === 'en' ? 'en-US' : 'vi-VN')} {t('dashboard.millionUnit')})
+                            </span>
+                        </div>
+                    ))}
+                </div>
+            </div>
+        );
     };
 
     return (
@@ -482,50 +531,24 @@ const Dashboard: React.FC = () => {
             {/* ==================== ROW 4: Structure & Execution ==================== */}
             <Row gutter={[20, 20]} className="dash-row">
                 {/* Donut: Business Structure */}
-                <Col xs={24} lg={8}>
+                <Col xs={24} lg={14}>
                     <Card className="dash-chart-card" title={t('dashboard.businessStructure')}>
-                        <div className="dash-donut-wrap">
-                            <Pie
-                                data={donutData}
-                                angleField="value"
-                                colorField="type"
-                                radius={0.9}
-                                innerRadius={0.65}
-                                color={['#E11D2E', '#3B82F6', '#10B981', '#F59E0B', '#8B5CF6', '#EC4899']}
-                                label={{
-                                    type: 'inner',
-                                    offset: '-50%',
-                                    content: ({ percent }: any) => `${(percent * 100).toFixed(0)}%`,
-                                    style: { fill: '#fff', fontSize: 13, fontWeight: 'bold' },
-                                    autoRotate: false,
-                                }}
-                                statistic={{
-                                    title: {
-                                        content: Array.isArray(businessStructure) && businessStructure.length > 0 ? `${businessStructure[0].percent}%` : '0%',
-                                        style: { fontSize: '28px', fontWeight: 800, color: '#171717' },
-                                    },
-                                    content: {
-                                        content: Array.isArray(businessStructure) && businessStructure.length > 0 
-                                            ? `${businessStructure[0].field} (${(businessStructure[0].value / 1000000).toLocaleString(i18n.language === 'en' ? 'en-US' : 'vi-VN')} ${t('dashboard.millionUnit')} MMK)` 
-                                            : '',
-                                        style: { fontSize: '13px', color: '#6B7280' },
-                                    },
-                                }}
-                                tooltip={{
-                                    formatter: (datum: any) => {
-                                        const valInMillions = (datum.value / 1000000).toLocaleString(i18n.language === 'en' ? 'en-US' : 'vi-VN');
-                                        return { name: datum.field, value: `${datum.percent}% | ${valInMillions} ${t('dashboard.millionUnit')} MMK` };
-                                    }
-                                }}
-                                legend={{ position: 'bottom' as const }}
-                                height={240}
-                            />
-                        </div>
+                        <Row gutter={[16, 16]}>
+                            <Col xs={24} md={8}>
+                                {renderMiniDonut('Nguồn Việc', sourceWorkData, '#1D4ED8', '#60A5FA')}
+                            </Col>
+                            <Col xs={24} md={8}>
+                                {renderMiniDonut('Doanh Thu', revenueData, '#C2410C', '#FB923C')}
+                            </Col>
+                            <Col xs={24} md={8}>
+                                {renderMiniDonut('Thu Tiền', paymentData, '#15803D', '#4ADE80')}
+                            </Col>
+                        </Row>
                     </Card>
                 </Col>
 
                 {/* Right: Project Execution */}
-                <Col xs={24} lg={16}>
+                <Col xs={24} lg={10}>
                     <Card className="dash-chart-card" title={t('dashboard.projectExecution')}>
                         {/* Stacked progress bar */}
                         <div className="dash-exec-progress">

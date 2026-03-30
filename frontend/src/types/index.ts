@@ -125,9 +125,16 @@ export interface BranchData {
     planDT: number;
 }
 
+export interface BusinessData {
+    field: string;
+    value: number;
+    percent: number;
+}
+
 export interface BusinessStructure {
-    b2b: number;  // percentage
-    b2c: number;  // percentage
+    sourceWork: BusinessData[];
+    revenue: BusinessData[];
+    payment: BusinessData[];
 }
 
 export interface ProjectExecution {

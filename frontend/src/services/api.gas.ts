@@ -131,7 +131,11 @@ export class GasApiService implements IApiService {
                                     { branchCode: 'YGN', branchName: 'Yangon', actual: 820, plan: 900, actualDT: 650, planDT: 700 },
                                     { branchCode: 'MDY&SGG', branchName: 'Mandalay & Sagaing', actual: 650, plan: 700, actualDT: 520, planDT: 600 },
                                 ],
-                                businessStructure: { b2b: 65, b2c: 35 },
+                                businessStructure: {
+                                    sourceWork: [{ field: 'B2B', value: 68532000000, percent: 100 }, { field: 'B2C', value: 0, percent: 0 }],
+                                    revenue: [{ field: 'B2B', value: 1500000000, percent: 90 }, { field: 'B2C', value: 166666667, percent: 10 }],
+                                    payment: [{ field: 'B2B', value: 800000000, percent: 100 }, { field: 'B2C', value: 0, percent: 0 }]
+                                },
                                 projectExecution: { done: 42, inProgress: 35, waiting: 8, total: 85 },
                                 recentActivities: [],
                                 priorityTasks: [],
