@@ -56,7 +56,7 @@ CREATE TABLE IF NOT EXISTS contracts (
 CREATE TABLE IF NOT EXISTS invoices (
   id              VARCHAR(50) PRIMARY KEY,
   contract_id     VARCHAR(50) REFERENCES contracts(id) ON DELETE CASCADE,
-  invoice_number  VARCHAR(100) DEFAULT '',
+  invoice_number  VARCHAR(500) DEFAULT '',
   installment     VARCHAR(100) DEFAULT '',
   value           NUMERIC(18,2) DEFAULT 0,
   issued_date     DATE,
@@ -220,5 +220,7 @@ DO $$ BEGIN
   ALTER TABLE weekly_plan_items ADD COLUMN IF NOT EXISTS end_date DATE;
   ALTER TABLE weekly_plan_items ADD COLUMN IF NOT EXISTS location TEXT DEFAULT '';
   ALTER TABLE weekly_plan_items ADD COLUMN IF NOT EXISTS method TEXT DEFAULT '';
+  -- Increase invoice_number from VARCHAR(100) to VARCHAR(500)
+  ALTER TABLE invoices ALTER COLUMN invoice_number TYPE VARCHAR(500);
 END $$;
 

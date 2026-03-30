@@ -375,9 +375,12 @@ const InvoiceList: React.FC<InvoiceListProps> = ({ contractId, onStatsChange, ap
                     <Form.Item
                         name="invoiceNumber"
                         label={t('invoices.formInvoiceNumber')}
-                        rules={[{ required: true, message: t('invoices.formInvoiceNumberRequired') }]}
+                        rules={[
+                            { required: true, message: t('invoices.formInvoiceNumberRequired') },
+                            { max: 500, message: t('invoices.formInvoiceNumberMaxLength', 'Invoice number must not exceed 500 characters') }
+                        ]}
                     >
-                        <Input placeholder={t('invoices.formInvoiceNumberPlaceholder')} />
+                        <Input placeholder={t('invoices.formInvoiceNumberPlaceholder')} maxLength={500} showCount />
                     </Form.Item>
                     <Form.Item
                         name="installment"
