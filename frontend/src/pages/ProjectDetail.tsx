@@ -196,31 +196,38 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, onBack }) => {
 
     return (
         <div className="project-detail-container">
-            {/* COMPACT TOP HEADER */}
-            <div className="project-header">
-                <div style={{ maxWidth: 1200, margin: '0 auto', width: '100%' }}>
-                    <Button
-                        type="text"
-                        icon={<ArrowLeftOutlined style={{ fontSize: '11px' }} />}
-                        onClick={onBack}
-                        className="back-button"
-                    >
-                        {t('projects.backToList')}
-                    </Button>
+            {/* APPLE iOS STYLE HEADER */}
+            <div className="project-header-ios">
+                <div style={{ maxWidth: 1200, margin: '0 auto', width: '100%', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                    
+                    <div className="header-top-row">
+                        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '16px', flex: 1 }}>
+                            <Tooltip title={t('projects.backToList')}>
+                                <Button
+                                    type="text"
+                                    shape="circle"
+                                    icon={<ArrowLeftOutlined />}
+                                    onClick={onBack}
+                                    className="back-button-circle"
+                                />
+                            </Tooltip>
 
-                    <div className="header-title-row">
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                            <h1 className="project-title">{project.name}</h1>
-                            <StatusBadge status={project.status} />
+                            <div className="header-title-container">
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+                                    <h1 className="project-title-ios">{project.name}</h1>
+                                    <StatusBadge status={project.status} />
+                                </div>
+                                <div className="project-subtitle-ios">
+                                    {t('projects.contractCode')}: <span className="subtitle-code">{project.code || '--'}</span>
+                                </div>
+                            </div>
                         </div>
 
                         {canEdit && (
                             <Button
                                 icon={<EditOutlined />}
-                                size="small"
                                 onClick={openUpdateModal}
-                                className="vcm-btn-premium"
-                                style={{ height: '32px' }}
+                                className="vcm-btn-ghost"
                             >
                                 {t('common.update')}
                             </Button>
@@ -231,7 +238,7 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, onBack }) => {
                         activeKey={activeTab}
                         onChange={setActiveTab}
                         items={items.map(item => ({ key: item.key, label: item.label }))}
-                        className="project-tabs-compact"
+                        className="project-tabs-segmented"
                     />
                 </div>
             </div>

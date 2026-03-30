@@ -24,48 +24,84 @@
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
 }
 
-/* --- Header --- */
-.project-header {
+/* --- Apple iOS Style Header --- */
+.project-header-ios {
     background: var(--pd-bg-white);
-    padding: 16px 32px 0 32px;
-    /* Increased padding */
-    border-bottom: 1px solid var(--pd-border);
+    padding: 24px 32px 0 32px;
     flex-shrink: 0;
     z-index: 10;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    border-bottom: 1px solid var(--pd-border);
 }
 
-.back-button {
-    color: var(--pd-text-secondary);
-    font-size: 12px;
-    /* Increased font */
-    font-weight: 500;
-    padding: 0;
-    height: auto;
+.header-top-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+}
+
+.back-button-circle {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: var(--pd-bg-page);
+    color: var(--pd-text-main);
     display: flex;
     align-items: center;
-    gap: 6px;
-    margin-bottom: 12px;
+    justify-content: center;
+    transition: all 0.2s ease;
+    border: 1px solid transparent;
 }
 
-.back-button:hover {
+.back-button-circle:hover {
+    background: #E5E7EB;
     color: var(--pd-primary);
 }
 
-.header-title-row {
+.header-title-container {
     display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 12px;
+    flex-direction: column;
+    gap: 6px;
 }
 
-.project-title {
+.project-title-ios {
     font-size: 24px;
-    /* Increased font */
     font-weight: 800;
     color: var(--pd-text-main);
     margin: 0;
-    line-height: 1.2;
+    line-height: 1.3;
+    max-width: 700px;
+    word-break: break-word;
+}
+
+.project-subtitle-ios {
+    font-size: 13px;
+    font-weight: 500;
+    color: #9CA3AF;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.subtitle-code {
+    color: var(--pd-text-secondary);
+    font-weight: 700;
+}
+
+.vcm-btn-ghost {
+    background: #fff;
+    border: 1px solid #D1D5DB;
+    color: #374151;
+    font-weight: 600;
+    border-radius: 8px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+    height: 36px;
+    padding: 0 16px;
+}
+
+.vcm-btn-ghost:hover {
+    background: #F9FAFB;
+    color: var(--pd-primary);
+    border-color: #D1D5DB;
 }
 
 /* --- Status Badge --- */
@@ -81,28 +117,43 @@
     line-height: 1.4;
 }
 
-/* --- Tabs --- */
-.project-tabs-compact .ant-tabs-nav {
+/* --- Segmented Control Tabs (iOS Style) --- */
+.project-tabs-segmented .ant-tabs-nav {
     margin-bottom: 0 !important;
 }
 
-.project-tabs-compact .ant-tabs-tab {
-    padding: 12px 20px !important;
-    /* Increased padding */
+.project-tabs-segmented .ant-tabs-nav-wrap {
+    padding-bottom: 16px; 
+}
+
+.project-tabs-segmented .ant-tabs-nav-list {
+    background: #F3F4F6;
+    border-radius: 12px;
+    padding: 4px;
+    gap: 4px;
+}
+
+.project-tabs-segmented .ant-tabs-tab {
+    padding: 8px 16px !important;
     font-size: 13px !important;
-    /* Increased font */
     font-weight: 600;
-    color: var(--pd-text-secondary);
+    color: #6B7280;
     margin: 0 !important;
+    border-radius: 8px;
+    transition: all 0.3s ease;
 }
 
-.project-tabs-compact .ant-tabs-tab-active .ant-tabs-tab-btn {
-    color: var(--pd-primary) !important;
+.project-tabs-segmented .ant-tabs-tab-active {
+    background: #FFFFFF !important;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.08) !important;
 }
 
-.project-tabs-compact .ant-tabs-ink-bar {
-    background-color: var(--pd-primary) !important;
-    height: 3px !important;
+.project-tabs-segmented .ant-tabs-tab-active .ant-tabs-tab-btn {
+    color: #111827 !important;
+}
+
+.project-tabs-segmented .ant-tabs-ink-bar {
+    display: none !important;
 }
 
 /* --- Content Area --- */
