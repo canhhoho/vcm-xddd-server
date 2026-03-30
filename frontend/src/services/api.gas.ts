@@ -520,15 +520,15 @@ export class GasApiService implements IApiService {
     }
 
     // ==================== DASHBOARD ====================
-    async getDashboardStats(forceRefresh: boolean = false, targetDate?: string) {
+    async getDashboardStats(forceRefresh: boolean = false, targetDate?: string, viewMode?: string) {
         if (!this.isGasEnvironment) {
-            return this.runGasFunction('getDashboardStats', { forceRefresh, targetDate });
+            return this.runGasFunction('getDashboardStats', { forceRefresh, targetDate, viewMode });
         }
         return new Promise<ApiResponse>((resolve, reject) => {
             google.script.run
                 .withSuccessHandler((response: any) => resolve(response))
                 .withFailureHandler((error: any) => reject(error))
-                .getDashboardStats(forceRefresh, targetDate);
+                .getDashboardStats(forceRefresh, targetDate, viewMode);
         });
     }
 

@@ -105,7 +105,7 @@ export interface IApiService {
     deletePosition(params: { id: string }): Promise<ApiResponse>;
 
     // ==================== DASHBOARD ====================
-    getDashboardStats(forceRefresh?: boolean, targetDate?: string): Promise<ApiResponse>;
+    getDashboardStats(forceRefresh?: boolean, targetDate?: string, viewMode?: string): Promise<ApiResponse>;
     getBranchPerformance(year: string): Promise<ApiResponse>;
     getGeneralPerformance(year: string): Promise<ApiResponse>;
 

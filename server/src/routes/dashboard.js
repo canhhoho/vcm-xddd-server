@@ -9,8 +9,8 @@ const CacheService = require('../services/cacheService');
 // GET /dashboard/stats
 router.get('/stats', async (req, res) => {
   try {
-    const { forceRefresh, targetDate } = req.query;
-    const cacheKey = `DASHBOARD_STATS_${targetDate || 'now'}`;
+    const { forceRefresh, targetDate, viewMode } = req.query;
+    const cacheKey = `DASHBOARD_STATS_${targetDate || 'now'}_MODE_${viewMode || 'MONTH'}`;
 
     if (forceRefresh === 'true') CacheService.clear([cacheKey]);
 
@@ -233,24 +233,35 @@ router.get('/stats', async (req, res) => {
         }))
         .sort((a, b) => (b.planDT + b.actualDT) - (a.planDT + a.actualDT));
 
-      // Business structure — dynamic fields with viewMode support
-      // viewMode comes from frontend: undefined means default (YEAR filter)
-      // We build the WHERE based on same year/month as the rest of dashboard
-      const bizStructAllFields = await query(`
-        SELECT COALESCE(NULLIF(business_field, ''), 'OTHER') as field, COUNT(*) as cnt
+      // Business structure — Fixed to B2B and B2C, computed by Total Revenue (SUM value).
+      // Filter based on viewMode coming from frontend hook.
+      const bizYear = viewMode === 'ALL' ? null : year;
+      const bizMonth = (viewMode === 'ALL' || viewMode === 'YEAR') ? null : month;
+
+      const bizStructQuery = await query(`
+        SELECT UPPER(COALESCE(NULLIF(business_field, ''), 'OTHER')) as field, COALESCE(SUM(value), 0) as total_val
         FROM contracts
         WHERE ($1::int IS NULL OR EXTRACT(YEAR FROM start_date) = $1)
           AND ($2::int IS NULL OR EXTRACT(MONTH FROM start_date) = $2)
         GROUP BY field
-        ORDER BY cnt DESC
-      `, [year, month]);
+      `, [bizYear, bizMonth]);
 
-      const bizTotal = bizStructAllFields.rows.reduce((sum, r) => sum + parseInt(r.cnt), 0) || 1;
-      const businessStructure = bizStructAllFields.rows.map(r => ({
-        field: r.field,
-        count: parseInt(r.cnt),
-        percent: Math.round(parseInt(r.cnt) / bizTotal * 100),
-      }));
+      let b2bTotal = 0;
+      let b2cTotal = 0;
+
+      bizStructQuery.rows.forEach(r => {
+        const f = r.field;
+        const val = parseFloat(r.total_val) || 0;
+        if (f === 'B2B') b2bTotal += val;
+        else if (f === 'B2C') b2cTotal += val;
+      });
+
+      const totalRevenue = (b2bTotal + b2cTotal) || 1; // Avoid divide by zero
+      
+      const businessStructure = [
+        { field: 'B2B', value: b2bTotal, percent: Math.round((b2bTotal / totalRevenue) * 100) },
+        { field: 'B2C', value: b2cTotal, percent: Math.round((b2cTotal / totalRevenue) * 100) }
+      ];
 
       // Previous month for MoM calculation
       const prevMonth = month === 1 ? 12 : month - 1;

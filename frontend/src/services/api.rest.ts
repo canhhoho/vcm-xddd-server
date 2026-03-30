@@ -259,8 +259,8 @@ export class RestApiService implements IApiService {
     }
 
     // ==================== DASHBOARD ====================
-    async getDashboardStats(forceRefresh: boolean = false, targetDate?: string) {
-        return this.request('GET', '/dashboard/stats', undefined, { forceRefresh, targetDate });
+    async getDashboardStats(forceRefresh: boolean = false, targetDate?: string, viewMode?: string) {
+        return this.request('GET', '/dashboard/stats', undefined, { forceRefresh, targetDate, viewMode });
     }
 
     async getBranchPerformance(year: string) {

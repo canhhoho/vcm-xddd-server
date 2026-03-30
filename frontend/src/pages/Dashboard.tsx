@@ -31,7 +31,7 @@ const Dashboard: React.FC = () => {
 
     // Use React Query Hook
     const dateStr = targetDate.format('YYYY-MM-DD');
-    const { data: stats, isLoading: loading, error, refetch } = useDashboardStats(dateStr);
+    const { data: stats, isLoading: loading, error, refetch } = useDashboardStats(dateStr, viewMode);
 
     const onDateChange = (date: Dayjs | null) => {
         if (date) {
@@ -119,10 +119,15 @@ const Dashboard: React.FC = () => {
 
     const donutData = useMemo(() => {
         if (!businessStructure || !Array.isArray(businessStructure) || businessStructure.length === 0) return [];
-        return businessStructure.map((item: any) => ({
-            type: `${item.field} (${item.percent}%)`,
-            value: item.count,
-        }));
+        return businessStructure.map((item: any) => {
+            const valInMillions = (item.value / 1000000).toLocaleString('vi-VN');
+            return {
+                type: `${item.field} (${item.percent}% | ${valInMillions} Tr MMK)`,
+                value: item.value,
+                field: item.field,
+                percent: item.percent
+            };
+        });
     }, [businessStructure]);
 
     // Helpers
@@ -500,9 +505,17 @@ const Dashboard: React.FC = () => {
                                         style: { fontSize: '28px', fontWeight: 800, color: '#171717' },
                                     },
                                     content: {
-                                        content: Array.isArray(businessStructure) && businessStructure.length > 0 ? businessStructure[0].field : '',
+                                        content: Array.isArray(businessStructure) && businessStructure.length > 0 
+                                            ? `${businessStructure[0].field} (${(businessStructure[0].value / 1000000).toLocaleString('vi-VN')} Tr MMK)` 
+                                            : '',
                                         style: { fontSize: '13px', color: '#6B7280' },
                                     },
+                                }}
+                                tooltip={{
+                                    formatter: (datum: any) => {
+                                        const valInMillions = (datum.value / 1000000).toLocaleString('vi-VN');
+                                        return { name: datum.field, value: `${datum.percent}% | ${valInMillions} Tr MMK` };
+                                    }
                                 }}
                                 legend={{ position: 'bottom' as const }}
                                 height={240}
