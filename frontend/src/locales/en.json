@@ -257,6 +257,7 @@
         "formPaidAmount": "Payment Amount (MMK)",
         "formPaidAmountTooltip": "Enter payment value. Set to 0 if unpaid.",
         "formPaidAmountPlaceholder": "Enter payment value",
+        "formInvoiceNumberMaxLength": "Invoice number must not exceed 500 characters",
         "retention": "Retention",
         "existingFiles": "Attached files:",
         "exportInvoiceNumber": "Invoice Number",
@@ -381,7 +382,13 @@
         "roleQS": "QS Engineer",
         "roleEngineer": "Site Engineer",
         "roleAccountant": "Accountant",
-        "rolePurchaser": "Purchaser"
+        "rolePurchaser": "Purchaser",
+        "formProgressAttachment": "Progress Attachment (PDF)",
+        "createSuccess": "Project created successfully",
+        "updateSuccess": "Project updated successfully",
+        "saveFailed": "Save failed: ",
+        "deleteFailed": "Delete failed: ",
+        "deleteError": "Error occurred while deleting"
     },
     "branches": {
         "title": "Branch Management",
@@ -462,6 +469,7 @@
             "priority": "Priority",
             "note": "Note",
             "expectedDate": "Expected Sign Date",
+            "no": "#",
             "addNew": "Add Project",
             "editTitle": "Edit Prospect",
             "addTitle": "Add Prospect",
@@ -663,7 +671,11 @@
         "total": "Total",
         "language": "Language",
         "view": "View",
-        "download": "Download"
+        "download": "Download",
+        "saveSuccess": "Saved successfully",
+        "saveError": "Save failed",
+        "deleteSuccess": "Deleted successfully",
+        "exportSuccess": "Export successful!"
     },
     "changePassword": {
         "title": "Change Password",

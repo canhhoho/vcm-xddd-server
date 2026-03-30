@@ -415,10 +415,9 @@ const Projects: React.FC = () => {
                             <Form.Item name="code" label={t('projects.formCode')} rules={[{ required: true, message: t('projects.formCodeReq') }]}>
                                 <AutoComplete
                                     placeholder="VCM-2024-..."
-                                    options={contracts.map(c => ({ value: c.code, label: `${c.code} - ${c.name}` }))}
+                                    options={contracts.map(c => ({ value: c.code, label: c.code }))}
                                     filterOption={(inputValue, option) =>
-                                        (option?.value as string)?.toLowerCase().includes(inputValue.toLowerCase()) ||
-                                        (option?.label as string)?.toLowerCase().includes(inputValue.toLowerCase())
+                                        (option?.value as string)?.toLowerCase().includes(inputValue.toLowerCase())
                                     }
                                 />
                             </Form.Item>

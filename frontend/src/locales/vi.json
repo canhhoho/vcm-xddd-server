@@ -256,6 +256,7 @@
         "formPaidAmount": "Số tiền thanh toán (MMK)",
         "formPaidAmountTooltip": "Nhập giá trị thanh toán. Để 0 nếu chưa thanh toán.",
         "formPaidAmountPlaceholder": "Nhập giá trị thanh toán",
+        "formInvoiceNumberMaxLength": "Số hóa đơn không được vượt quá 500 ký tự",
         "retention": "Bảo lãnh",
         "existingFiles": "File đã đính kèm:",
         "exportInvoiceNumber": "Mã hóa đơn",
@@ -380,7 +381,13 @@
         "roleQS": "Kỹ sư QS",
         "roleEngineer": "Kỹ sư hiện trường",
         "roleAccountant": "Kế toán",
-        "rolePurchaser": "Cung ứng"
+        "rolePurchaser": "Cung ứng",
+        "formProgressAttachment": "File đính kèm tiến độ (PDF)",
+        "createSuccess": "Tạo dự án thành công",
+        "updateSuccess": "Cập nhật dự án thành công",
+        "saveFailed": "Lưu thất bại: ",
+        "deleteFailed": "Xóa thất bại: ",
+        "deleteError": "Có lỗi xảy ra khi xóa"
     },
     "branches": {
         "title": "Quản lý Chi nhánh",
@@ -461,6 +468,7 @@
             "priority": "Ưu tiên",
             "note": "Ghi chú",
             "expectedDate": "Ngày dự kiến ký HĐ",
+            "no": "STT",
             "addNew": "Thêm dự án",
             "editTitle": "Sửa dự án tiếp xúc",
             "addTitle": "Thêm dự án tiếp xúc",
@@ -662,7 +670,11 @@
         "total": "Tổng",
         "language": "Ngôn ngữ",
         "view": "Xem",
-        "download": "Tải xuống"
+        "download": "Tải xuống",
+        "saveSuccess": "Lưu thành công",
+        "saveError": "Lỗi khi lưu",
+        "deleteSuccess": "Xóa thành công",
+        "exportSuccess": "Xuất file thành công!"
     },
     "changePassword": {
         "title": "Đổi mật khẩu",
