@@ -519,7 +519,13 @@
             "statusDone": "Hoàn thành",
             "statusCarriedOver": "Chuyển sang tuần sau",
             "currentWeek": "Tuần hiện tại",
-            "items": "đầu việc"
+            "items": "đầu việc",
+            "whatPlaceholder": "Nội dung công việc",
+            "whyPlaceholder": "Mục đích",
+            "whoPlaceholder": "Người phụ trách",
+            "wherePlaceholder": "Địa điểm",
+            "howPlaceholder": "Phương pháp",
+            "resultPlaceholder": "Kết quả đánh giá"
         }
     },
     "users": {

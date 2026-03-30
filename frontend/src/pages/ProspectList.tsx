@@ -188,7 +188,7 @@ const ProspectList: React.FC = () => {
             render: (val: string) => val ? dayjs(val).format('DD/MM/YYYY') : '-',
         },
         {
-            title: t('invoices.colActions'), key: 'action', width: 100, align: 'center' as const, fixed: 'right' as const,
+            title: t('common.actions'), key: 'action', width: 100, align: 'center' as const, fixed: 'right' as const,
             render: (_: any, record: Prospect) => (
                 <VcmActionGroup
                     onEdit={canEdit ? () => handleEdit(record) : undefined}

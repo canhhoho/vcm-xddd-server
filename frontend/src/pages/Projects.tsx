@@ -409,22 +409,25 @@ const Projects: React.FC = () => {
                 destroyOnClose
             >
                 <Form form={form} layout="vertical">
-                    {/* Row 1: Project Code (AutoComplete from contracts) + Project Name */}
+                    {/* Row 1: Project Name (AutoComplete from contract names) + Project Code (auto-fill) */}
                     <Row gutter={16}>
                         <Col span={12}>
-                            <Form.Item name="code" label={t('projects.formCode')} rules={[{ required: true, message: t('projects.formCodeReq') }]}>
+                            <Form.Item name="name" label={t('projects.formName')} rules={[{ required: true, message: t('projects.formNameReq') }]}>
                                 <AutoComplete
-                                    placeholder="VCM-2024-..."
-                                    options={contracts.map(c => ({ value: c.code, label: c.code }))}
+                                    placeholder={t('projects.taskNamePlaceholder')}
+                                    options={contracts.map(c => ({ value: c.name, label: c.name, code: c.code }))}
                                     filterOption={(inputValue, option) =>
                                         (option?.value as string)?.toLowerCase().includes(inputValue.toLowerCase())
                                     }
+                                    onSelect={(value: string, option: any) => {
+                                        form.setFieldsValue({ code: option.code || '' });
+                                    }}
                                 />
                             </Form.Item>
                         </Col>
                         <Col span={12}>
-                            <Form.Item name="name" label={t('projects.formName')} rules={[{ required: true, message: t('projects.formNameReq') }]}>
-                                <Input placeholder={t('projects.taskNamePlaceholder')} />
+                            <Form.Item name="code" label={t('projects.formCode')} rules={[{ required: true, message: t('projects.formCodeReq') }]}>
+                                <Input placeholder="VCM-2024-..." readOnly style={{ backgroundColor: '#f5f5f5' }} />
                             </Form.Item>
                         </Col>
                     </Row>

@@ -235,7 +235,7 @@ const DepartmentPlan: React.FC<DepartmentPlanProps> = ({ department }) => {
             title: t('business.weeklyPlan.result'), dataIndex: 'result', key: 'result', width: 160, ellipsis: true,
         },
         {
-            title: t('invoices.colActions'), key: 'action', width: 90, align: 'center' as const,
+            title: t('common.actions'), key: 'action', width: 90, align: 'center' as const,
             render: (_: any, record: WeeklyPlanItem) => (
                 <VcmActionGroup
                     onEdit={canEdit ? () => handleEditItem(planId, record) : undefined}
@@ -350,13 +350,13 @@ const DepartmentPlan: React.FC<DepartmentPlanProps> = ({ department }) => {
                         </Select>
                     </Form.Item>
                     <Form.Item name="title" label={t('business.weeklyPlan.what')} rules={[{ required: true }]}>
-                        <Input placeholder="What — Nội dung công việc" />
+                        <Input placeholder={t('business.weeklyPlan.whatPlaceholder')} />
                     </Form.Item>
                     <Form.Item name="why" label={t('business.weeklyPlan.why')}>
-                        <Input placeholder="Why — Mục đích" />
+                        <Input placeholder={t('business.weeklyPlan.whyPlaceholder')} />
                     </Form.Item>
                     <Form.Item name="assigneeId" label={t('business.weeklyPlan.who')}>
-                        <Select allowClear showSearch placeholder="Who — Người phụ trách" filterOption={(input, option) => {
+                        <Select allowClear showSearch placeholder={t('business.weeklyPlan.whoPlaceholder')} filterOption={(input, option) => {
                             const label = (option?.children as unknown as string) || '';
                             return label.toLowerCase().includes(input.toLowerCase());
                         }}>
@@ -372,10 +372,10 @@ const DepartmentPlan: React.FC<DepartmentPlanProps> = ({ department }) => {
                         </Form.Item>
                     </div>
                     <Form.Item name="location" label={t('business.weeklyPlan.where')}>
-                        <Input placeholder="Where — Địa điểm" />
+                        <Input placeholder={t('business.weeklyPlan.wherePlaceholder')} />
                     </Form.Item>
                     <Form.Item name="method" label={t('business.weeklyPlan.how')}>
-                        <Input placeholder="How — Phương pháp" />
+                        <Input placeholder={t('business.weeklyPlan.howPlaceholder')} />
                     </Form.Item>
                     <Form.Item name="status" label={t('business.weeklyPlan.status')} initialValue="TODO">
                         <Select>
@@ -385,7 +385,7 @@ const DepartmentPlan: React.FC<DepartmentPlanProps> = ({ department }) => {
                         </Select>
                     </Form.Item>
                     <Form.Item name="result" label={t('business.weeklyPlan.result')}>
-                        <TextArea rows={2} placeholder="Kết quả đánh giá" />
+                        <TextArea rows={2} placeholder={t('business.weeklyPlan.resultPlaceholder')} />
                     </Form.Item>
                 </Form>
             </Modal>

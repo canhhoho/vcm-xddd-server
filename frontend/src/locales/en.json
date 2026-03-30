@@ -520,7 +520,13 @@
             "statusDone": "Done",
             "statusCarriedOver": "Carried Over",
             "currentWeek": "Current Week",
-            "items": "tasks"
+            "items": "tasks",
+            "whatPlaceholder": "Task content",
+            "whyPlaceholder": "Purpose",
+            "whoPlaceholder": "Person in charge",
+            "wherePlaceholder": "Location",
+            "howPlaceholder": "Method",
+            "resultPlaceholder": "Evaluation result"
         }
     },
     "users": {
