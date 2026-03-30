@@ -57,7 +57,8 @@
         "viewAll": "Xem tất cả",
         "noData": "Chưa có dữ liệu",
         "year": "Năm",
-        "rateMonth": "Tỷ lệ tháng"
+        "rateMonth": "Tỷ lệ tháng",
+        "millionUnit": "Tr"
     },
     "login": {
         "title": "VCM CONSTRUCTION MANAGEMENT",

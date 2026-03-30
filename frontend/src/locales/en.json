@@ -58,7 +58,8 @@
         "noData": "No data available",
         "year": "Year",
         "month": "Month",
-        "rateMonth": "Mo. Rate"
+        "rateMonth": "Mo. Rate",
+        "millionUnit": "M"
     },
     "login": {
         "title": "VCM CONSTRUCTION MANAGEMENT",

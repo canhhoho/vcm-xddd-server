@@ -22,7 +22,7 @@ import { useDashboardStats } from '../hooks/useDashboardStats';
 import './Dashboard.css';
 
 const Dashboard: React.FC = () => {
-    const { t } = useTranslation();
+    const { t, i18n } = useTranslation();
     const [targetDate, setTargetDate] = useState<Dayjs>(dayjs());
     const currentYear = dayjs().year();
     const [viewMode, setViewMode] = useState<'MONTH' | 'YEAR' | 'ALL'>('MONTH');
@@ -120,15 +120,15 @@ const Dashboard: React.FC = () => {
     const donutData = useMemo(() => {
         if (!businessStructure || !Array.isArray(businessStructure) || businessStructure.length === 0) return [];
         return businessStructure.map((item: any) => {
-            const valInMillions = (item.value / 1000000).toLocaleString('vi-VN');
+            const valInMillions = (item.value / 1000000).toLocaleString(i18n.language === 'en' ? 'en-US' : 'vi-VN');
             return {
-                type: `${item.field} (${item.percent}% | ${valInMillions} Tr MMK)`,
+                type: `${item.field} (${item.percent}% | ${valInMillions} ${t('dashboard.millionUnit')} MMK)`,
                 value: item.value,
                 field: item.field,
                 percent: item.percent
             };
         });
-    }, [businessStructure]);
+    }, [businessStructure, t, i18n.language]);
 
     // Helpers
     const renderMom = (val: number) => {
@@ -506,15 +506,15 @@ const Dashboard: React.FC = () => {
                                     },
                                     content: {
                                         content: Array.isArray(businessStructure) && businessStructure.length > 0 
-                                            ? `${businessStructure[0].field} (${(businessStructure[0].value / 1000000).toLocaleString('vi-VN')} Tr MMK)` 
+                                            ? `${businessStructure[0].field} (${(businessStructure[0].value / 1000000).toLocaleString(i18n.language === 'en' ? 'en-US' : 'vi-VN')} ${t('dashboard.millionUnit')} MMK)` 
                                             : '',
                                         style: { fontSize: '13px', color: '#6B7280' },
                                     },
                                 }}
                                 tooltip={{
                                     formatter: (datum: any) => {
-                                        const valInMillions = (datum.value / 1000000).toLocaleString('vi-VN');
-                                        return { name: datum.field, value: `${datum.percent}% | ${valInMillions} Tr MMK` };
+                                        const valInMillions = (datum.value / 1000000).toLocaleString(i18n.language === 'en' ? 'en-US' : 'vi-VN');
+                                        return { name: datum.field, value: `${datum.percent}% | ${valInMillions} ${t('dashboard.millionUnit')} MMK` };
                                     }
                                 }}
                                 legend={{ position: 'bottom' as const }}
