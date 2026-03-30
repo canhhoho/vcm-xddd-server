@@ -118,11 +118,11 @@ const Dashboard: React.FC = () => {
     }, [stats?.branchBreakdown, actualLabel, planLabel]);
 
     const donutData = useMemo(() => {
-        if (!businessStructure) return [];
-        return [
-            { type: `B2B (${businessStructure.b2b}%)`, value: businessStructure.b2b },
-            { type: `B2C (${businessStructure.b2c}%)`, value: businessStructure.b2c },
-        ];
+        if (!businessStructure || !Array.isArray(businessStructure) || businessStructure.length === 0) return [];
+        return businessStructure.map((item: any) => ({
+            type: `${item.field} (${item.percent}%)`,
+            value: item.count,
+        }));
     }, [businessStructure]);
 
     // Helpers
@@ -486,7 +486,7 @@ const Dashboard: React.FC = () => {
                                 colorField="type"
                                 radius={0.9}
                                 innerRadius={0.65}
-                                color={['#E11D2E', '#3B82F6']}
+                                color={['#E11D2E', '#3B82F6', '#10B981', '#F59E0B', '#8B5CF6', '#EC4899']}
                                 label={{
                                     type: 'inner',
                                     offset: '-50%',
@@ -496,11 +496,11 @@ const Dashboard: React.FC = () => {
                                 }}
                                 statistic={{
                                     title: {
-                                        content: `${businessStructure.b2b}%`,
+                                        content: Array.isArray(businessStructure) && businessStructure.length > 0 ? `${businessStructure[0].percent}%` : '0%',
                                         style: { fontSize: '28px', fontWeight: 800, color: '#171717' },
                                     },
                                     content: {
-                                        content: t('dashboard.b2bCore'),
+                                        content: Array.isArray(businessStructure) && businessStructure.length > 0 ? businessStructure[0].field : '',
                                         style: { fontSize: '13px', color: '#6B7280' },
                                     },
                                 }}

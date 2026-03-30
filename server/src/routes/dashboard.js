@@ -233,19 +233,24 @@ router.get('/stats', async (req, res) => {
         }))
         .sort((a, b) => (b.planDT + b.actualDT) - (a.planDT + a.actualDT));
 
-      // Business structure
-      const bizStruct = await query(`
-        SELECT business_field, COUNT(*) as cnt
-        FROM contracts WHERE EXTRACT(YEAR FROM start_date) = $1
-        GROUP BY business_field
-      `, [year]);
+      // Business structure — dynamic fields with viewMode support
+      // viewMode comes from frontend: undefined means default (YEAR filter)
+      // We build the WHERE based on same year/month as the rest of dashboard
+      const bizStructAllFields = await query(`
+        SELECT COALESCE(NULLIF(business_field, ''), 'OTHER') as field, COUNT(*) as cnt
+        FROM contracts
+        WHERE ($1::int IS NULL OR EXTRACT(YEAR FROM start_date) = $1)
+          AND ($2::int IS NULL OR EXTRACT(MONTH FROM start_date) = $2)
+        GROUP BY field
+        ORDER BY cnt DESC
+      `, [year, month]);
 
-      let b2b = 0, b2c = 0;
-      bizStruct.rows.forEach(r => {
-        if (r.business_field === 'B2B') b2b = parseInt(r.cnt);
-        else if (r.business_field === 'B2C') b2c = parseInt(r.cnt);
-      });
-      const bizTotal = b2b + b2c || 1;
+      const bizTotal = bizStructAllFields.rows.reduce((sum, r) => sum + parseInt(r.cnt), 0) || 1;
+      const businessStructure = bizStructAllFields.rows.map(r => ({
+        field: r.field,
+        count: parseInt(r.cnt),
+        percent: Math.round(parseInt(r.cnt) / bizTotal * 100),
+      }));
 
       // Previous month for MoM calculation
       const prevMonth = month === 1 ? 12 : month - 1;
@@ -327,7 +332,7 @@ router.get('/stats', async (req, res) => {
           nguonViecTrend,
           doanhThuTrend,
           branchBreakdown,
-          businessStructure: { b2b: Math.round(b2b / bizTotal * 100), b2c: Math.round(b2c / bizTotal * 100) },
+          businessStructure,
           projectExecution: { ...projectExecution, delayed: 0 },
           recentActivities,
           priorityTasks: [],
