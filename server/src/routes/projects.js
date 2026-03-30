@@ -39,6 +39,7 @@ function toProject(r) {
     startDate: r.start_date, endDate: r.end_date,
     budget: parseFloat(r.budget) || 0,
     description: r.description || '',
+    fileUrls: r.file_urls || '',
     members, timeProgress,
     progress: r.avg_progress !== undefined ? parseInt(r.avg_progress) || 0 : 0,
     createdAt: r.created_at,
@@ -87,14 +88,14 @@ router.post('/', async (req, res) => {
     const id = uuidv4();
 
     await query(`
-      INSERT INTO projects (id, code, name, status, manager_id, contract_id, location, investor, start_date, end_date, budget, description, members)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+      INSERT INTO projects (id, code, name, status, manager_id, contract_id, location, investor, start_date, end_date, budget, description, file_urls, members)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
     `, [
       id, d.code, d.name, d.status || 'TODO',
       d.managerId || '', d.contractId || '',
       d.location || '', d.investor || '',
       d.startDate || null, d.endDate || null,
-      d.budget || 0, d.description || '', '[]'
+      d.budget || 0, d.description || '', d.fileUrls || '', '[]'
     ]);
 
     await logActivity(req.user?.email || '', 'PROJECT_CREATE', `Created project ${d.code}`);
@@ -119,6 +120,7 @@ router.put('/:id', async (req, res) => {
       location: 'location', investor: 'investor',
       startDate: 'start_date', endDate: 'end_date',
       budget: 'budget', description: 'description',
+      fileUrls: 'file_urls',
     };
 
     for (const [jsKey, dbCol] of Object.entries(mapping)) {

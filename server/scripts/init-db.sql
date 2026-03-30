@@ -79,6 +79,7 @@ CREATE TABLE IF NOT EXISTS projects (
   end_date     DATE,
   budget       NUMERIC(18,2) DEFAULT 0,
   description  TEXT DEFAULT '',
+  file_urls    TEXT DEFAULT '',
   members      JSONB DEFAULT '[]',
   created_at   TIMESTAMPTZ DEFAULT NOW()
 );
@@ -222,5 +223,7 @@ DO $$ BEGIN
   ALTER TABLE weekly_plan_items ADD COLUMN IF NOT EXISTS method TEXT DEFAULT '';
   -- Increase invoice_number from VARCHAR(100) to VARCHAR(500)
   ALTER TABLE invoices ALTER COLUMN invoice_number TYPE VARCHAR(500);
+  -- Add file_urls column to projects for PDF attachments
+  ALTER TABLE projects ADD COLUMN IF NOT EXISTS file_urls TEXT DEFAULT '';
 END $$;
 

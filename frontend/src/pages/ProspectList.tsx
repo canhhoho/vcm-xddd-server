@@ -3,7 +3,7 @@ import {
     Card, Table, Button, Input, Select, Modal, Form, InputNumber, DatePicker, Tag, message, Col, Tooltip,
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
-import { PlusOutlined, SearchOutlined } from '@ant-design/icons';
+import { PlusOutlined, SearchOutlined, FileExcelOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import dayjs from 'dayjs';
 import { usePermissions } from '../hooks/usePermissions';
@@ -106,6 +106,41 @@ const ProspectList: React.FC = () => {
         }
     };
 
+    const handleExportExcel = () => {
+        const XLSX = (window as any).XLSX;
+        if (!XLSX) {
+            message.error('XLSX library not loaded');
+            return;
+        }
+
+        const dataToExport = filteredData.map((p, index) => {
+            const branch = branches.find(br => br.id === p.branchId);
+            return {
+                [t('business.prospects.no', '#')]: index + 1,
+                [t('business.prospects.name')]: p.name,
+                [t('business.prospects.client')]: p.client,
+                [t('business.prospects.location')]: p.location,
+                [t('business.prospects.branch')]: branch?.code || p.branchCode || '',
+                [t('business.prospects.estimatedValue')]: p.estimatedValue || 0,
+                [t('business.prospects.contactPerson')]: p.contactPerson,
+                [t('business.prospects.contactPhone', 'Phone')]: p.contactPhone || '',
+                [t('business.prospects.source')]: t(`business.prospects.sourceOptions.${p.source}`),
+                [t('business.prospects.priority')]: t(`business.prospects.priorityOptions.${p.priority}`),
+                [t('business.prospects.status')]: t(`business.prospects.statusOptions.${p.status}`),
+                [t('business.prospects.expectedDate')]: p.expectedDate ? dayjs(p.expectedDate).format('DD/MM/YYYY') : '',
+                [t('business.prospects.note', 'Note')]: p.note || '',
+            };
+        });
+
+        const ws = XLSX.utils.json_to_sheet(dataToExport);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, 'Prospects');
+
+        const fileName = `Prospects_${new Date().toISOString().slice(0, 10)}.xlsx`;
+        XLSX.writeFile(wb, fileName);
+        message.success(t('common.exportSuccess', 'Export successfully!'));
+    };
+
     const columns: ColumnsType<Prospect> = useMemo(() => [
         {
             title: '#', key: 'index', width: 50, align: 'center' as const,
@@ -193,7 +228,10 @@ const ProspectList: React.FC = () => {
                         ))}
                     </Select>
                 </Col>
-                <Col xs={24} sm={12} md={6} style={{ textAlign: 'right' }}>
+                <Col xs={24} sm={12} md={6} style={{ textAlign: 'right', display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                    <Button icon={<FileExcelOutlined />} onClick={handleExportExcel} style={{ color: '#52c41a', borderColor: '#52c41a' }}>
+                        Excel
+                    </Button>
                     {canEdit && (
                         <Button type="primary" icon={<PlusOutlined />} onClick={handleAdd}>
                             {t('business.prospects.addNew')}

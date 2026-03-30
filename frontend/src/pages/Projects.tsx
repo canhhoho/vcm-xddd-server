@@ -1,10 +1,14 @@
 import React, { useState, useMemo, useCallback } from 'react';
-import { Button, Input, Modal, Form, DatePicker, Select, message, Row, Col, List, Tag } from 'antd';
+import { Button, Input, Modal, Form, DatePicker, Select, message, Row, Col, List, Tag, AutoComplete, Upload, Tooltip, Space } from 'antd';
 import {
     EnvironmentOutlined,
     SearchOutlined,
     PlusOutlined,
     CalendarOutlined,
+    PaperClipOutlined,
+    FilePdfOutlined,
+    CloseCircleOutlined,
+    DownloadOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { apiService } from '../services/api';
@@ -50,6 +54,14 @@ const Projects: React.FC = () => {
     const [editingProject, setEditingProject] = useState<Project | null>(null);
     const [form] = Form.useForm();
     const [submitting, setSubmitting] = useState(false);
+    const [fileList, setFileList] = useState<any[]>([]);
+    const [existingFiles, setExistingFiles] = useState<string[]>([]);
+
+    // Helper: parse file URLs from string
+    const parseFileUrls = (files: string | undefined | null): string[] => {
+        if (!files) return [];
+        return files.split(/[\r\n,]+/).map(f => f.trim()).filter(f => f.length > 0);
+    };
 
     // Permissions
     const { permissions, isAdmin } = usePermissions();
@@ -108,6 +120,8 @@ const Projects: React.FC = () => {
     const handleCreate = useCallback(() => {
         setEditingProject(null);
         form.resetFields();
+        setFileList([]);
+        setExistingFiles([]);
         setIsModalVisible(true);
     }, [form]);
 
@@ -137,6 +151,8 @@ const Projects: React.FC = () => {
             startDate: project.startDate ? dayjs(project.startDate) : null,
             endDate: project.endDate ? dayjs(project.endDate) : null,
         });
+        setFileList([]);
+        setExistingFiles(parseFileUrls((project as any).fileUrls));
         setIsModalVisible(true);
     }, [branches, form]);
 
@@ -144,17 +160,51 @@ const Projects: React.FC = () => {
         try {
             const values = await form.validateFields();
             setSubmitting(true);
+
+            // Upload new files
+            let uploadedUrls = '';
+            const newFiles = fileList.filter((file: any) => file.originFileObj || file instanceof File);
+            if (newFiles.length > 0) {
+                try {
+                    const filesToUpload = newFiles.map((file: any) => file.originFileObj || file);
+                    const uploadRes = await apiService.uploadContractFiles(filesToUpload);
+                    if (uploadRes.success) {
+                        uploadedUrls = uploadRes.data?.urls?.join('\n') || '';
+                    } else {
+                        message.error('Upload failed: ' + uploadRes.error);
+                        setSubmitting(false);
+                        return;
+                    }
+                } catch (uploadError) {
+                    message.error(t('invoices.systemError'));
+                    setSubmitting(false);
+                    return;
+                }
+            }
+
+            // Merge existing + new file URLs
+            const keptFilesStr = editingProject ? existingFiles.join('\n') : '';
+            let finalFiles = '';
+            if (uploadedUrls && keptFilesStr) {
+                finalFiles = keptFilesStr + '\n' + uploadedUrls;
+            } else {
+                finalFiles = uploadedUrls || keptFilesStr;
+            }
+
             const payload = {
                 ...values,
                 startDate: values.startDate ? values.startDate.format('YYYY-MM-DD') : '',
                 endDate: values.endDate ? values.endDate.format('YYYY-MM-DD') : '',
                 id: editingProject?.id,
+                fileUrls: finalFiles || '',
             };
 
             const onSuccess = (res: any) => {
                 if (res.success) {
                     message.success(editingProject ? t('projects.updateSuccess') : t('projects.createSuccess'));
                     setIsModalVisible(false);
+                    setFileList([]);
+                    setExistingFiles([]);
                 } else {
                     message.error(t('projects.saveFailed') + res.error);
                 }
@@ -359,10 +409,18 @@ const Projects: React.FC = () => {
                 destroyOnClose
             >
                 <Form form={form} layout="vertical">
+                    {/* Row 1: Project Code (AutoComplete from contracts) + Project Name */}
                     <Row gutter={16}>
                         <Col span={12}>
                             <Form.Item name="code" label={t('projects.formCode')} rules={[{ required: true, message: t('projects.formCodeReq') }]}>
-                                <Input placeholder="VCM-2024-..." />
+                                <AutoComplete
+                                    placeholder="VCM-2024-..."
+                                    options={contracts.map(c => ({ value: c.code, label: `${c.code} - ${c.name}` }))}
+                                    filterOption={(inputValue, option) =>
+                                        (option?.value as string)?.toLowerCase().includes(inputValue.toLowerCase()) ||
+                                        (option?.label as string)?.toLowerCase().includes(inputValue.toLowerCase())
+                                    }
+                                />
                             </Form.Item>
                         </Col>
                         <Col span={12}>
@@ -372,6 +430,7 @@ const Projects: React.FC = () => {
                         </Col>
                     </Row>
 
+                    {/* Row 2: Investor + Branch */}
                     <Row gutter={16}>
                         <Col span={12}>
                             <Form.Item name="investor" label={t('projects.formInvestor')}>
@@ -389,38 +448,7 @@ const Projects: React.FC = () => {
                         </Col>
                     </Row>
 
-                    <Row gutter={16}>
-                        <Col span={12}>
-                            <Form.Item name="contractId" label={t('projects.formContract')}>
-                                <Select showSearch optionFilterProp="children" allowClear placeholder={t('projects.formContract')}>
-                                    {contracts.map(c => (
-                                        <Option key={c.id} value={c.id}>{c.code} - {c.name}</Option>
-                                    ))}
-                                </Select>
-                            </Form.Item>
-                        </Col>
-                        <Col span={12}>
-                            <Form.Item name="status" label={t('projects.formStatus')}>
-                                <Select placeholder={t('projects.statusPlaceholder')}>
-                                    {appConfig?.STATUS && (
-                                        <>
-                                            <Option value="TODO">{appConfig.STATUS.TODO}</Option>
-                                            <Option value="INPROCESS">{appConfig.STATUS.IN_PROGRESS}</Option>
-                                            <Option value="DONE">{appConfig.STATUS.DONE}</Option>
-                                        </>
-                                    )}
-                                    {!appConfig?.STATUS && (
-                                        <>
-                                            <Option value="TODO">{t('projects.statusTodo')}</Option>
-                                            <Option value="INPROCESS">{t('projects.statusInProcess')}</Option>
-                                            <Option value="DONE">{t('projects.statusDone')}</Option>
-                                        </>
-                                    )}
-                                </Select>
-                            </Form.Item>
-                        </Col>
-                    </Row>
-
+                    {/* Row 3: Start Date + End Date (moved up) */}
                     <Row gutter={16}>
                         <Col span={12}>
                             <Form.Item name="startDate" label={t('projects.formStart')}>
@@ -447,8 +475,91 @@ const Projects: React.FC = () => {
                         </Col>
                     </Row>
 
-                    <Form.Item name="description" label={t('projects.formDesc')}>
-                        <Input.TextArea rows={3} placeholder={t('projects.taskDescPlaceholder')} />
+                    {/* Row 4: Status (moved down) + Description */}
+                    <Row gutter={16}>
+                        <Col span={12}>
+                            <Form.Item name="status" label={t('projects.formStatus')}>
+                                <Select placeholder={t('projects.statusPlaceholder')}>
+                                    {appConfig?.STATUS && (
+                                        <>
+                                            <Option value="TODO">{appConfig.STATUS.TODO}</Option>
+                                            <Option value="INPROCESS">{appConfig.STATUS.IN_PROGRESS}</Option>
+                                            <Option value="DONE">{appConfig.STATUS.DONE}</Option>
+                                        </>
+                                    )}
+                                    {!appConfig?.STATUS && (
+                                        <>
+                                            <Option value="TODO">{t('projects.statusTodo')}</Option>
+                                            <Option value="INPROCESS">{t('projects.statusInProcess')}</Option>
+                                            <Option value="DONE">{t('projects.statusDone')}</Option>
+                                        </>
+                                    )}
+                                </Select>
+                            </Form.Item>
+                        </Col>
+                        <Col span={12}>
+                            <Form.Item name="description" label={t('projects.formDesc')}>
+                                <Input.TextArea rows={3} placeholder={t('projects.taskDescPlaceholder')} />
+                            </Form.Item>
+                        </Col>
+                    </Row>
+
+                    {/* Row 5: PDF Attachment (replaced Related Contract) */}
+                    <Form.Item label={t('projects.formProgressAttachment', 'Attachment (PDF)')}>
+                        {/* Show existing files when editing */}
+                        {editingProject && existingFiles.length > 0 && (
+                            <div style={{ marginBottom: 12 }}>
+                                <div style={{ fontSize: 13, color: '#888', marginBottom: 6 }}>
+                                    {t('invoices.existingFiles', 'Existing files')}
+                                </div>
+                                <List
+                                    size="small"
+                                    bordered
+                                    dataSource={existingFiles}
+                                    renderItem={(url: string, index: number) => {
+                                        const fileName = url.split('/').pop()?.split('?')[0] || `file_${index + 1}`;
+                                        return (
+                                            <List.Item
+                                                style={{ padding: '6px 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
+                                            >
+                                                <Space size="small" style={{ flex: 1, minWidth: 0 }}>
+                                                    <FilePdfOutlined style={{ color: '#ff4d4f', fontSize: 16 }} />
+                                                    <a
+                                                        href={url}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 400 }}
+                                                        title={fileName}
+                                                    >
+                                                        {decodeURIComponent(fileName)}
+                                                    </a>
+                                                </Space>
+                                                <Tooltip title={t('common.delete')}>
+                                                    <Button
+                                                        type="text"
+                                                        danger
+                                                        size="small"
+                                                        icon={<CloseCircleOutlined />}
+                                                        onClick={() => {
+                                                            setExistingFiles(prev => prev.filter((_, i) => i !== index));
+                                                        }}
+                                                    />
+                                                </Tooltip>
+                                            </List.Item>
+                                        );
+                                    }}
+                                />
+                            </div>
+                        )}
+                        <Upload
+                            fileList={fileList}
+                            onChange={({ fileList }) => setFileList(fileList)}
+                            beforeUpload={() => false}
+                            multiple
+                            accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg"
+                        >
+                            <Button icon={<PaperClipOutlined />}>{t('contracts.formAttachmentButton', 'Select the file from the computer')}</Button>
+                        </Upload>
                     </Form.Item>
                 </Form>
             </Modal>
