@@ -149,47 +149,56 @@ const ProspectList: React.FC = () => {
 
     const columns: ColumnsType<Prospect> = useMemo(() => [
         {
-            title: '#', key: 'index', width: 50, align: 'center' as const,
+            title: '#', key: 'index', width: 60, align: 'center' as const,
             render: (_: any, __: any, index: number) => index + 1,
         },
         {
-            title: t('business.prospects.name'), dataIndex: 'name', key: 'name', width: 200, ellipsis: true,
+            title: t('business.prospects.name'), dataIndex: 'name', key: 'name', width: 240, ellipsis: true,
         },
         {
-            title: t('business.prospects.client'), dataIndex: 'client', key: 'client', width: 160, ellipsis: true,
+            title: t('business.prospects.client'), dataIndex: 'client', key: 'client', width: 200, ellipsis: true,
         },
         {
-            title: 'SĐT Khách hàng', dataIndex: 'contactPhone', key: 'contactPhone', width: 130,
+            title: t('business.prospects.clientPhone'), dataIndex: 'contactPhone', key: 'contactPhone', width: 150,
             render: (val: string) => val || '-',
         },
         {
-            title: t('business.prospects.location'), dataIndex: 'location', key: 'location', width: 140, ellipsis: true,
+            title: t('business.prospects.location'), dataIndex: 'location', key: 'location', width: 160, ellipsis: true,
         },
         {
-            title: t('business.prospects.branch'), key: 'branch', width: 90, align: 'center' as const,
+            title: t('business.prospects.branch'), key: 'branch', width: 110, align: 'center' as const,
             render: (_: any, record: Prospect) => {
                 const b = branches.find(br => br.id === record.branchId);
                 return b?.code || record.branchCode || '';
             },
         },
         {
-            title: `${t('business.prospects.estimatedValue')} (Tr MMK)`, dataIndex: 'estimatedValue', key: 'estimatedValue', width: 160,
+            title: (
+                <div style={{ lineHeight: '1.2' }}>
+                    {t('business.prospects.estimatedValue')}
+                    <br />
+                    <span style={{ fontWeight: 'normal', fontSize: '12px', color: '#6B7280' }}>
+                        ({t('business.prospects.estValueUnit')})
+                    </span>
+                </div>
+            ),
+            dataIndex: 'estimatedValue', key: 'estimatedValue', width: 140,
             align: 'right' as const,
-            render: (val: number) => val ? `${val.toLocaleString('vi-VN')} Tr` : '-',
+            render: (val: number) => val ? `${val.toLocaleString('vi-VN')} ${t('dashboard.millionUnit')}` : '-',
         },
         {
-            title: t('business.prospects.contactPerson'), dataIndex: 'contactPerson', key: 'contactPerson', width: 130, ellipsis: true,
+            title: t('business.prospects.contactPerson'), dataIndex: 'contactPerson', key: 'contactPerson', width: 150, ellipsis: true,
         },
         {
-            title: t('business.prospects.source'), dataIndex: 'source', key: 'source', width: 100, align: 'center' as const,
+            title: t('business.prospects.source'), dataIndex: 'source', key: 'source', width: 120, align: 'center' as const,
             render: (val: string) => <Tag>{t(`business.prospects.sourceOptions.${val}`)}</Tag>,
         },
         {
-            title: t('business.prospects.priority'), dataIndex: 'priority', key: 'priority', width: 100, align: 'center' as const,
+            title: t('business.prospects.priority'), dataIndex: 'priority', key: 'priority', width: 120, align: 'center' as const,
             render: (val: string) => <Tag color={PRIORITY_COLORS[val]}>{t(`business.prospects.priorityOptions.${val}`)}</Tag>,
         },
         {
-            title: t('business.prospects.status'), dataIndex: 'status', key: 'status', width: 110, align: 'center' as const,
+            title: t('business.prospects.status'), dataIndex: 'status', key: 'status', width: 140, align: 'center' as const,
             render: (val: string) => (
                 <Tag
                     style={{ backgroundColor: STATUS_COLORS[val], borderColor: STATUS_COLORS[val], color: '#fff', fontWeight: 600 }}
@@ -199,12 +208,12 @@ const ProspectList: React.FC = () => {
             ),
         },
         {
-            title: t('business.prospects.expectedDate'), dataIndex: 'expectedDate', key: 'expectedDate', width: 120,
+            title: t('business.prospects.expectedDate'), dataIndex: 'expectedDate', key: 'expectedDate', width: 160,
             align: 'center' as const,
             render: (val: string) => val ? dayjs(val).format('DD/MM/YYYY') : '-',
         },
         {
-            title: t('common.actions'), key: 'action', width: 100, align: 'center' as const, fixed: 'right' as const,
+            title: t('common.actions'), key: 'action', width: 110, align: 'center' as const, fixed: 'right' as const,
             render: (_: any, record: Prospect) => (
                 <VcmActionGroup
                     onEdit={canEdit ? () => handleEdit(record) : undefined}
@@ -263,7 +272,7 @@ const ProspectList: React.FC = () => {
                     rowKey="id"
                     loading={loading}
                     size="small"
-                    scroll={{ x: 1500 }}
+                    scroll={{ x: 'max-content' }}
                     pagination={{ pageSize: 20, showSizeChanger: true, showTotal: (total) => `${total}` }}
                 />
             </div>
@@ -283,8 +292,8 @@ const ProspectList: React.FC = () => {
                     <Form.Item name="client" label={t('business.prospects.client')}>
                         <Input />
                     </Form.Item>
-                    <Form.Item name="contactPhone" label="SĐT Khách hàng">
-                        <Input placeholder="VD: +95 9 123 456 789" />
+                    <Form.Item name="contactPhone" label={t('business.prospects.clientPhone')}>
+                        <Input placeholder={t('business.prospects.clientPhonePlaceholder')} />
                     </Form.Item>
                     <Form.Item name="location" label={t('business.prospects.location')}>
                         <Input />
@@ -299,16 +308,15 @@ const ProspectList: React.FC = () => {
                         label={
                             <span>
                                 {t('business.prospects.estimatedValue')}
-                                <span style={{ fontWeight: 400, color: '#6B7280', marginLeft: 6 }}>(Triệu MMK)</span>
+                                <span style={{ fontWeight: 400, color: '#6B7280', marginLeft: 6 }}>{t('business.prospects.estValueHint')}</span>
                             </span>
                         }
-                        extra={<span style={{ color: '#F59E0B', fontSize: 12 }}>⚠️ Nhập giá trị theo đơn vị Triệu MMK. VD: 1.500 = 1.500 Triệu MMK</span>}
                     >
                         <InputNumber
                             style={{ width: '100%' }}
                             min={0}
-                            placeholder="VD: 1500"
-                            addonAfter="Tr MMK"
+                            placeholder={t('business.prospects.estValuePlaceholder')}
+                            addonAfter={<span style={{ whiteSpace: 'nowrap' }}>{t('business.prospects.estValueUnit')}</span>}
                             formatter={v => `${v}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
                             parser={(v: any) => v!.replace(/,/g, '')}
                         />

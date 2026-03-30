@@ -59,7 +59,11 @@
         "year": "Year",
         "month": "Month",
         "rateMonth": "Mo. Rate",
-        "millionUnit": "M"
+        "millionUnit": "M",
+        "salesFunnel": "Sales Funnel",
+        "totalProjects": "Total Projects",
+        "totalExpectedValue": "Total Expected Value",
+        "projectUnit": "Prj"
     },
     "login": {
         "title": "VCM CONSTRUCTION MANAGEMENT",
@@ -465,6 +469,12 @@
             "estimatedValue": "Estimated Value",
             "contactPerson": "Contact Person",
             "contactPhone": "Contact Phone",
+            "clientPhone": "Client Phone",
+            "clientPhonePlaceholder": "Ex: +95 9 123 456 789",
+            "estValueUnit": "M MMK",
+            "estValueHint": "(Million MMK)",
+            "estValueWarning": "⚠️ Enter value in Millions MMK. Ex: 1,500 = 1,500 Million MMK",
+            "estValuePlaceholder": "Ex: 1500",
             "source": "Source",
             "status": "Status",
             "priority": "Priority",

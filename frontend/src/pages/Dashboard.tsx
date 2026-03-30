@@ -617,55 +617,58 @@ const Dashboard: React.FC = () => {
 
                 {/* Right: Sales Pipeline (50% width) */}
                 <Col xs={24} lg={12}>
-                    <Card className="dash-chart-card" title="Đường ống dự án tiếp xúc">
+                    <Card className="dash-chart-card" title={t('dashboard.salesFunnel')}>
                         {/* Summary KPIs */}
                         <div style={{ display: 'flex', justifyContent: 'space-around', marginBottom: '20px' }}>
                             <div style={{ textAlign: 'center' }}>
-                                <div style={{ fontSize: '12px', color: '#6B7280', marginBottom: 4 }}>Tổng Dự Án</div>
+                                <div style={{ fontSize: '12px', color: '#6B7280', marginBottom: 4 }}>{t('dashboard.totalProjects')}</div>
                                 <div style={{ fontSize: '24px', fontWeight: 800, color: '#111827' }}>
                                     {pipelineData.reduce((acc, curr) => acc + curr.count, 0)}
                                 </div>
                             </div>
                             <div style={{ textAlign: 'center' }}>
-                                <div style={{ fontSize: '12px', color: '#6B7280', marginBottom: 4 }}>Tổng Giá Trị Kỳ Vọng</div>
+                                <div style={{ fontSize: '12px', color: '#6B7280', marginBottom: 4 }}>{t('dashboard.totalExpectedValue')}</div>
                                 <div style={{ fontSize: '22px', fontWeight: 800, color: '#10B981' }}>
-                                    {(pipelineData.reduce((acc, curr) => acc + curr.value, 0) / 1000000).toLocaleString(i18n.language === 'en' ? 'en-US' : 'vi-VN')}
-                                    <span style={{ fontSize: '13px', fontWeight: 500, marginLeft: 4 }}>Tr MMK</span>
+                                    {pipelineData.reduce((acc, curr) => acc + curr.value, 0).toLocaleString(i18n.language === 'en' ? 'en-US' : 'vi-VN')}
+                                    <span style={{ fontSize: '13px', fontWeight: 500, marginLeft: 4 }}>{t('business.prospects.estValueUnit')}</span>
                                 </div>
                             </div>
                         </div>
                         {/* Custom Funnel */}
                         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '0 8px', gap: 3 }}>
-                            {[['NEW', '#E05C97', 'Mới tiếp cận'], ['CONTACTED', '#F97316', 'Đã liên hệ'], ['PROPOSAL', '#F59E0B', 'Chờ Báo giá'], ['NEGOTIATION', '#3B9ED8', 'Đang Đàm phán'], ['WON', '#1D4ED8', 'Trúng Thầu']].map((cfg, idx, arr) => {
+                            {[['NEW', '#E05C97', t('business.prospects.statusOptions.NEW')], ['CONTACTED', '#F97316', t('business.prospects.statusOptions.CONTACTED')], ['PROPOSAL', '#F59E0B', t('business.prospects.statusOptions.PROPOSAL')], ['NEGOTIATION', '#3B9ED8', t('business.prospects.statusOptions.NEGOTIATION')], ['WON', '#1D4ED8', t('business.prospects.statusOptions.WON')]].map((cfg, idx, arr) => {
                                 const [stage, color, label] = cfg;
-                                const item = pipelineData.find(d => d.stage === stage);
-                                const cnt = item?.count || 0;
-                                const val = item?.value || 0;
+                                
+                                // Cumulative logic: sum current stage + all below
+                                const stagesBelow = arr.slice(idx).map(c => c[0] as string);
+                                const cnt = stagesBelow.reduce((sum, s) => sum + (pipelineData.find(d => d.stage === s)?.count || 0), 0);
+                                const val = stagesBelow.reduce((sum, s) => sum + (pipelineData.find(d => d.stage === s)?.value || 0), 0);
+                                
                                 const maxW = 100;
                                 const minW = 40;
                                 const widthPct = maxW - (idx * (maxW - minW) / (arr.length - 1));
                                 return (
                                     <div
-                                        key={stage}
+                                        key={stage as string}
                                         style={{
                                             width: `${widthPct}%`,
-                                            background: color,
+                                            background: color as string,
                                             borderRadius: idx === 0 ? '10px 10px 0 0' : idx === arr.length - 1 ? '0 0 8px 8px' : '0',
-                                            padding: '9px 12px',
+                                            padding: '10px 24px',
                                             display: 'flex',
                                             justifyContent: 'space-between',
                                             alignItems: 'center',
-                                            minHeight: 42,
+                                            minHeight: 46,
                                             clipPath: idx === arr.length - 1
                                                 ? 'polygon(5% 0%, 95% 0%, 100% 100%, 0% 100%)'
                                                 : 'polygon(0% 0%, 100% 0%, 97% 100%, 3% 100%)'
                                         }}
                                     >
                                         <span style={{ color: '#fff', fontWeight: 700, fontSize: 13 }}>{label}</span>
-                                        <span style={{ color: '#fff', fontSize: 12, textAlign: 'right' }}>
-                                            <strong>{cnt}</strong> DA
+                                        <span style={{ color: '#fff', fontSize: 13, textAlign: 'right', whiteSpace: 'nowrap' }}>
+                                            <strong>{cnt}</strong> {t('dashboard.projectUnit')}
                                             <br />
-                                            <span style={{ opacity: 0.85 }}>{(val / 1000000).toLocaleString(i18n.language === 'en' ? 'en-US' : 'vi-VN')} Tr</span>
+                                            <span style={{ opacity: 0.85, fontSize: 12 }}>{val.toLocaleString(i18n.language === 'en' ? 'en-US' : 'vi-VN')} {t('dashboard.millionUnit')}</span>
                                         </span>
                                     </div>
                                 );

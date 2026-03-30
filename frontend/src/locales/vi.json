@@ -58,7 +58,11 @@
         "noData": "Chưa có dữ liệu",
         "year": "Năm",
         "rateMonth": "Tỷ lệ tháng",
-        "millionUnit": "Tr"
+        "millionUnit": "Tr",
+        "salesFunnel": "Phễu Kinh Doanh",
+        "totalProjects": "Tổng Dự Án",
+        "totalExpectedValue": "Tổng Giá Trị Kỳ Vọng",
+        "projectUnit": "DA"
     },
     "login": {
         "title": "VCM CONSTRUCTION MANAGEMENT",
@@ -464,6 +468,12 @@
             "estimatedValue": "Giá trị ước tính",
             "contactPerson": "Người liên hệ",
             "contactPhone": "SĐT liên hệ",
+            "clientPhone": "SĐT Khách hàng",
+            "clientPhonePlaceholder": "VD: +95 9 123 456 789",
+            "estValueUnit": "Tr MMK",
+            "estValueHint": "(Triệu MMK)",
+            "estValueWarning": "⚠️ Nhập giá trị theo đơn vị Triệu MMK. VD: 1.500 = 1.500 Triệu MMK",
+            "estValuePlaceholder": "VD: 1500",
             "source": "Nguồn",
             "status": "Trạng thái",
             "priority": "Ưu tiên",
