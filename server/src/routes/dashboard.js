@@ -18,6 +18,9 @@ router.get('/stats', async (req, res) => {
       const now = targetDate ? new Date(targetDate) : new Date();
       const year = now.getFullYear();
       const month = now.getMonth() + 1;
+      
+      const bizYear = viewMode === 'ALL' ? null : year;
+      const bizMonth = (viewMode === 'ALL' || viewMode === 'YEAR') ? null : month;
 
       // KPI: Nguồn việc MTD (contracts signed this month)
       const nvMtd = await query(`
@@ -121,29 +124,29 @@ router.get('/stats', async (req, res) => {
       // Monthly trend: nguồn việc
       const nvTrend = await query(`
         SELECT EXTRACT(MONTH FROM start_date)::int as m, COALESCE(SUM(value)/1000000, 0) as actual
-        FROM contracts WHERE EXTRACT(YEAR FROM start_date) = $1
+        FROM contracts WHERE ($1::int IS NULL OR EXTRACT(YEAR FROM start_date) = $1)
         GROUP BY m ORDER BY m
-      `, [year]);
+      `, [bizYear]);
 
       // Monthly trend: doanh thu
       const dtTrend = await query(`
         SELECT EXTRACT(MONTH FROM issued_date)::int as m, COALESCE(SUM(value)/1000000, 0) as actual
-        FROM invoices WHERE EXTRACT(YEAR FROM issued_date) = $1
+        FROM invoices WHERE ($1::int IS NULL OR EXTRACT(YEAR FROM issued_date) = $1)
         GROUP BY m ORDER BY m
-      `, [year]);
+      `, [bizYear]);
 
       // Get monthly targets for trends
       const monthlyNvTargets = await query(`
         SELECT period, target_value FROM targets
-        WHERE (type = 'NGUON_VIEC' OR type ILIKE '%NGUON%' OR type ILIKE '%NGUỒN%') AND period_type LIKE '%MONTH%' AND period LIKE $1
+        WHERE (type = 'NGUON_VIEC' OR type ILIKE '%NGUON%' OR type ILIKE '%NGUỒN%') AND period_type LIKE '%MONTH%' AND ($1::text IS NULL OR period LIKE $1)
         AND (unit_type = 'GENERAL' OR unit_type IS NULL OR unit_type = '')
-      `, [`${year}-%`]);
+      `, [bizYear ? `${bizYear}-%` : null]);
 
       const monthlyDtTargets = await query(`
         SELECT period, target_value FROM targets
-        WHERE (type = 'DOANH_THU' OR type ILIKE '%DOANH%') AND period_type LIKE '%MONTH%' AND period LIKE $1
+        WHERE (type = 'DOANH_THU' OR type ILIKE '%DOANH%') AND period_type LIKE '%MONTH%' AND ($1::text IS NULL OR period LIKE $1)
         AND (unit_type = 'GENERAL' OR unit_type IS NULL OR unit_type = '')
-      `, [`${year}-%`]);
+      `, [bizYear ? `${bizYear}-%` : null]);
 
       // Build trend arrays
       const nvTrendMap = {};
@@ -151,7 +154,7 @@ router.get('/stats', async (req, res) => {
       const nvMonthTargetMap = {};
       monthlyNvTargets.rows.forEach(r => {
         const m = parseInt(r.period.split('-')[1]);
-        nvMonthTargetMap[m] = parseFloat(r.target_value);
+        nvMonthTargetMap[m] = (nvMonthTargetMap[m] || 0) + parseFloat(r.target_value);
       });
 
       const dtTrendMap = {};
@@ -159,7 +162,7 @@ router.get('/stats', async (req, res) => {
       const dtMonthTargetMap = {};
       monthlyDtTargets.rows.forEach(r => {
         const m = parseInt(r.period.split('-')[1]);
-        dtMonthTargetMap[m] = parseFloat(r.target_value);
+        dtMonthTargetMap[m] = (dtMonthTargetMap[m] || 0) + parseFloat(r.target_value);
       });
 
       const nguonViecTrend = [];
@@ -175,10 +178,10 @@ router.get('/stats', async (req, res) => {
           COALESCE(SUM(c.value)/1000000, 0) as actual
         FROM contracts c
         LEFT JOIN branches b ON c.branch_id = b.id
-        WHERE EXTRACT(YEAR FROM c.start_date) = $1
+        WHERE ($1::int IS NULL OR EXTRACT(YEAR FROM c.start_date) = $1)
         GROUP BY c.branch_id, b.code, b.name
         ORDER BY actual DESC
-      `, [year]);
+      `, [bizYear]);
 
       // Query DOANH_THU branch targets for this year
       // GAS migration may store period as empty for YEAR targets
@@ -189,9 +192,9 @@ router.get('/stats', async (req, res) => {
         LEFT JOIN branches b ON t.unit_id = b.id OR t.unit_id = b.code
         WHERE (t.type = 'DOANH_THU' OR t.type ILIKE '%DOANH%')
           AND (t.period_type ILIKE '%YEAR%' OR t.period_type ILIKE '%NĂM%' OR t.period_type ILIKE '%NAM%')
-          AND (t.period LIKE '%' || $1 || '%' OR t.period IS NULL OR t.period = '')
+          AND ($1::text IS NULL OR t.period LIKE '%' || $1 || '%' OR t.period IS NULL OR t.period = '')
           AND t.unit_id IS NOT NULL AND t.unit_id != ''
-      `, [String(year)]);
+      `, [bizYear ? String(bizYear) : null]);
 
       // Build maps
       const branchActualMap = {};
@@ -208,7 +211,7 @@ router.get('/stats', async (req, res) => {
         const code = r.branch_code || r.unit_id || '';
         const tv = parseFloat(r.target_value) || 0;
         // Branch targets are already in triệu — no conversion needed
-        branchTargetMap[code] = tv;
+        branchTargetMap[code] = (branchTargetMap[code] || 0) + tv;
       });
 
       // Merge: all branches with actuals OR targets
@@ -234,9 +237,6 @@ router.get('/stats', async (req, res) => {
         .sort((a, b) => (b.planDT + b.actualDT) - (a.planDT + a.actualDT));
 
       // Business structure — 3-Chart System (Nguồn Việc, Doanh Thu, Thu Tiền)
-      const bizYear = viewMode === 'ALL' ? null : year;
-      const bizMonth = (viewMode === 'ALL' || viewMode === 'YEAR') ? null : month;
-
       const [swQuery, revQuery, payQuery] = await Promise.all([
         query(`
           SELECT UPPER(COALESCE(NULLIF(business_field, ''), 'OTHER')) as field, COALESCE(SUM(value), 0) as total_val
