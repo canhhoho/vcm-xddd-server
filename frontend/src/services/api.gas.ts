@@ -138,7 +138,13 @@ export class GasApiService implements IApiService {
                                 },
                                 projectExecution: { done: 42, inProgress: 35, waiting: 8, total: 85 },
                                 recentActivities: [],
-                                priorityTasks: [],
+                                pipelineData: [
+                                    { stage: 'NEW', count: 12, value: 50000000000 },
+                                    { stage: 'CONTACTED', count: 8, value: 30000000000 },
+                                    { stage: 'PROPOSAL', count: 5, value: 15000000000 },
+                                    { stage: 'NEGOTIATION', count: 3, value: 5000000000 },
+                                    { stage: 'WON', count: 2, value: 1500000000 }
+                                ],
                                 totalContracts: 142, totalValue: 4800000000, expiringSoon: 5,
                                 statusCount: { TODO: 12, INPROCESS: 77, DONE: 53 }
                             }

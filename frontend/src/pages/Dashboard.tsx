@@ -16,6 +16,7 @@ import {
 } from '@ant-design/icons';
 // Dynamic import for heavy chart library
 const Pie = React.lazy(() => import('@ant-design/charts').then(module => ({ default: module.Pie })));
+const Funnel = React.lazy(() => import('@ant-design/charts').then(module => ({ default: module.Funnel })));
 import CustomColumnChart from '../components/CustomColumnChart';
 import { useTranslation } from 'react-i18next';
 import { useDashboardStats } from '../hooks/useDashboardStats';
@@ -80,7 +81,7 @@ const Dashboard: React.FC = () => {
     const businessStructure = useMemo(() => stats?.businessStructure, [stats]);
     const projectExecution = useMemo(() => stats?.projectExecution, [stats]);
     const recentActivities = useMemo(() => stats?.recentActivities || [], [stats]);
-    const priorityTasks = useMemo(() => stats?.priorityTasks || [], [stats]);
+    const pipelineData = useMemo(() => stats?.pipelineData || [], [stats]);
 
     // Hardcode labels to ensure distinction and avoid translation issues
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -598,10 +599,10 @@ const Dashboard: React.FC = () => {
                 </Col>
             </Row>
 
-            {/* ==================== ROW 5: Activity Log & Priority ==================== */}
+            {/* ==================== ROW 5: Activity Log & Sales Pipeline ==================== */}
             <Row gutter={[20, 20]} className="dash-row">
-                {/* Left: Recent Activities (2/3 width) */}
-                <Col xs={24} lg={16}>
+                {/* Left: Recent Activities (50% width) */}
+                <Col xs={24} lg={12}>
                     <Card className="dash-chart-card" title={t('dashboard.recentActivities')}>
                         <Table
                             columns={activityColumns}
@@ -615,29 +616,47 @@ const Dashboard: React.FC = () => {
                     </Card>
                 </Col>
 
-                {/* Right: Priority Tasks (1/3 width) */}
-                <Col xs={24} lg={8}>
-                    <Card className="dash-chart-card dash-priority-card" title={t('dashboard.priorityTasks')}>
-                        <div className="dash-priority-list">
-                            {priorityTasks.map(task => (
-                                <div key={task.id} className="dash-priority-item">
-                                    <div className="dash-priority-top">
-                                        <Tag
-                                            color={statusLabelMap[task.status]?.color || '#999'}
-                                            className="dash-priority-tag"
-                                        >
-                                            {statusLabelMap[task.status]?.label || task.status}
-                                        </Tag>
-                                        {task.dueDate && <span className="dash-priority-due">{task.dueDate}</span>}
+                {/* Right: Sales Pipeline (50% width) */}
+                <Col xs={24} lg={12}>
+                    <Card className="dash-chart-card" title="Đường ống dự án tiếp xúc">
+                        <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-around', marginBottom: '16px' }}>
+                                <div style={{ textAlign: 'center' }}>
+                                    <div style={{ fontSize: '12px', color: '#6B7280' }}>Tổng Dự Án</div>
+                                    <div style={{ fontSize: '20px', fontWeight: 700, color: '#111827' }}>
+                                        {pipelineData.reduce((acc, curr) => acc + curr.count, 0)}
                                     </div>
-                                    <div className="dash-priority-name">{task.name}</div>
-                                    {task.projectName && (
-                                        <div className="dash-priority-project">
-                                            <AimOutlined /> {task.projectName}
-                                        </div>
-                                    )}
                                 </div>
-                            ))}
+                                <div style={{ textAlign: 'center' }}>
+                                    <div style={{ fontSize: '12px', color: '#6B7280' }}>Tổng Giá Trị Kỳ Vọng</div>
+                                    <div style={{ fontSize: '20px', fontWeight: 700, color: '#10B981' }}>
+                                        {(pipelineData.reduce((acc, curr) => acc + curr.value, 0) / 1000000).toLocaleString(i18n.language === 'en' ? 'en-US' : 'vi-VN')} <span style={{fontSize: '14px'}}>Tr MMK</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div style={{ flex: 1, minHeight: 280 }}>
+                                <Funnel
+                                    data={pipelineData}
+                                    xField="stage"
+                                    yField="count"
+                                    dynamicHeight={true}
+                                    legend={false}
+                                    tooltip={{
+                                        formatter: (datum: any) => {
+                                            const valInMillions = (datum.value / 1000000).toLocaleString(i18n.language === 'en' ? 'en-US' : 'vi-VN');
+                                            return { name: datum.stage, value: `${datum.count} DA | ${valInMillions} Tr MMK` };
+                                        }
+                                    }}
+                                    label={{
+                                        style: {
+                                            fill: '#fff',
+                                            fontSize: 14,
+                                            fontWeight: 600
+                                        },
+                                        formatter: (datum: any) => `${datum.stage}\n${datum.count}`
+                                    }}
+                                />
+                            </div>
                         </div>
                     </Card>
                 </Col>

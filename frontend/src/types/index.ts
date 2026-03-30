@@ -153,12 +153,10 @@ export interface RecentActivity {
     userName?: string;
 }
 
-export interface PriorityTask {
-    id: string;
-    name: string;
-    status: 'URGENT' | 'PENDING_APPROVAL' | 'HIGH';
-    projectName?: string;
-    dueDate?: string;
+export interface PipelineItem {
+    stage: 'NEW' | 'CONTACTED' | 'PROPOSAL' | 'NEGOTIATION' | 'WON';
+    count: number;
+    value: number;
 }
 
 export interface DashboardStats {
@@ -169,7 +167,7 @@ export interface DashboardStats {
     businessStructure: BusinessStructure;
     projectExecution: ProjectExecution;
     recentActivities: RecentActivity[];
-    priorityTasks: PriorityTask[];
+    pipelineData: PipelineItem[];
     // Legacy fields for backward compatibility
     totalContracts: number;
     totalValue: number;
