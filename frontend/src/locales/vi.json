@@ -481,12 +481,12 @@
                 "OTHER": "Khác"
             },
             "statusOptions": {
-                "NEW": "Mới",
+                "NEW": "Mới tiếp cận",
                 "CONTACTED": "Đã liên hệ",
-                "PROPOSAL": "Đề xuất",
-                "NEGOTIATION": "Đàm phán",
-                "WON": "Thắng",
-                "LOST": "Thua"
+                "PROPOSAL": "Chờ báo giá",
+                "NEGOTIATION": "Đang đàm phán",
+                "WON": "Trúng thầu",
+                "LOST": "Thất bại"
             },
             "priorityOptions": {
                 "HIGH": "Cao",

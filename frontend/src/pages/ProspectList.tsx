@@ -15,8 +15,14 @@ import type { Prospect, Province } from '../types';
 
 const { Option } = Select;
 
+// Funnel stage colors — must match Dashboard funnel gradient
 const STATUS_COLORS: Record<string, string> = {
-    NEW: 'blue', CONTACTED: 'cyan', PROPOSAL: 'orange', NEGOTIATION: 'purple', WON: 'green', LOST: 'red',
+    NEW: '#E05C97',       // Tầng 1: Pink
+    CONTACTED: '#F97316', // Tầng 2: Orange
+    PROPOSAL: '#F59E0B',  // Tầng 3: Yellow
+    NEGOTIATION: '#3B9ED8', // Tầng 4: Teal-Blue
+    WON: '#1D4ED8',       // Tầng 5: Deep Blue
+    LOST: '#6B7280',      // Tầng phụ: Gray
 };
 const PRIORITY_COLORS: Record<string, string> = { HIGH: 'red', MEDIUM: 'gold', LOW: 'green' };
 
@@ -153,6 +159,10 @@ const ProspectList: React.FC = () => {
             title: t('business.prospects.client'), dataIndex: 'client', key: 'client', width: 160, ellipsis: true,
         },
         {
+            title: 'SĐT Khách hàng', dataIndex: 'contactPhone', key: 'contactPhone', width: 130,
+            render: (val: string) => val || '-',
+        },
+        {
             title: t('business.prospects.location'), dataIndex: 'location', key: 'location', width: 140, ellipsis: true,
         },
         {
@@ -163,9 +173,9 @@ const ProspectList: React.FC = () => {
             },
         },
         {
-            title: t('business.prospects.estimatedValue'), dataIndex: 'estimatedValue', key: 'estimatedValue', width: 140,
+            title: `${t('business.prospects.estimatedValue')} (Tr MMK)`, dataIndex: 'estimatedValue', key: 'estimatedValue', width: 160,
             align: 'right' as const,
-            render: (val: number) => val ? val.toLocaleString('vi-VN') : '-',
+            render: (val: number) => val ? `${val.toLocaleString('vi-VN')} Tr` : '-',
         },
         {
             title: t('business.prospects.contactPerson'), dataIndex: 'contactPerson', key: 'contactPerson', width: 130, ellipsis: true,
@@ -180,7 +190,13 @@ const ProspectList: React.FC = () => {
         },
         {
             title: t('business.prospects.status'), dataIndex: 'status', key: 'status', width: 110, align: 'center' as const,
-            render: (val: string) => <Tag color={STATUS_COLORS[val]}>{t(`business.prospects.statusOptions.${val}`)}</Tag>,
+            render: (val: string) => (
+                <Tag
+                    style={{ backgroundColor: STATUS_COLORS[val], borderColor: STATUS_COLORS[val], color: '#fff', fontWeight: 600 }}
+                >
+                    {t(`business.prospects.statusOptions.${val}`)}
+                </Tag>
+            ),
         },
         {
             title: t('business.prospects.expectedDate'), dataIndex: 'expectedDate', key: 'expectedDate', width: 120,
@@ -267,6 +283,9 @@ const ProspectList: React.FC = () => {
                     <Form.Item name="client" label={t('business.prospects.client')}>
                         <Input />
                     </Form.Item>
+                    <Form.Item name="contactPhone" label="SĐT Khách hàng">
+                        <Input placeholder="VD: +95 9 123 456 789" />
+                    </Form.Item>
                     <Form.Item name="location" label={t('business.prospects.location')}>
                         <Input />
                     </Form.Item>
@@ -275,13 +294,26 @@ const ProspectList: React.FC = () => {
                             {branches.map(b => <Option key={b.id} value={b.id}>{b.code}</Option>)}
                         </Select>
                     </Form.Item>
-                    <Form.Item name="estimatedValue" label={t('business.prospects.estimatedValue')}>
-                        <InputNumber style={{ width: '100%' }} formatter={v => `${v}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')} />
+                    <Form.Item
+                        name="estimatedValue"
+                        label={
+                            <span>
+                                {t('business.prospects.estimatedValue')}
+                                <span style={{ fontWeight: 400, color: '#6B7280', marginLeft: 6 }}>(Triệu MMK)</span>
+                            </span>
+                        }
+                        extra={<span style={{ color: '#F59E0B', fontSize: 12 }}>⚠️ Nhập giá trị theo đơn vị Triệu MMK. VD: 1.500 = 1.500 Triệu MMK</span>}
+                    >
+                        <InputNumber
+                            style={{ width: '100%' }}
+                            min={0}
+                            placeholder="VD: 1500"
+                            addonAfter="Tr MMK"
+                            formatter={v => `${v}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
+                            parser={(v: any) => v!.replace(/,/g, '')}
+                        />
                     </Form.Item>
                     <Form.Item name="contactPerson" label={t('business.prospects.contactPerson')}>
-                        <Input />
-                    </Form.Item>
-                    <Form.Item name="contactPhone" label={t('business.prospects.contactPhone')}>
                         <Input />
                     </Form.Item>
                     <Form.Item name="source" label={t('business.prospects.source')} initialValue="DIRECT">
