@@ -119,7 +119,7 @@ const DailyLogModal: React.FC<Props> = ({ item, open, onClose }) => {
             </div>
 
             {/* Log history */}
-            <Divider orientation="left" style={{ fontSize: 12, color: '#94a3b8' }}>
+            <Divider titlePlacement="left" style={{ fontSize: 12, color: '#94a3b8' }}>
                 {t('plans.daily.history')}
             </Divider>
 

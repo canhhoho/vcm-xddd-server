@@ -661,4 +661,42 @@ export class GasApiService implements IApiService {
     async deleteWeeklyPlanItem(id: string) {
         return this.runGasFunction('deleteWeeklyPlanItem', { id });
     }
+
+    // ==================== MONTHLY PLANS ====================
+    async getMonthlyPlans(params?: any) {
+        return this.runGasFunction('getMonthlyPlans', params || {});
+    }
+
+    async createMonthlyPlan(data: any) {
+        return this.runGasFunction('createMonthlyPlan', data);
+    }
+
+    async deleteMonthlyPlan(id: string) {
+        return this.runGasFunction('deleteMonthlyPlan', { id });
+    }
+
+    async getMonthlyPlanItems(planId: string) {
+        return this.runGasFunction('getMonthlyPlanItems', { planId });
+    }
+
+    async createMonthlyPlanItem(planId: string, data: any) {
+        return this.runGasFunction('createMonthlyPlanItem', { planId, ...data });
+    }
+
+    async updateMonthlyPlanItem(id: string, data: any) {
+        return this.runGasFunction('updateMonthlyPlanItem', { id, ...data });
+    }
+
+    async deleteMonthlyPlanItem(id: string) {
+        return this.runGasFunction('deleteMonthlyPlanItem', { id });
+    }
+
+    // ==================== DAILY LOGS ====================
+    async getDailyLogs(itemId: string) {
+        return this.runGasFunction('getDailyLogs', { itemId });
+    }
+
+    async upsertDailyLog(data: any) {
+        return this.runGasFunction('upsertDailyLog', data);
+    }
 }

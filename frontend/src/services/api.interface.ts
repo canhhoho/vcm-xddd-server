@@ -148,4 +148,17 @@ export interface IApiService {
     createWeeklyPlanItem(planId: string, data: any): Promise<ApiResponse>;
     updateWeeklyPlanItem(id: string, data: any): Promise<ApiResponse>;
     deleteWeeklyPlanItem(id: string): Promise<ApiResponse>;
+
+    // ==================== MONTHLY PLANS ====================
+    getMonthlyPlans(params?: any): Promise<ApiResponse>;
+    createMonthlyPlan(data: any): Promise<ApiResponse>;
+    deleteMonthlyPlan(id: string): Promise<ApiResponse>;
+    getMonthlyPlanItems(planId: string): Promise<ApiResponse>;
+    createMonthlyPlanItem(planId: string, data: any): Promise<ApiResponse>;
+    updateMonthlyPlanItem(id: string, data: any): Promise<ApiResponse>;
+    deleteMonthlyPlanItem(id: string): Promise<ApiResponse>;
+
+    // ==================== DAILY LOGS ====================
+    getDailyLogs(itemId: string): Promise<ApiResponse>;
+    upsertDailyLog(data: any): Promise<ApiResponse>;
 }
