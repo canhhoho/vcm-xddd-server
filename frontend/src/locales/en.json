@@ -12,7 +12,7 @@
         "settings": "Settings",
         "logout": "Sign Out",
         "appTitle": "VCM SYSTEM",
-        "appSubtitle": "Construction Mgmt",
+        "appSubtitle": "Construction Management",
         "footer": "Make by Canhhv1@viettel.com.vn",
         "businessMgmt": "Business Management"
     },
@@ -59,7 +59,7 @@
         "noData": "No data available",
         "year": "Year",
         "month": "Month",
-        "rateMonth": "Mo. Rate",
+        "rateMonth": "Monthly Rate",
         "millionUnit": "M",
         "salesFunnel": "B2B Sales Funnel",
         "salesFunnelB2C": "B2C Sales Funnel",
@@ -98,7 +98,7 @@
         "colRate": "Rate",
         "colBranch": "Branch",
         "year": "Year",
-        "quarter": "Q",
+        "quarter": "Quarter",
         "month": "Month",
         "all": "All",
         "total": "TOTAL",
@@ -357,8 +357,8 @@
         "formNameReq": "Please enter project name",
         "formEndAfterStart": "End date must be after start date",
         "catConstruction": "Construction",
-        "catQuality": "Quality Docs",
-        "catPayment": "Payment Docs",
+        "catQuality": "Quality Documents",
+        "catPayment": "Payment Documents",
         "catOther": "Other",
         "priorityHigh": "High",
         "priorityMedium": "Medium",
@@ -447,7 +447,7 @@
         "noAccessDesc": "You do not have permission to view the branch list.",
         "posDirector": "Director",
         "posDeputyDirector": "Deputy Director",
-        "posManager": "Manager",
+        "posManager": "Department Head",
         "posDeputyManager": "Deputy Manager",
         "posLeader": "Leader",
         "posStaff": "Staff",
@@ -476,7 +476,34 @@
     "plans": {
         "pageTitle": "Plans Management",
         "noAccess": "Access Denied",
-        "noAccessDesc": "You do not have permission to view the plans page."
+        "noAccessDesc": "You do not have permission to view the plans page.",
+        "prevMonth": "Previous Month",
+        "nextMonth": "Next Month",
+        "today": "Today",
+        "monthly": {
+            "sectionTitle": "Monthly Plan",
+            "createPlan": "Create Monthly Plan",
+            "noplan": "No plan for this month yet. Create one.",
+            "addItem": "Add Goal",
+            "editItem": "Edit Goal",
+            "target": "Target (KPI)",
+            "targetPlaceholder": "Specific target to achieve this month",
+            "deleteConfirm": "Delete this monthly plan and all its goals?"
+        },
+        "weekly": {
+            "sectionTitle": "Weekly Plans"
+        },
+        "daily": {
+            "updateBtn": "Update",
+            "modalTitle": "Update Progress",
+            "progress": "Progress (%)",
+            "note": "Today's Note",
+            "notePlaceholder": "What was done, any blockers...",
+            "history": "Update History",
+            "noHistory": "No update history yet",
+            "saveSuccess": "Progress saved",
+            "logDate": "Date"
+        }
     },
     "business": {
         "pageTitle": "Business Management",
@@ -562,7 +589,7 @@
             "statusCarriedOver": "Carried Over",
             "currentWeek": "Current Week",
             "items": "tasks",
-            "whatPlaceholder": "Task content",
+            "whatPlaceholder": "What needs to be done",
             "whyPlaceholder": "Purpose",
             "whoPlaceholder": "Person in charge",
             "wherePlaceholder": "Location",
@@ -588,7 +615,7 @@
         "groups": {
             "LEADER": "Leadership",
             "CONSTRUCTION": "Construction",
-            "BUSINESS": "Business Dev",
+            "BUSINESS": "Business",
             "MARKETING": "Marketing",
             "QS": "QS",
             "DESIGN": "Design",
@@ -645,7 +672,9 @@
         "formDefaultRoleView": "View Only (VIEW)",
         "formDefaultRoleNo": "No Access",
         "deleteUserConfirm": "Are you sure you want to delete this user?",
+        "deleteUserConfirmDesc": "This action cannot be undone.",
         "deletePositionConfirm": "Confirm delete this position?",
+        "deletePositionConfirmDesc": "This action cannot be undone.",
         "deletePositionBtn": "Delete Position",
         "savePermissions": "Save Changes",
         "saved": "Saved",
@@ -676,6 +705,7 @@
         "modules": {
             "targets": "Targets",
             "business": "Business",
+            "plans": "Plans",
             "contracts": "Contracts",
             "projects": "Projects",
             "branches": "Branches"

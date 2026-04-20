@@ -13,6 +13,7 @@ export interface PermissionResult {
         targets: ModuleAccess;
         business: ModuleAccess;
         branches: ModuleAccess;
+        plans: ModuleAccess;
     };
 }
 
@@ -36,6 +37,7 @@ export const usePermissions = (): PermissionResult => {
                 targets: (user?.targets || 'NO_ACCESS').toUpperCase() as ModuleAccess,
                 business: (user?.business || 'NO_ACCESS').toUpperCase() as ModuleAccess,
                 branches: (user?.branches || 'NO_ACCESS').toUpperCase() as ModuleAccess,
+                plans: (user?.plans || 'NO_ACCESS').toUpperCase() as ModuleAccess,
             }
         };
     }, []);

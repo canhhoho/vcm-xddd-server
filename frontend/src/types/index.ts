@@ -7,7 +7,9 @@ export interface ModulePermission {
     contracts: ModuleAccess;
     projects: ModuleAccess;
     targets: ModuleAccess;
+    business: ModuleAccess;
     branches: ModuleAccess;
+    plans: ModuleAccess;
 }
 
 export interface Position {
@@ -264,5 +266,41 @@ export interface WeeklyPlanItem {
     status: PlanItemStatus;
     result: string;
     carriedFrom: string;
+    progressPct: number;
+    monthlyItemId?: string;
+    createdAt: string;
+}
+
+export interface MonthlyPlan {
+    id: string;
+    monthStart: string;
+    department: Department;
+    createdBy?: string;
+    createdAt: string;
+}
+
+export interface MonthlyPlanItem {
+    id: string;
+    planId: string;
+    sortOrder: number;
+    title: string;
+    why?: string;
+    assigneeId?: string;
+    assigneeName?: string;
+    target?: string;
+    method?: string;
+    status: 'TODO' | 'IN_PROGRESS' | 'DONE';
+    result?: string;
+    createdAt: string;
+}
+
+export interface DailyLog {
+    id: string;
+    itemId: string;
+    logDate: string;
+    progressPct: number;
+    note?: string;
+    updatedBy?: string;
+    updaterName?: string;
     createdAt: string;
 }

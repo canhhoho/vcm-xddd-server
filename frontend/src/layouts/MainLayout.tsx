@@ -65,6 +65,10 @@ const MainLayout: React.FC = () => {
                 icon: <BankOutlined />,
                 label: t('layout.business'),
             });
+        }
+
+        // Plans Module
+        if (permissions?.plans !== 'NO_ACCESS') {
             items.push({
                 key: '/plans',
                 icon: <ScheduleOutlined />,

@@ -7,7 +7,7 @@
         "contracts": "Hợp đồng",
         "projects": "Dự án",
         "branches": "Chi nhánh",
-        "users": "User",
+        "users": "Người dùng",
         "profile": "Hồ sơ",
         "settings": "Cài đặt",
         "logout": "Đăng xuất",
@@ -475,7 +475,34 @@
     "plans": {
         "pageTitle": "Quản lý Kế hoạch",
         "noAccess": "Không có quyền truy cập",
-        "noAccessDesc": "Bạn không có quyền xem trang kế hoạch."
+        "noAccessDesc": "Bạn không có quyền xem trang kế hoạch.",
+        "prevMonth": "Tháng trước",
+        "nextMonth": "Tháng sau",
+        "today": "Hôm nay",
+        "monthly": {
+            "sectionTitle": "Kế hoạch tháng",
+            "createPlan": "Tạo kế hoạch tháng",
+            "noplan": "Chưa có kế hoạch tháng này. Hãy tạo mới.",
+            "addItem": "Thêm mục tiêu",
+            "editItem": "Sửa mục tiêu",
+            "target": "Mục tiêu (KPI)",
+            "targetPlaceholder": "Mục tiêu cụ thể cần đạt trong tháng",
+            "deleteConfirm": "Xóa kế hoạch tháng này và toàn bộ mục tiêu?"
+        },
+        "weekly": {
+            "sectionTitle": "Kế hoạch tuần"
+        },
+        "daily": {
+            "updateBtn": "Cập nhật",
+            "modalTitle": "Cập nhật tiến độ",
+            "progress": "Tiến độ (%)",
+            "note": "Ghi chú hôm nay",
+            "notePlaceholder": "Đã làm gì, gặp khó khăn gì...",
+            "history": "Lịch sử cập nhật",
+            "noHistory": "Chưa có lịch sử cập nhật",
+            "saveSuccess": "Đã lưu tiến độ",
+            "logDate": "Ngày"
+        }
     },
     "business": {
         "pageTitle": "Quản lý Kinh doanh",
@@ -570,7 +597,7 @@
         }
     },
     "users": {
-        "title": "Quản lý User & Phân quyền",
+        "title": "Quản lý Người dùng & Phân quyền",
         "exportExcel": "XUẤT FILE EXCEL",
         "tabUsers": "Người dùng",
         "tabPermissions": "Phân quyền người dùng",
@@ -644,7 +671,9 @@
         "formDefaultRoleView": "Chỉ xem (VIEW)",
         "formDefaultRoleNo": "Không truy cập",
         "deleteUserConfirm": "Bạn chắc chắn muốn xóa người dùng này?",
+        "deleteUserConfirmDesc": "Hành động này không thể hoàn tác.",
         "deletePositionConfirm": "Xác nhận xóa chức danh này?",
+        "deletePositionConfirmDesc": "Hành động này không thể hoàn tác.",
         "deletePositionBtn": "Xóa chức danh",
         "savePermissions": "Lưu thay đổi",
         "saved": "Đã lưu",
@@ -675,6 +704,7 @@
         "modules": {
             "targets": "Chỉ tiêu",
             "business": "Kinh doanh",
+            "plans": "Kế hoạch",
             "contracts": "Hợp đồng",
             "projects": "Dự án",
             "branches": "Chi nhánh"

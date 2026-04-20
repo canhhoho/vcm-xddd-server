@@ -31,6 +31,7 @@ CREATE TABLE IF NOT EXISTS users (
   projects      VARCHAR(20) DEFAULT 'NO_ACCESS',
   targets       VARCHAR(20) DEFAULT 'NO_ACCESS',
   business      VARCHAR(20) DEFAULT 'NO_ACCESS',
+  plans         VARCHAR(20) DEFAULT 'NO_ACCESS',
   created_at    TIMESTAMPTZ DEFAULT NOW()
 );
 

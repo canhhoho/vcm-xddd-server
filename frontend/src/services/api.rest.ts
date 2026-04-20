@@ -382,4 +382,43 @@ export class RestApiService implements IApiService {
     async deleteWeeklyPlanItem(id: string) {
         return this.request('DELETE', `/weekly-plans/items/${id}`);
     }
+
+    // ==================== MONTHLY PLANS ====================
+    async getMonthlyPlans(params?: any) {
+        const q = params ? '?' + new URLSearchParams(params).toString() : '';
+        return this.request('GET', `/monthly-plans${q}`);
+    }
+
+    async createMonthlyPlan(data: any) {
+        return this.request('POST', '/monthly-plans', data);
+    }
+
+    async deleteMonthlyPlan(id: string) {
+        return this.request('DELETE', `/monthly-plans/${id}`);
+    }
+
+    async getMonthlyPlanItems(planId: string) {
+        return this.request('GET', `/monthly-plans/${planId}/items`);
+    }
+
+    async createMonthlyPlanItem(planId: string, data: any) {
+        return this.request('POST', `/monthly-plans/${planId}/items`, data);
+    }
+
+    async updateMonthlyPlanItem(id: string, data: any) {
+        return this.request('PUT', `/monthly-plans/items/${id}`, data);
+    }
+
+    async deleteMonthlyPlanItem(id: string) {
+        return this.request('DELETE', `/monthly-plans/items/${id}`);
+    }
+
+    // ==================== DAILY LOGS ====================
+    async getDailyLogs(itemId: string) {
+        return this.request('GET', `/daily-logs?itemId=${itemId}`);
+    }
+
+    async upsertDailyLog(data: any) {
+        return this.request('POST', '/daily-logs', data);
+    }
 }

@@ -15,14 +15,14 @@ async function logActivity(email, action, desc) {
 router.get('/', async (req, res) => {
   try {
     const result = await query(
-      'SELECT id, name, position_name, category, contracts, projects, targets, business, branches FROM users ORDER BY name'
+      'SELECT id, name, position_name, category, contracts, projects, targets, business, branches, plans FROM users ORDER BY name'
     );
     const data = result.rows.map(r => ({
       userId: r.id, userName: r.name,
       positionName: r.position_name || '', category: r.category || '',
       contracts: r.contracts || 'NO_ACCESS', projects: r.projects || 'NO_ACCESS',
       targets: r.targets || 'NO_ACCESS', business: r.business || 'NO_ACCESS',
-      branches: r.branches || 'NO_ACCESS',
+      branches: r.branches || 'NO_ACCESS', plans: r.plans || 'NO_ACCESS',
     }));
     res.json({ success: true, data });
   } catch (err) {
@@ -45,6 +45,7 @@ router.put('/', async (req, res) => {
       if (p.targets) { fields.push(`targets = $${idx}`); values.push(p.targets); idx++; }
       if (p.business) { fields.push(`business = $${idx}`); values.push(p.business); idx++; }
       if (p.branches) { fields.push(`branches = $${idx}`); values.push(p.branches); idx++; }
+      if (p.plans) { fields.push(`plans = $${idx}`); values.push(p.plans); idx++; }
 
       if (fields.length > 0) {
         values.push(p.userId);
