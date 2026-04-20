@@ -50,7 +50,7 @@ const MainLayout: React.FC = () => {
         ];
 
         // Targets Module
-        if (permissions?.targets !== 'NO_ACCESS') {
+        if (isAdmin || permissions?.targets !== 'NO_ACCESS') {
             items.push({
                 key: '/targets',
                 icon: <AimOutlined />,
@@ -59,7 +59,7 @@ const MainLayout: React.FC = () => {
         }
 
         // Business Module
-        if (permissions?.business !== 'NO_ACCESS') {
+        if (isAdmin || permissions?.business !== 'NO_ACCESS') {
             items.push({
                 key: '/business',
                 icon: <BankOutlined />,
@@ -68,7 +68,7 @@ const MainLayout: React.FC = () => {
         }
 
         // Plans Module
-        if (permissions?.plans !== 'NO_ACCESS') {
+        if (isAdmin || permissions?.plans !== 'NO_ACCESS') {
             items.push({
                 key: '/plans',
                 icon: <ScheduleOutlined />,
@@ -77,7 +77,7 @@ const MainLayout: React.FC = () => {
         }
 
         // Contracts Module
-        if (permissions?.contracts !== 'NO_ACCESS') {
+        if (isAdmin || permissions?.contracts !== 'NO_ACCESS') {
             items.push({
                 key: '/contracts',
                 icon: <FileTextOutlined />,
@@ -86,7 +86,7 @@ const MainLayout: React.FC = () => {
         }
 
         // Projects Module
-        if (permissions?.projects !== 'NO_ACCESS') {
+        if (isAdmin || permissions?.projects !== 'NO_ACCESS') {
             items.push({
                 key: '/projects',
                 icon: <ProjectOutlined />,
@@ -95,7 +95,7 @@ const MainLayout: React.FC = () => {
         }
 
         // Branches Module
-        if (permissions?.branches !== 'NO_ACCESS') {
+        if (isAdmin || permissions?.branches !== 'NO_ACCESS') {
             items.push({
                 key: '/branches',
                 icon: <BankOutlined />,
