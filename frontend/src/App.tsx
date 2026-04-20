@@ -12,6 +12,7 @@ const Contracts = React.lazy(() => import('./pages/Contracts'));
 const Projects = React.lazy(() => import('./pages/Projects'));
 const Targets = React.lazy(() => import('./pages/TargetsV2'));
 const Business = React.lazy(() => import('./pages/Business'));
+const Plans = React.lazy(() => import('./pages/Plans'));
 const Branches = React.lazy(() => import('./pages/Branches'));
 const UserManagement = React.lazy(() => import('./pages/UserManagement'));
 
@@ -66,6 +67,7 @@ const App: React.FC = () => {
             <Route path="projects" element={<Suspense fallback={<PageLoader />}><Projects /></Suspense>} />
             <Route path="targets" element={<Suspense fallback={<PageLoader />}><Targets /></Suspense>} />
             <Route path="business" element={<Suspense fallback={<PageLoader />}><Business /></Suspense>} />
+            <Route path="plans" element={<Suspense fallback={<PageLoader />}><Plans /></Suspense>} />
             <Route path="branches" element={<Suspense fallback={<PageLoader />}><Branches /></Suspense>} />
             <Route path="users" element={<Suspense fallback={<PageLoader />}><UserManagement /></Suspense>} />
           </Route>

@@ -14,6 +14,7 @@ import {
     KeyOutlined,
     MenuFoldOutlined,
     MenuUnfoldOutlined,
+    ScheduleOutlined,
 } from '@ant-design/icons';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import type { MenuProps } from 'antd';
@@ -63,6 +64,11 @@ const MainLayout: React.FC = () => {
                 key: '/business',
                 icon: <BankOutlined />,
                 label: t('layout.business'),
+            });
+            items.push({
+                key: '/plans',
+                icon: <ScheduleOutlined />,
+                label: t('layout.plans'),
             });
         }
 

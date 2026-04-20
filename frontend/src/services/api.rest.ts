@@ -320,8 +320,8 @@ export class RestApiService implements IApiService {
     }
 
     // ==================== PROSPECTS ====================
-    async getProspects() {
-        return this.request('GET', '/prospects');
+    async getProspects(type?: string) {
+        return this.request('GET', '/prospects', undefined, type ? { type } : undefined);
     }
 
     async createProspect(data: any) {
@@ -334,6 +334,23 @@ export class RestApiService implements IApiService {
 
     async deleteProspect(id: string) {
         return this.request('DELETE', `/prospects/${id}`);
+    }
+
+    // ==================== COLLABORATORS ====================
+    async getCollaborators(branchId?: string) {
+        return this.request('GET', '/collaborators', undefined, branchId ? { branchId } : undefined);
+    }
+
+    async createCollaborator(data: any) {
+        return this.request('POST', '/collaborators', data);
+    }
+
+    async updateCollaborator(data: any) {
+        return this.request('PUT', `/collaborators/${data.id}`, data);
+    }
+
+    async deleteCollaborator(params: { id: string }) {
+        return this.request('DELETE', `/collaborators/${params.id}`);
     }
 
     // ==================== WEEKLY PLANS ====================

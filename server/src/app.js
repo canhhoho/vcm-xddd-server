@@ -30,6 +30,7 @@ const activityRoutes = require('./routes/activities');
 const provinceRoutes = require('./routes/provinces');
 const prospectRoutes = require('./routes/prospects');
 const weeklyPlanRoutes = require('./routes/weeklyPlans');
+const collaboratorRoutes = require('./routes/collaborators');
 
 const app = express();
 
@@ -80,6 +81,7 @@ app.use('/api/activities', activityRoutes);
 app.use('/api/provinces', provinceRoutes);
 app.use('/api/prospects', prospectRoutes);
 app.use('/api/weekly-plans', weeklyPlanRoutes);
+app.use('/api/collaborators', collaboratorRoutes);
 
 // ==================== ERROR HANDLER ====================
 app.use(errorHandler);

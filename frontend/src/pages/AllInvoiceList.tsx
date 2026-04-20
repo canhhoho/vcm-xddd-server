@@ -229,9 +229,8 @@ const AllInvoiceList: React.FC = () => {
             key: 'contractCode',
             width: 180,
             fixed: 'left' as const,
-            ellipsis: true,
             render: (text: string) => (
-                <span style={{ fontWeight: 600, color: '#1a1a2e' }}>{text}</span>
+                <span style={{ fontWeight: 600, color: '#1a1a2e', whiteSpace: 'normal', wordBreak: 'break-word' }}>{text}</span>
             ),
         },
         {
@@ -239,9 +238,8 @@ const AllInvoiceList: React.FC = () => {
             dataIndex: 'contractName',
             key: 'contractName',
             width: 280,
-            ellipsis: true,
             render: (text: string) => (
-                <span style={{ color: '#374151' }}>{text}</span>
+                <span style={{ color: '#374151', whiteSpace: 'normal', wordBreak: 'break-word' }}>{text}</span>
             ),
         },
         {

@@ -26,7 +26,11 @@ const STATUS_COLORS: Record<string, string> = {
 };
 const PRIORITY_COLORS: Record<string, string> = { HIGH: 'red', MEDIUM: 'gold', LOW: 'green' };
 
-const ProspectList: React.FC = () => {
+interface ProspectListProps {
+    prospectType?: 'B2B' | 'B2C';
+}
+
+const ProspectList: React.FC<ProspectListProps> = ({ prospectType = 'B2B' }) => {
     const { t } = useTranslation();
     const { permissions, isAdmin } = usePermissions();
     const appConfigQuery = useAppConfig();
@@ -46,13 +50,13 @@ const ProspectList: React.FC = () => {
     const loadData = async () => {
         setLoading(true);
         try {
-            const res = await apiService.getProspects();
+            const res = await apiService.getProspects(prospectType);
             if (res.success) setProspects(res.data || []);
         } catch { /* ignore */ }
         setLoading(false);
     };
 
-    useEffect(() => { loadData(); }, []);
+    useEffect(() => { loadData(); }, [prospectType]);
 
     const filteredData = useMemo(() => {
         return prospects.filter(p => {
@@ -77,6 +81,7 @@ const ProspectList: React.FC = () => {
         form.setFieldsValue({
             ...record,
             expectedDate: record.expectedDate ? dayjs(record.expectedDate) : null,
+            contactDate: record.contactDate ? dayjs(record.contactDate) : null,
         });
         setModalVisible(true);
     };
@@ -86,6 +91,8 @@ const ProspectList: React.FC = () => {
             const payload = {
                 ...values,
                 expectedDate: values.expectedDate?.format('YYYY-MM-DD') || null,
+                contactDate: values.contactDate?.format('YYYY-MM-DD') || null,
+                prospectType,
             };
             if (editingRecord) {
                 const res = await apiService.updateProspect(editingRecord.id, payload);
@@ -133,6 +140,7 @@ const ProspectList: React.FC = () => {
                 [t('business.prospects.source')]: t(`business.prospects.sourceOptions.${p.source}`),
                 [t('business.prospects.priority')]: t(`business.prospects.priorityOptions.${p.priority}`),
                 [t('business.prospects.status')]: t(`business.prospects.statusOptions.${p.status}`),
+                [t('business.prospects.contactDate')]: p.contactDate ? dayjs(p.contactDate).format('DD/MM/YYYY') : '',
                 [t('business.prospects.expectedDate')]: p.expectedDate ? dayjs(p.expectedDate).format('DD/MM/YYYY') : '',
                 [t('business.prospects.note', 'Note')]: p.note || '',
             };
@@ -149,24 +157,31 @@ const ProspectList: React.FC = () => {
 
     const columns: ColumnsType<Prospect> = useMemo(() => [
         {
-            title: '#', key: 'index', width: 60, align: 'center' as const,
+            title: '#', key: 'index', width: 50, align: 'center' as const,
             render: (_: any, __: any, index: number) => index + 1,
         },
         {
-            title: t('business.prospects.name'), dataIndex: 'name', key: 'name', width: 240, ellipsis: true,
+            title: t('business.prospects.name'), dataIndex: 'name', key: 'name', width: 200,
+            render: (val: string) => <span style={{ whiteSpace: 'normal', wordBreak: 'break-word' }}>{val}</span>,
         },
         {
-            title: t('business.prospects.client'), dataIndex: 'client', key: 'client', width: 200, ellipsis: true,
+            title: t('business.prospects.contactDate'), dataIndex: 'contactDate', key: 'contactDate', width: 110,
+            align: 'center' as const,
+            render: (val: string) => val ? dayjs(val).format('DD/MM/YYYY') : '-',
         },
         {
-            title: t('business.prospects.clientPhone'), dataIndex: 'contactPhone', key: 'contactPhone', width: 150,
+            title: t('business.prospects.client'), dataIndex: 'client', key: 'client', width: 150, ellipsis: true,
+        },
+        {
+            title: t('business.prospects.clientPhone'), dataIndex: 'contactPhone', key: 'contactPhone', width: 120,
             render: (val: string) => val || '-',
         },
         {
-            title: t('business.prospects.location'), dataIndex: 'location', key: 'location', width: 160, ellipsis: true,
+            title: t('business.prospects.location'), dataIndex: 'location', key: 'location', width: 160,
+            render: (val: string) => <span style={{ whiteSpace: 'normal', wordBreak: 'break-word' }}>{val || '-'}</span>,
         },
         {
-            title: t('business.prospects.branch'), key: 'branch', width: 110, align: 'center' as const,
+            title: t('business.prospects.branch'), key: 'branch', width: 80, align: 'center' as const,
             render: (_: any, record: Prospect) => {
                 const b = branches.find(br => br.id === record.branchId);
                 return b?.code || record.branchCode || '';
@@ -182,23 +197,23 @@ const ProspectList: React.FC = () => {
                     </span>
                 </div>
             ),
-            dataIndex: 'estimatedValue', key: 'estimatedValue', width: 140,
+            dataIndex: 'estimatedValue', key: 'estimatedValue', width: 120,
             align: 'right' as const,
             render: (val: number) => val ? `${val.toLocaleString('vi-VN')} ${t('dashboard.millionUnit')}` : '-',
         },
         {
-            title: t('business.prospects.contactPerson'), dataIndex: 'contactPerson', key: 'contactPerson', width: 150, ellipsis: true,
+            title: t('business.prospects.contactPerson'), dataIndex: 'contactPerson', key: 'contactPerson', width: 130, ellipsis: true,
         },
         {
-            title: t('business.prospects.source'), dataIndex: 'source', key: 'source', width: 120, align: 'center' as const,
+            title: t('business.prospects.source'), dataIndex: 'source', key: 'source', width: 100, align: 'center' as const,
             render: (val: string) => <Tag>{t(`business.prospects.sourceOptions.${val}`)}</Tag>,
         },
         {
-            title: t('business.prospects.priority'), dataIndex: 'priority', key: 'priority', width: 120, align: 'center' as const,
+            title: t('business.prospects.priority'), dataIndex: 'priority', key: 'priority', width: 90, align: 'center' as const,
             render: (val: string) => <Tag color={PRIORITY_COLORS[val]}>{t(`business.prospects.priorityOptions.${val}`)}</Tag>,
         },
         {
-            title: t('business.prospects.status'), dataIndex: 'status', key: 'status', width: 140, align: 'center' as const,
+            title: t('business.prospects.status'), dataIndex: 'status', key: 'status', width: 120, align: 'center' as const,
             render: (val: string) => (
                 <Tag
                     style={{ backgroundColor: STATUS_COLORS[val], borderColor: STATUS_COLORS[val], color: '#fff', fontWeight: 600 }}
@@ -208,12 +223,12 @@ const ProspectList: React.FC = () => {
             ),
         },
         {
-            title: t('business.prospects.expectedDate'), dataIndex: 'expectedDate', key: 'expectedDate', width: 160,
+            title: t('business.prospects.expectedDate'), dataIndex: 'expectedDate', key: 'expectedDate', width: 110,
             align: 'center' as const,
             render: (val: string) => val ? dayjs(val).format('DD/MM/YYYY') : '-',
         },
         {
-            title: t('common.actions'), key: 'action', width: 110, align: 'center' as const, fixed: 'right' as const,
+            title: t('common.actions'), key: 'action', width: 90, align: 'center' as const, fixed: 'right' as const,
             render: (_: any, record: Prospect) => (
                 <VcmActionGroup
                     onEdit={canEdit ? () => handleEdit(record) : undefined}
@@ -344,6 +359,9 @@ const ProspectList: React.FC = () => {
                                 <Option key={p} value={p}>{t(`business.prospects.priorityOptions.${p}`)}</Option>
                             ))}
                         </Select>
+                    </Form.Item>
+                    <Form.Item name="contactDate" label={t('business.prospects.contactDate')}>
+                        <DatePicker style={{ width: '100%' }} format="DD/MM/YYYY" />
                     </Form.Item>
                     <Form.Item name="expectedDate" label={t('business.prospects.expectedDate')}>
                         <DatePicker style={{ width: '100%' }} format="DD/MM/YYYY" />

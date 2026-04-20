@@ -225,5 +225,25 @@ DO $$ BEGIN
   ALTER TABLE invoices ALTER COLUMN invoice_number TYPE VARCHAR(500);
   -- Add file_urls column to projects for PDF attachments
   ALTER TABLE projects ADD COLUMN IF NOT EXISTS file_urls TEXT DEFAULT '';
+  -- Add contact_date to prospects
+  ALTER TABLE prospects ADD COLUMN IF NOT EXISTS contact_date DATE DEFAULT NULL;
+  -- Add prospect type (B2B/B2C)
+  ALTER TABLE prospects ADD COLUMN IF NOT EXISTS prospect_type VARCHAR(10) DEFAULT 'B2B';
 END $$;
+
+-- ============================================================
+-- 14. collaborators
+-- ============================================================
+CREATE TABLE IF NOT EXISTS collaborators (
+  id          VARCHAR(50) PRIMARY KEY,
+  name        VARCHAR(255) NOT NULL,
+  company     VARCHAR(255) DEFAULT '',
+  speciality  VARCHAR(255) DEFAULT '',
+  phone       VARCHAR(50) DEFAULT '',
+  email       VARCHAR(255) DEFAULT '',
+  address     TEXT DEFAULT '',
+  note        TEXT DEFAULT '',
+  branch_id   VARCHAR(50) DEFAULT '',
+  created_at  TIMESTAMPTZ DEFAULT NOW()
+);
 

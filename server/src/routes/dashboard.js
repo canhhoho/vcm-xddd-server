@@ -323,24 +323,42 @@ router.get('/stats', async (req, res) => {
         createdAt: r.created_at,
       }));
 
-      // Sales Pipeline (Prospects)
-      const pipelineQuery = await query(`
+      // Sales Pipeline B2B
+      const pipelineB2BQuery = await query(`
         SELECT UPPER(status) as stage, COUNT(id) as cnt, COALESCE(SUM(estimated_value), 0) as total_val
         FROM prospects
         WHERE ($1::int IS NULL OR EXTRACT(YEAR FROM created_at) = $1)
           AND ($2::int IS NULL OR EXTRACT(MONTH FROM created_at) = $2)
+          AND COALESCE(prospect_type, 'B2B') = 'B2B'
+        GROUP BY stage
+      `, [bizYear, bizMonth]);
+
+      // Sales Pipeline B2C
+      const pipelineB2CQuery = await query(`
+        SELECT UPPER(status) as stage, COUNT(id) as cnt, COALESCE(SUM(estimated_value), 0) as total_val
+        FROM prospects
+        WHERE ($1::int IS NULL OR EXTRACT(YEAR FROM created_at) = $1)
+          AND ($2::int IS NULL OR EXTRACT(MONTH FROM created_at) = $2)
+          AND prospect_type = 'B2C'
         GROUP BY stage
       `, [bizYear, bizMonth]);
 
       const prospectStages = ['NEW', 'CONTACTED', 'PROPOSAL', 'NEGOTIATION', 'WON'];
-      const pipelineMap = {};
-      (pipelineQuery?.rows || []).forEach(r => {
-        pipelineMap[r.stage] = { count: parseInt(r.cnt) || 0, value: parseFloat(r.total_val) || 0 };
+
+      const b2bMap = {};
+      (pipelineB2BQuery?.rows || []).forEach(r => {
+        b2bMap[r.stage] = { count: parseInt(r.cnt) || 0, value: parseFloat(r.total_val) || 0 };
       });
       const pipelineData = prospectStages.map(st => ({
-        stage: st,
-        count: pipelineMap[st]?.count || 0,
-        value: pipelineMap[st]?.value || 0
+        stage: st, count: b2bMap[st]?.count || 0, value: b2bMap[st]?.value || 0
+      }));
+
+      const b2cMap = {};
+      (pipelineB2CQuery?.rows || []).forEach(r => {
+        b2cMap[r.stage] = { count: parseInt(r.cnt) || 0, value: parseFloat(r.total_val) || 0 };
+      });
+      const pipelineDataB2C = prospectStages.map(st => ({
+        stage: st, count: b2cMap[st]?.count || 0, value: b2cMap[st]?.value || 0
       }));
 
       return {
@@ -388,6 +406,7 @@ router.get('/stats', async (req, res) => {
           projectExecution: { ...projectExecution, delayed: 0 },
           recentActivities,
           pipelineData,
+          pipelineDataB2C,
           totalContracts: parseInt(nvYtd.rows[0].count),
           totalValue: parseFloat(nvYtd.rows[0].total),
           VERSION: require('../../package.json').version || '1.0.0',

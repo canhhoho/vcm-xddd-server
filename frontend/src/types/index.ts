@@ -168,6 +168,7 @@ export interface DashboardStats {
     projectExecution: ProjectExecution;
     recentActivities: RecentActivity[];
     pipelineData: PipelineItem[];
+    pipelineDataB2C: PipelineItem[];
     // Legacy fields for backward compatibility
     totalContracts: number;
     totalValue: number;
@@ -232,6 +233,8 @@ export interface Prospect {
     priority: ProspectPriority;
     note: string;
     expectedDate: string;
+    contactDate?: string;
+    prospectType: 'B2B' | 'B2C';
     createdBy: string;
     createdAt: string;
 }

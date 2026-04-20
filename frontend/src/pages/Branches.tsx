@@ -13,7 +13,7 @@ import './Branches.css';
 import { usePermissions } from '../hooks/usePermissions';
 import { VcmFilterBar } from '../components/VcmFilterBar';
 import { VcmActionGroup } from '../components/VcmActionGroup';
-import { useBranches, useStaff, useBranchMutations, useStaffMutations } from '../hooks/useBranches';
+import { useBranches, useStaff, useBranchMutations, useStaffMutations, useCollaborators, useCollaboratorMutations } from '../hooks/useBranches';
 import { useAppConfig } from '../hooks/useAppConfig';
 
 // Icon mapping
@@ -38,6 +38,18 @@ interface Branch {
     address?: string;
 }
 
+interface Collaborator {
+    id: string;
+    name: string;
+    company: string;
+    speciality: string;
+    phone: string;
+    email: string;
+    address: string;
+    note: string;
+    branchId: string;
+}
+
 interface BranchStaff {
     id: string;
     branchId: string;
@@ -55,22 +67,29 @@ const Branches: React.FC = () => {
     const { data: branches = [], isLoading: branchesLoading } = useBranches();
     // Only fetch staff when Staff tab is active to prevent blocking the UI
     const { data: staff = [], isLoading: staffLoading } = useStaff(activeTab === 'staff');
+    const { data: collaborators = [], isLoading: collaboratorsLoading } = useCollaborators(activeTab === 'collaborators');
     const { data: appConfig } = useAppConfig();
 
     // Mutations
     const { createBranch, updateBranch, deleteBranch } = useBranchMutations();
     const { createStaff, updateStaff, deleteStaff } = useStaffMutations();
+    const { createCollaborator, updateCollaborator, deleteCollaborator } = useCollaboratorMutations();
 
     // Show loading only for the active tab's data
-    const loading = activeTab === 'branches' ? branchesLoading : (staffLoading && activeTab === 'staff');
+    const loading = activeTab === 'branches' ? branchesLoading
+        : activeTab === 'staff' ? staffLoading
+        : collaboratorsLoading;
 
     // UI State
     const [modalVisible, setModalVisible] = useState(false);
     const [staffModalVisible, setStaffModalVisible] = useState(false);
     const [editingBranch, setEditingBranch] = useState<Branch | null>(null);
     const [editingStaff, setEditingStaff] = useState<BranchStaff | null>(null);
+    const [collaboratorModalVisible, setCollaboratorModalVisible] = useState(false);
+    const [editingCollaborator, setEditingCollaborator] = useState<Collaborator | null>(null);
     const [form] = Form.useForm();
     const [staffForm] = Form.useForm();
+    const [collaboratorForm] = Form.useForm();
 
     // Permissions
     const { permissions, isAdmin } = usePermissions();
@@ -80,6 +99,9 @@ const Branches: React.FC = () => {
     const [selectedBranchFilter, setSelectedBranchFilter] = useState<string | undefined>();
     const [selectedPositionFilter, setSelectedPositionFilter] = useState<string | undefined>();
     const [searchText, setSearchText] = useState('');
+
+    const [collabSearchText, setCollabSearchText] = useState('');
+    const [collabBranchFilter, setCollabBranchFilter] = useState<string | undefined>();
 
     if (permissions.branches === 'NO_ACCESS' && !isAdmin) {
         return (
@@ -142,6 +164,72 @@ const Branches: React.FC = () => {
             return matchBranch && matchPosition && matchSearch;
         });
     }, [staff, selectedBranchFilter, selectedPositionFilter, searchText]);
+
+    const filteredCollaborators = useMemo(() => {
+        return collaborators.filter((c: Collaborator) => {
+            const matchBranch = !collabBranchFilter || c.branchId === collabBranchFilter;
+            const matchSearch = !collabSearchText ||
+                c.name.toLowerCase().includes(collabSearchText.toLowerCase()) ||
+                c.company.toLowerCase().includes(collabSearchText.toLowerCase()) ||
+                c.speciality.toLowerCase().includes(collabSearchText.toLowerCase()) ||
+                c.phone.includes(collabSearchText) ||
+                c.email.toLowerCase().includes(collabSearchText.toLowerCase());
+            return matchBranch && matchSearch;
+        });
+    }, [collaborators, collabBranchFilter, collabSearchText]);
+
+    // Collaborator handlers
+    const handleCreateCollaborator = () => {
+        setEditingCollaborator(null);
+        collaboratorForm.resetFields();
+        setCollaboratorModalVisible(true);
+    };
+
+    const handleEditCollaborator = (record: Collaborator) => {
+        setEditingCollaborator(record);
+        collaboratorForm.setFieldsValue(record);
+        setCollaboratorModalVisible(true);
+    };
+
+    const handleDeleteCollaborator = (record: Collaborator) => {
+        Modal.confirm({
+            title: t('common.confirm'),
+            content: t('branches.deleteCollaboratorConfirm', { name: record.name }),
+            okText: t('common.delete'),
+            okType: 'danger',
+            cancelText: t('common.cancel'),
+            onOk: () => {
+                deleteCollaborator.mutate({ id: record.id }, {
+                    onSuccess: (res: any) => {
+                        if (res.success) {
+                            message.success(t('branches.deleteCollaboratorSuccess'));
+                        } else {
+                            message.error(res.error);
+                        }
+                    },
+                    onError: () => { message.error(t('common.error')); }
+                });
+            },
+        });
+    };
+
+    const handleCollaboratorSubmit = async (values: any) => {
+        const onSuccess = (res: any) => {
+            if (res.success) {
+                message.success(editingCollaborator ? t('branches.updateCollaboratorSuccess') : t('branches.createCollaboratorSuccess'));
+                setCollaboratorModalVisible(false);
+                collaboratorForm.resetFields();
+            } else {
+                message.error(res.error);
+            }
+        };
+        const onError = () => { message.error(t('branches.saveCollaboratorError')); };
+        if (editingCollaborator) {
+            updateCollaborator.mutate({ id: editingCollaborator.id, ...values }, { onSuccess, onError });
+        } else {
+            createCollaborator.mutate(values, { onSuccess, onError });
+        }
+    };
 
     // Branch handlers
     const handleCreateBranch = () => {
@@ -305,6 +393,29 @@ const Branches: React.FC = () => {
         },
     ];
 
+    // Collaborator columns
+    const collaboratorColumns: ColumnsType<Collaborator> = [
+        { title: t('branches.colIndex'), key: 'index', width: 50, align: 'center', render: (_, __, index) => index + 1 },
+        { title: t('branches.colCollabName'), dataIndex: 'name', key: 'name', width: 160, render: (text: string) => <Text strong>{text}</Text> },
+        { title: t('branches.colCollabCompany'), dataIndex: 'company', key: 'company', width: 180, render: (text: string) => <Text>{text || '-'}</Text> },
+        { title: t('branches.colCollabSpeciality'), dataIndex: 'speciality', key: 'speciality', width: 150, render: (text: string) => text ? <Tag color="blue">{text}</Tag> : <Text type="secondary">-</Text> },
+        { title: t('branches.colPhone'), dataIndex: 'phone', key: 'phone', width: 130, render: (text: string) => text ? <Space><PhoneOutlined style={{ color: '#52c41a' }} />{text}</Space> : '-' },
+        { title: t('branches.colEmail'), dataIndex: 'email', key: 'email', render: (text: string) => text ? <Space><MailOutlined style={{ color: '#1890ff' }} />{text}</Space> : '-' },
+        { title: t('branches.filterBranch'), dataIndex: 'branchId', key: 'branchId', width: 120, render: (id: string) => { const b = branches.find((br: Branch) => br.id === id); return b ? <Tag>{b.code}</Tag> : '-'; } },
+        { title: t('branches.colCollabNote'), dataIndex: 'note', key: 'note', render: (text: string) => <Text type="secondary">{text || '-'}</Text> },
+        {
+            title: t('common.actions'), key: 'action', width: 120, align: 'center',
+            render: (_, record) => (
+                <VcmActionGroup
+                    onEdit={() => handleEditCollaborator(record)}
+                    onDelete={() => handleDeleteCollaborator(record)}
+                    canEdit={canEdit}
+                    canDelete={canEdit}
+                />
+            ),
+        },
+    ];
+
     // Staff Filters Component
     const renderStaffFilters = () => (
         <VcmFilterBar>
@@ -351,6 +462,36 @@ const Branches: React.FC = () => {
         </VcmFilterBar>
     );
 
+    const renderCollaboratorFilters = () => (
+        <VcmFilterBar>
+            <Col xs={24} sm={12} md={10}>
+                <Input
+                    placeholder={t('branches.collabSearchPlaceholder')}
+                    prefix={<SearchOutlined />}
+                    value={collabSearchText}
+                    onChange={(e) => setCollabSearchText(e.target.value)}
+                    allowClear
+                />
+            </Col>
+            <Col xs={24} sm={12} md={8}>
+                <Select
+                    placeholder={t('branches.filterBranch')}
+                    value={collabBranchFilter}
+                    onChange={setCollabBranchFilter}
+                    allowClear
+                    style={{ width: '100%' }}
+                    suffixIcon={<FilterOutlined />}
+                >
+                    {branches.map((b: Branch) => (
+                        <Select.Option key={b.id} value={b.id}>
+                            {b.code} - {b.name}
+                        </Select.Option>
+                    ))}
+                </Select>
+            </Col>
+        </VcmFilterBar>
+    );
+
     const tabItems = [
         {
             key: 'branches',
@@ -381,6 +522,29 @@ const Branches: React.FC = () => {
                     />
                 </>
             )
+        },
+        {
+            key: 'collaborators',
+            label: <span><TeamOutlined /> {t('branches.tabCollaborators')}</span>,
+            children: (
+                <>
+                    {renderCollaboratorFilters()}
+                    <Table
+                        columns={collaboratorColumns}
+                        dataSource={filteredCollaborators}
+                        rowKey="id"
+                        loading={loading}
+                        pagination={{
+                            pageSize: 10,
+                            showSizeChanger: true,
+                            showTotal: (total) => t('branches.totalCollaborators', { total }),
+                        }}
+                        size="small"
+                        bordered
+                        className="branches-table"
+                    />
+                </>
+            )
         }
     ];
 
@@ -400,10 +564,10 @@ const Branches: React.FC = () => {
                         <Button
                             type="primary"
                             icon={<PlusOutlined />}
-                            onClick={activeTab === 'branches' ? handleCreateBranch : handleCreateStaff}
+                            onClick={activeTab === 'branches' ? handleCreateBranch : activeTab === 'staff' ? handleCreateStaff : handleCreateCollaborator}
                             className="vcm-btn-premium"
                         >
-                            {activeTab === 'branches' ? t('branches.addBranch') : t('branches.addStaff')}
+                            {activeTab === 'branches' ? t('branches.addBranch') : activeTab === 'staff' ? t('branches.addStaff') : t('branches.addCollaborator')}
                         </Button>
                     )}
                 </div>
@@ -467,6 +631,64 @@ const Branches: React.FC = () => {
                     </Form.Item>
                     <Form.Item name="email" label={t('branches.formEmail')} rules={[{ required: true, message: t('branches.formEmailReq') }, { type: 'email', message: t('branches.formEmailInvalid') }]}>
                         <Input placeholder="VD: ten@vcm.com" />
+                    </Form.Item>
+                </Form>
+            </Modal>
+            {/* Collaborator Modal */}
+            <Modal
+                title={editingCollaborator ? t('branches.modalEditCollaborator') : t('branches.modalAddCollaborator')}
+                open={collaboratorModalVisible}
+                onCancel={() => { setCollaboratorModalVisible(false); collaboratorForm.resetFields(); }}
+                onOk={() => collaboratorForm.submit()}
+                okText={editingCollaborator ? t('common.update') : t('common.add')}
+                cancelText={t('common.cancel')}
+                destroyOnClose
+                width={620}
+            >
+                <Form form={collaboratorForm} layout="vertical" onFinish={handleCollaboratorSubmit}>
+                    <Row gutter={16}>
+                        <Col span={12}>
+                            <Form.Item name="name" label={t('branches.formCollabName')} rules={[{ required: true, message: t('branches.formCollabNameReq') }]}>
+                                <Input placeholder={t('branches.formCollabName')} />
+                            </Form.Item>
+                        </Col>
+                        <Col span={12}>
+                            <Form.Item name="company" label={t('branches.formCollabCompany')}>
+                                <Input placeholder={t('branches.formCollabCompany')} />
+                            </Form.Item>
+                        </Col>
+                    </Row>
+                    <Row gutter={16}>
+                        <Col span={12}>
+                            <Form.Item name="speciality" label={t('branches.formCollabSpeciality')}>
+                                <Input placeholder={t('branches.formCollabSpeciality')} />
+                            </Form.Item>
+                        </Col>
+                        <Col span={12}>
+                            <Form.Item name="branchId" label={t('branches.filterBranch')}>
+                                <Select placeholder={t('branches.filterBranch')} allowClear>
+                                    {branches.map((b: Branch) => <Select.Option key={b.id} value={b.id}>{b.code} - {b.name}</Select.Option>)}
+                                </Select>
+                            </Form.Item>
+                        </Col>
+                    </Row>
+                    <Row gutter={16}>
+                        <Col span={12}>
+                            <Form.Item name="phone" label={t('branches.formPhone')}>
+                                <Input placeholder="VD: 0901234567" />
+                            </Form.Item>
+                        </Col>
+                        <Col span={12}>
+                            <Form.Item name="email" label={t('branches.formEmail')} rules={[{ type: 'email', message: t('branches.formEmailInvalid') }]}>
+                                <Input placeholder="VD: ten@email.com" />
+                            </Form.Item>
+                        </Col>
+                    </Row>
+                    <Form.Item name="address" label={t('branches.formAddress')}>
+                        <Input placeholder={t('branches.formAddress')} />
+                    </Form.Item>
+                    <Form.Item name="note" label={t('branches.formCollabNote')}>
+                        <Input.TextArea rows={2} placeholder={t('branches.formCollabNote')} />
                     </Form.Item>
                 </Form>
             </Modal>

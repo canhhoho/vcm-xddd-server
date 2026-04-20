@@ -594,14 +594,31 @@ export class GasApiService implements IApiService {
         return this.runGasFunction('deleteStaff', params);
     }
 
+    // ==================== COLLABORATORS ====================
+    async getCollaborators(branchId?: string) {
+        return this.runGasFunction('getCollaborators', branchId ? { branchId } : {});
+    }
+
+    async createCollaborator(data: any) {
+        return this.runGasFunction('createCollaborator', data);
+    }
+
+    async updateCollaborator(data: any) {
+        return this.runGasFunction('updateCollaborator', data);
+    }
+
+    async deleteCollaborator(params: { id: string }) {
+        return this.runGasFunction('deleteCollaborator', params);
+    }
+
     // ==================== ACTIVITIES (ADMIN) ====================
     async getActivities() {
         return this.runGasFunction('getActivities', {});
     }
 
     // ==================== PROSPECTS ====================
-    async getProspects() {
-        return this.runGasFunction('getProspects', {});
+    async getProspects(type?: string) {
+        return this.runGasFunction('getProspects', type ? { type } : {});
     }
 
     async createProspect(data: any) {

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Button, Modal, Form, Select, message, Row, Col, Table, InputNumber, Progress, Card, Tabs, Input, Tooltip, Popconfirm, Space } from 'antd';
+import { Button, Modal, Form, Select, message, Row, Col, Table, InputNumber, Progress, Card, Tabs, Input, Tooltip, Popconfirm, Space, DatePicker } from 'antd';
+import dayjs from 'dayjs';
 import {
     PlusOutlined,
     EditOutlined,
@@ -113,11 +114,10 @@ const Targets: React.FC = () => {
                 filters.push({ key: 'year', label: t('targets.filterYear'), value: generalYear, onRemove: () => setGeneralYear('2026') });
             }
         } else {
-            if (branchYear && branchYear !== '2026') {
-                filters.push({ key: 'b_year', label: t('targets.filterYear'), value: branchYear, onRemove: () => setBranchYear('2026') });
-            }
             if (branchMonth) {
-                filters.push({ key: 'b_month', label: t('targets.filterMonth'), value: `T${parseInt(branchMonth)}`, onRemove: () => setBranchMonth('') });
+                filters.push({ key: 'b_month', label: `${t('targets.filterMonth')}/${t('targets.filterYear')}`, value: `T${parseInt(branchMonth)}/${branchYear}`, onRemove: () => setBranchMonth('') });
+            } else if (branchYear && branchYear !== '2026') {
+                filters.push({ key: 'b_year', label: t('targets.filterYear'), value: branchYear, onRemove: () => setBranchYear('2026') });
             }
             if (branchFilter) {
                 const br = branches.find((b: any) => b.id === branchFilter);
@@ -149,13 +149,13 @@ const Targets: React.FC = () => {
                 period: generalYear
             });
         } else {
+            const defaultPeriod = branchMonth ? `${branchYear}-${branchMonth}` : undefined;
             form.setFieldsValue({
                 unitType,
                 type: type || 'NGUON_VIEC',
                 periodType: 'MONTH',
-                period: branchMonth ? `${branchYear}-${branchMonth}` : '',
+                period: defaultPeriod,
                 unitId: branchId,
-                // We don't set unitName in form usually, it's looked up by ID
             });
         }
         setIsModalVisible(true);
@@ -619,29 +619,47 @@ const Targets: React.FC = () => {
 
             {/* Filter Row - đồng bộ style với Contracts/Projects */}
             <VcmFilterBar>
-                <Col xs={24} sm={12} md={6}>
-                    <Select
-                        value={activeTab === 'general' ? generalYear : branchYear}
-                        onChange={(v) => activeTab === 'general' ? setGeneralYear(v) : setBranchYear(v)}
-                        style={{ width: '100%' }}
-                        placeholder={t('targets.filterYear')}
-                        suffixIcon={<FilterOutlined />}
-                    >
-                        {yearOptions.map((y: string) => <Option key={y} value={y}>{t('targets.year')} {y}</Option>)}
-                    </Select>
-                </Col>
-                {activeTab === 'branch' && (
+                {activeTab === 'general' ? (
+                    <Col xs={24} sm={12} md={6}>
+                        <Select
+                            value={generalYear}
+                            onChange={setGeneralYear}
+                            style={{ width: '100%' }}
+                            placeholder={t('targets.filterYear')}
+                            suffixIcon={<FilterOutlined />}
+                        >
+                            {yearOptions.map((y: string) => <Option key={y} value={y}>{t('targets.year')} {y}</Option>)}
+                        </Select>
+                    </Col>
+                ) : (
                     <>
                         <Col xs={24} sm={12} md={6}>
-                            <Select
-                                value={branchMonth || undefined}
-                                onChange={setBranchMonth}
+                            <DatePicker
+                                picker="month"
+                                format="MM/YYYY"
+                                value={branchMonth ? dayjs(`${branchYear}-${branchMonth}`, 'YYYY-MM') : null}
+                                onChange={(date) => {
+                                    if (date) {
+                                        setBranchYear(date.format('YYYY'));
+                                        setBranchMonth(date.format('MM'));
+                                    } else {
+                                        setBranchMonth('');
+                                    }
+                                }}
                                 style={{ width: '100%' }}
-                                placeholder={t('targets.filterMonth')}
+                                placeholder={`${t('targets.filterMonth')}/${t('targets.filterYear')}`}
                                 allowClear
+                            />
+                        </Col>
+                        <Col xs={24} sm={12} md={4}>
+                            <Select
+                                value={branchYear}
+                                onChange={(v) => { setBranchYear(v); setBranchMonth(''); }}
+                                style={{ width: '100%' }}
+                                placeholder={t('targets.filterYear')}
                                 suffixIcon={<FilterOutlined />}
                             >
-                                {monthOptions.map((m: string) => <Option key={m} value={m}>{t('targets.month')} {parseInt(m)}</Option>)}
+                                {yearOptions.map((y: string) => <Option key={y} value={y}>{t('targets.year')} {y}</Option>)}
                             </Select>
                         </Col>
                         <Col xs={24} sm={12} md={6}>
@@ -878,8 +896,42 @@ const Targets: React.FC = () => {
                             </Form.Item>
                         </Col>
                         <Col span={12}>
-                            <Form.Item name="period" label={t('targets.period')} rules={[{ required: true, message: t('targets.periodRequired') }]}>
-                                <Input placeholder={t('targets.periodPlaceholder')} />
+                            <Form.Item noStyle shouldUpdate={(prev, curr) => prev.periodType !== curr.periodType}>
+                                {({ getFieldValue }) => {
+                                    const pt = getFieldValue('periodType');
+                                    if (pt === 'YEAR') return (
+                                        <Form.Item name="period" label={t('targets.filterYear')} rules={[{ required: true, message: t('targets.periodRequired') }]}>
+                                            <Select placeholder={t('targets.filterYear')}>
+                                                {yearOptions.map((y: string) => <Option key={y} value={y}>{y}</Option>)}
+                                            </Select>
+                                        </Form.Item>
+                                    );
+                                    if (pt === 'QUARTER') return (
+                                        <Form.Item name="period" label={t('targets.quarter')} rules={[{ required: true, message: t('targets.periodRequired') }]}>
+                                            <Select placeholder="Chọn quý" showSearch>
+                                                {yearOptions.flatMap((y: string) => [1, 2, 3, 4].map(q => (
+                                                    <Option key={`${y}-Q${q}`} value={`${y}-Q${q}`}>Q{q} / {y}</Option>
+                                                )))}
+                                            </Select>
+                                        </Form.Item>
+                                    );
+                                    if (pt === 'MONTH') return (
+                                        <Form.Item
+                                            name="period"
+                                            label={`${t('targets.filterMonth')} / ${t('targets.filterYear')}`}
+                                            rules={[{ required: true, message: t('targets.periodRequired') }]}
+                                            getValueFromEvent={(date: any) => date ? date.format('YYYY-MM') : undefined}
+                                            getValueProps={(value: string) => ({ value: value ? dayjs(value, 'YYYY-MM') : undefined })}
+                                        >
+                                            <DatePicker picker="month" format="MM/YYYY" style={{ width: '100%' }} placeholder="Chọn tháng/năm" />
+                                        </Form.Item>
+                                    );
+                                    return (
+                                        <Form.Item name="period" label={t('targets.period')} rules={[{ required: true, message: t('targets.periodRequired') }]}>
+                                            <Input placeholder={t('targets.periodPlaceholder')} />
+                                        </Form.Item>
+                                    );
+                                }}
                             </Form.Item>
                         </Col>
                     </Row>

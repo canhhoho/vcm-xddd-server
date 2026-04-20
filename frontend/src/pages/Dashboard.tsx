@@ -81,6 +81,7 @@ const Dashboard: React.FC = () => {
     const projectExecution = useMemo(() => stats?.projectExecution, [stats]);
     const recentActivities = useMemo(() => stats?.recentActivities || [], [stats]);
     const pipelineData = useMemo(() => stats?.pipelineData || [], [stats]);
+    const pipelineDataB2C = useMemo(() => stats?.pipelineDataB2C || [], [stats]);
 
     // Hardcode labels to ensure distinction and avoid translation issues
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -600,18 +601,61 @@ const Dashboard: React.FC = () => {
 
             {/* ==================== ROW 5: Activity Log & Sales Pipeline ==================== */}
             <Row gutter={[20, 20]} className="dash-row">
-                {/* Left: Recent Activities (50% width) */}
+                {/* Left: Sales Funnel B2C (50% width) */}
                 <Col xs={24} lg={12}>
-                    <Card className="dash-chart-card" title={t('dashboard.recentActivities')}>
-                        <Table
-                            columns={activityColumns}
-                            dataSource={recentActivities}
-                            rowKey="id"
-                            pagination={false}
-                            size="small"
-                            className="dash-activity-table"
-                            scroll={{ x: 600 }}
-                        />
+                    <Card className="dash-chart-card" title={t('dashboard.salesFunnelB2C')}>
+                        {/* Summary KPIs */}
+                        <div style={{ display: 'flex', justifyContent: 'space-around', marginBottom: '20px' }}>
+                            <div style={{ textAlign: 'center' }}>
+                                <div style={{ fontSize: '12px', color: '#6B7280', marginBottom: 4 }}>{t('dashboard.totalProjects')}</div>
+                                <div style={{ fontSize: '24px', fontWeight: 800, color: '#111827' }}>
+                                    {pipelineDataB2C.reduce((acc, curr) => acc + curr.count, 0)}
+                                </div>
+                            </div>
+                            <div style={{ textAlign: 'center' }}>
+                                <div style={{ fontSize: '12px', color: '#6B7280', marginBottom: 4 }}>{t('dashboard.totalExpectedValue')}</div>
+                                <div style={{ fontSize: '22px', fontWeight: 800, color: '#10B981' }}>
+                                    {pipelineDataB2C.reduce((acc, curr) => acc + curr.value, 0).toLocaleString(i18n.language === 'en' ? 'en-US' : 'vi-VN')}
+                                    <span style={{ fontSize: '13px', fontWeight: 500, marginLeft: 4 }}>{t('business.prospects.estValueUnit')}</span>
+                                </div>
+                            </div>
+                        </div>
+                        {/* Custom Funnel */}
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '0 8px', gap: 3 }}>
+                            {[['NEW', '#E05C97', t('business.prospects.statusOptions.NEW')], ['CONTACTED', '#F97316', t('business.prospects.statusOptions.CONTACTED')], ['PROPOSAL', '#F59E0B', t('business.prospects.statusOptions.PROPOSAL')], ['NEGOTIATION', '#3B9ED8', t('business.prospects.statusOptions.NEGOTIATION')], ['WON', '#1D4ED8', t('business.prospects.statusOptions.WON')]].map((cfg, idx, arr) => {
+                                const [stage, color, label] = cfg;
+                                const stagesBelow = arr.slice(idx).map(c => c[0] as string);
+                                const cnt = stagesBelow.reduce((sum, s) => sum + (pipelineDataB2C.find(d => d.stage === s)?.count || 0), 0);
+                                const val = stagesBelow.reduce((sum, s) => sum + (pipelineDataB2C.find(d => d.stage === s)?.value || 0), 0);
+                                const maxW = 100, minW = 40;
+                                const widthPct = maxW - (idx * (maxW - minW) / (arr.length - 1));
+                                return (
+                                    <div
+                                        key={stage as string}
+                                        style={{
+                                            width: `${widthPct}%`,
+                                            background: color as string,
+                                            borderRadius: idx === 0 ? '10px 10px 0 0' : idx === arr.length - 1 ? '0 0 8px 8px' : '0',
+                                            padding: '10px 24px',
+                                            display: 'flex',
+                                            justifyContent: 'space-between',
+                                            alignItems: 'center',
+                                            minHeight: 46,
+                                            clipPath: idx === arr.length - 1
+                                                ? 'polygon(5% 0%, 95% 0%, 100% 100%, 0% 100%)'
+                                                : 'polygon(0% 0%, 100% 0%, 97% 100%, 3% 100%)'
+                                        }}
+                                    >
+                                        <span style={{ color: '#fff', fontWeight: 700, fontSize: 13 }}>{label}</span>
+                                        <span style={{ color: '#fff', fontSize: 13, textAlign: 'right', whiteSpace: 'nowrap' }}>
+                                            <strong>{cnt}</strong> {t('dashboard.projectUnit')}
+                                            <br />
+                                            <span style={{ opacity: 0.85, fontSize: 12 }}>{val.toLocaleString(i18n.language === 'en' ? 'en-US' : 'vi-VN')} {t('dashboard.millionUnit')}</span>
+                                        </span>
+                                    </div>
+                                );
+                            })}
+                        </div>
                     </Card>
                 </Col>
 

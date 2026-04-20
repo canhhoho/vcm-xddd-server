@@ -1,17 +1,9 @@
 import React from 'react';
 import { Tabs } from 'antd';
-import {
-    FundProjectionScreenOutlined,
-    TeamOutlined,
-    NotificationOutlined,
-    ToolOutlined,
-    HighlightOutlined,
-    ProjectOutlined,
-} from '@ant-design/icons';
+import { ShopOutlined, HomeOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { usePermissions } from '../hooks/usePermissions';
 import ProspectList from './ProspectList';
-import DepartmentPlan from './DepartmentPlan';
 import './Business.css';
 
 const Business: React.FC = () => {
@@ -31,34 +23,14 @@ const Business: React.FC = () => {
 
     const tabItems = [
         {
-            key: 'prospects',
-            label: <span><FundProjectionScreenOutlined /> {t('business.tabProspects')}</span>,
-            children: <ProspectList />,
+            key: 'b2b',
+            label: <span><ShopOutlined /> {t('business.tabB2B')}</span>,
+            children: <ProspectList prospectType="B2B" />,
         },
         {
-            key: 'plan-bd',
-            label: <span><TeamOutlined /> {t('business.tabPlanBD')}</span>,
-            children: <DepartmentPlan department="BD" />,
-        },
-        {
-            key: 'plan-mkt',
-            label: <span><NotificationOutlined /> {t('business.tabPlanMKT')}</span>,
-            children: <DepartmentPlan department="MKT" />,
-        },
-        {
-            key: 'plan-qs',
-            label: <span><ToolOutlined /> {t('business.tabPlanQS')}</span>,
-            children: <DepartmentPlan department="QS" />,
-        },
-        {
-            key: 'plan-des',
-            label: <span><HighlightOutlined /> {t('business.tabPlanDES')}</span>,
-            children: <DepartmentPlan department="DES" />,
-        },
-        {
-            key: 'plan-pm',
-            label: <span><ProjectOutlined /> {t('business.tabPlanPM')}</span>,
-            children: <DepartmentPlan department="PM" />,
+            key: 'b2c',
+            label: <span><HomeOutlined /> {t('business.tabB2C')}</span>,
+            children: <ProspectList prospectType="B2C" />,
         },
     ];
 
@@ -73,7 +45,7 @@ const Business: React.FC = () => {
             </div>
 
             <Tabs
-                defaultActiveKey="prospects"
+                defaultActiveKey="b2b"
                 items={tabItems}
                 className="vcm-main-tabs"
                 style={{ marginTop: 16 }}

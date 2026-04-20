@@ -11,6 +11,11 @@ export const STAFF_KEYS = {
     list: () => [...STAFF_KEYS.all, 'list'] as const,
 };
 
+export const COLLABORATOR_KEYS = {
+    all: ['collaborators'] as const,
+    list: () => [...COLLABORATOR_KEYS.all, 'list'] as const,
+};
+
 export const useBranches = (enabled: boolean = true) => {
     return useQuery({
         queryKey: BRANCH_KEYS.list(),
@@ -74,6 +79,52 @@ export const useBranchMutations = () => {
     });
 
     return { createBranch, updateBranch, deleteBranch };
+};
+
+export const useCollaborators = (enabled: boolean = true) => {
+    return useQuery({
+        queryKey: COLLABORATOR_KEYS.list(),
+        queryFn: async () => {
+            const response = await apiService.getCollaborators();
+            if (!response.success) {
+                throw new Error(response.error || 'Failed to fetch collaborators');
+            }
+            return response.data;
+        },
+        enabled,
+        staleTime: 60 * 60 * 1000,
+        gcTime: 24 * 60 * 60 * 1000,
+        refetchOnMount: false,
+        refetchOnWindowFocus: false,
+        refetchOnReconnect: false,
+    });
+};
+
+export const useCollaboratorMutations = () => {
+    const queryClient = useQueryClient();
+
+    const createCollaborator = useMutation({
+        mutationFn: (data: any) => apiService.createCollaborator(data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: COLLABORATOR_KEYS.all });
+        },
+    });
+
+    const updateCollaborator = useMutation({
+        mutationFn: (data: any) => apiService.updateCollaborator(data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: COLLABORATOR_KEYS.all });
+        },
+    });
+
+    const deleteCollaborator = useMutation({
+        mutationFn: (data: { id: string }) => apiService.deleteCollaborator(data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: COLLABORATOR_KEYS.all });
+        },
+    });
+
+    return { createCollaborator, updateCollaborator, deleteCollaborator };
 };
 
 export const useStaffMutations = () => {

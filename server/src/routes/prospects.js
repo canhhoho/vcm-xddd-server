@@ -29,6 +29,8 @@ function toProspect(row) {
     priority: row.priority,
     note: row.note,
     expectedDate: row.expected_date,
+    contactDate: row.contact_date,
+    prospectType: row.prospect_type || 'B2B',
     createdBy: row.created_by,
     createdAt: row.created_at,
   };
@@ -37,12 +39,16 @@ function toProspect(row) {
 // GET /prospects
 router.get('/', async (req, res) => {
   try {
+    const { type } = req.query;
+    const whereClause = type ? `WHERE p.prospect_type = $1` : '';
+    const params = type ? [type] : [];
     const result = await pool.query(`
       SELECT p.*, b.code as branch_code
       FROM prospects p
       LEFT JOIN branches b ON p.branch_id = b.id
+      ${whereClause}
       ORDER BY p.created_at DESC
-    `);
+    `, params);
     res.json({ success: true, data: result.rows.map(toProspect) });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
@@ -52,13 +58,13 @@ router.get('/', async (req, res) => {
 // POST /prospects
 router.post('/', async (req, res) => {
   try {
-    const { name, client, location, branchId, estimatedValue, contactPerson, contactPhone, source, status, priority, note, expectedDate } = req.body;
+    const { name, client, location, branchId, estimatedValue, contactPerson, contactPhone, source, status, priority, note, expectedDate, contactDate, prospectType } = req.body;
     const id = uuidv4();
     const createdBy = req.user?.id || '';
     await pool.query(
-      `INSERT INTO prospects (id, name, client, location, branch_id, estimated_value, contact_person, contact_phone, source, status, priority, note, expected_date, created_by)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)`,
-      [id, name, client || '', location || '', branchId || '', estimatedValue || 0, contactPerson || '', contactPhone || '', source || 'DIRECT', status || 'NEW', priority || 'MEDIUM', note || '', expectedDate || null, createdBy]
+      `INSERT INTO prospects (id, name, client, location, branch_id, estimated_value, contact_person, contact_phone, source, status, priority, note, expected_date, contact_date, prospect_type, created_by)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)`,
+      [id, name, client || '', location || '', branchId || '', estimatedValue || 0, contactPerson || '', contactPhone || '', source || 'DIRECT', status || 'NEW', priority || 'MEDIUM', note || '', expectedDate || null, contactDate || null, prospectType || 'B2B', createdBy]
     );
     res.json({ success: true, data: { id } });
   } catch (err) {
@@ -69,12 +75,13 @@ router.post('/', async (req, res) => {
 // PUT /prospects/:id
 router.put('/:id', async (req, res) => {
   try {
-    const { name, client, location, branchId, estimatedValue, contactPerson, contactPhone, source, status, priority, note, expectedDate } = req.body;
+    const { name, client, location, branchId, estimatedValue, contactPerson, contactPhone, source, status, priority, note, expectedDate, contactDate } = req.body;
     await pool.query(
-      `UPDATE prospects SET name=$1, client=$2, location=$3, branch_id=$4, estimated_value=$5, contact_person=$6, contact_phone=$7, source=$8, status=$9, priority=$10, note=$11, expected_date=$12
-       WHERE id=$13`,
-      [name, client || '', location || '', branchId || '', estimatedValue || 0, contactPerson || '', contactPhone || '', source || 'DIRECT', status || 'NEW', priority || 'MEDIUM', note || '', expectedDate || null, req.params.id]
+      `UPDATE prospects SET name=$1, client=$2, location=$3, branch_id=$4, estimated_value=$5, contact_person=$6, contact_phone=$7, source=$8, status=$9, priority=$10, note=$11, expected_date=$12, contact_date=$13
+       WHERE id=$14`,
+      [name, client || '', location || '', branchId || '', estimatedValue || 0, contactPerson || '', contactPhone || '', source || 'DIRECT', status || 'NEW', priority || 'MEDIUM', note || '', expectedDate || null, contactDate || null, req.params.id]
     );
+    // prospect_type is immutable after creation — not updated
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
