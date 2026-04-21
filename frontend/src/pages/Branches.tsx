@@ -62,10 +62,10 @@ interface BranchStaff {
 
 const Branches: React.FC = () => {
     const { t } = useTranslation();
-    const [activeTab, setActiveTab] = useState('branches');
+    const [activeTab, setActiveTab] = useState('collaborators');
     // React Query Hooks
     const { data: branches = [], isLoading: branchesLoading } = useBranches();
-    // Only fetch staff when Staff tab is active to prevent blocking the UI
+    // Lazy load staff and collaborators only when their tab is active
     const { data: staff = [], isLoading: staffLoading } = useStaff(activeTab === 'staff');
     const { data: collaborators = [], isLoading: collaboratorsLoading } = useCollaborators(activeTab === 'collaborators');
     const { data: appConfig } = useAppConfig();
@@ -507,10 +507,27 @@ const Branches: React.FC = () => {
 
     const tabItems = [
         {
-            key: 'branches',
-            label: <span><BankOutlined /> {t('branches.tabBranches')}</span>,
+            key: 'collaborators',
+            label: <span><TeamOutlined /> {t('branches.tabCollaborators')}</span>,
             children: (
-                <Table columns={branchColumns} dataSource={branches} rowKey="id" loading={loading} pagination={false} size="small" bordered className="branches-table" />
+                <>
+                    {renderCollaboratorFilters()}
+                    <Table
+                        columns={collaboratorColumns}
+                        dataSource={filteredCollaborators}
+                        rowKey="id"
+                        loading={loading}
+                        pagination={{
+                            pageSize: 10,
+                            showSizeChanger: true,
+                            showTotal: (total) => t('branches.totalCollaborators', { total }),
+                        }}
+                        size="small"
+                        bordered
+                        scroll={{ x: 1000 }}
+                        className="branches-table"
+                    />
+                </>
             )
         },
         {
@@ -538,27 +555,10 @@ const Branches: React.FC = () => {
             )
         },
         {
-            key: 'collaborators',
-            label: <span><TeamOutlined /> {t('branches.tabCollaborators')}</span>,
+            key: 'branches',
+            label: <span><BankOutlined /> {t('branches.tabBranches')}</span>,
             children: (
-                <>
-                    {renderCollaboratorFilters()}
-                    <Table
-                        columns={collaboratorColumns}
-                        dataSource={filteredCollaborators}
-                        rowKey="id"
-                        loading={loading}
-                        pagination={{
-                            pageSize: 10,
-                            showSizeChanger: true,
-                            showTotal: (total) => t('branches.totalCollaborators', { total }),
-                        }}
-                        size="small"
-                        bordered
-                        scroll={{ x: 1000 }}
-                        className="branches-table"
-                    />
-                </>
+                <Table columns={branchColumns} dataSource={branches} rowKey="id" loading={loading} pagination={false} size="small" bordered className="branches-table" />
             )
         }
     ];
