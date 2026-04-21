@@ -139,12 +139,15 @@ const Branches: React.FC = () => {
         }
 
         // Handle Rich Object Structure
-        return positions.map((pos: any) => ({
-            value: pos.code,          // Use CODE as value
-            label: pos.name,          // Display Name
-            color: pos.color,         // Visual Color
-            icon: ICON_MAP[pos.icon] || <UserOutlined /> // Visual Icon
-        }));
+        return positions.map((pos: any) => {
+            const transKey = 'pos' + pos.code.split('_').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join('');
+            return {
+                value: pos.code,
+                label: t(`branches.${transKey}`, pos.name),
+                color: pos.color,
+                icon: ICON_MAP[pos.icon] || <UserOutlined />
+            };
+        });
     }, [appConfig, t]);
 
     const getPositionInfo = (position: string) => {
@@ -369,19 +372,26 @@ const Branches: React.FC = () => {
     // Staff columns
     const staffColumns: ColumnsType<BranchStaff> = [
         { title: t('branches.colIndex') || 'STT', key: 'index', width: 50, align: 'center', render: (_, __, index) => index + 1 },
-        { title: t('branches.colCode'), dataIndex: 'branchCode', key: 'branchCode', width: 100, render: (text: string) => <Text strong style={{ color: '#E11D2E', whiteSpace: 'nowrap' }}>{text}</Text> },
-        { title: t('branches.colStaffName'), dataIndex: 'name', key: 'name', width: 160, render: (text: string) => <Text strong>{text}</Text> },
         {
-            title: t('branches.colPosition'), dataIndex: 'position', key: 'position', width: 150,
+            title: t('branches.filterBranch'), dataIndex: 'branchCode', key: 'branchCode', width: 90,
+            render: (text: string, record: BranchStaff) => (
+                <Tooltip title={(record as any).branchName || text}>
+                    <Text strong style={{ color: '#E11D2E', whiteSpace: 'nowrap' }}>{text || '-'}</Text>
+                </Tooltip>
+            )
+        },
+        { title: t('branches.colStaffName'), dataIndex: 'name', key: 'name', render: (text: string) => <Text strong>{text}</Text> },
+        {
+            title: t('branches.colPosition'), dataIndex: 'position', key: 'position', width: 140,
             render: (position: string) => {
                 const info = getPositionInfo(position);
                 return <Tag color={info.color}>{info.label}</Tag>;
             }
         },
-        { title: t('branches.colPhone'), dataIndex: 'phone', key: 'phone', width: 120, render: (text: string) => <Space><PhoneOutlined style={{ color: '#52c41a' }} />{text}</Space> },
-        { title: t('branches.colEmail'), dataIndex: 'email', key: 'email', render: (text: string) => <Space><MailOutlined style={{ color: '#1890ff' }} />{text}</Space> },
+        { title: t('branches.colPhone'), dataIndex: 'phone', key: 'phone', width: 130, render: (text: string) => <Space><PhoneOutlined style={{ color: '#52c41a' }} />{text || '-'}</Space> },
+        { title: t('branches.colEmail'), dataIndex: 'email', key: 'email', width: 220, render: (text: string) => text ? <Space><MailOutlined style={{ color: '#1890ff' }} />{text}</Space> : '-' },
         {
-            title: t('common.actions'), key: 'action', width: 120, align: 'center',
+            title: t('common.actions'), key: 'action', width: 100, align: 'center', fixed: 'right' as const,
             render: (_, record) => (
                 <VcmActionGroup
                     onEdit={() => handleEditStaff(record)}
@@ -396,15 +406,18 @@ const Branches: React.FC = () => {
     // Collaborator columns
     const collaboratorColumns: ColumnsType<Collaborator> = [
         { title: t('branches.colIndex'), key: 'index', width: 50, align: 'center', render: (_, __, index) => index + 1 },
+        {
+            title: t('branches.filterBranch'), dataIndex: 'branchId', key: 'branchId', width: 90,
+            render: (id: string) => { const b = branches.find((br: Branch) => br.id === id); return b ? <Text strong style={{ color: '#E11D2E' }}>{b.code}</Text> : '-'; }
+        },
         { title: t('branches.colCollabName'), dataIndex: 'name', key: 'name', width: 160, render: (text: string) => <Text strong>{text}</Text> },
-        { title: t('branches.colCollabCompany'), dataIndex: 'company', key: 'company', width: 180, render: (text: string) => <Text>{text || '-'}</Text> },
-        { title: t('branches.colCollabSpeciality'), dataIndex: 'speciality', key: 'speciality', width: 150, render: (text: string) => text ? <Tag color="blue">{text}</Tag> : <Text type="secondary">-</Text> },
+        { title: t('branches.colCollabCompany'), dataIndex: 'company', key: 'company', width: 170, render: (text: string) => <Text>{text || '-'}</Text> },
+        { title: t('branches.colCollabSpeciality'), dataIndex: 'speciality', key: 'speciality', width: 130, render: (text: string) => text ? <Tag color="blue">{text}</Tag> : <Text type="secondary">-</Text> },
         { title: t('branches.colPhone'), dataIndex: 'phone', key: 'phone', width: 130, render: (text: string) => text ? <Space><PhoneOutlined style={{ color: '#52c41a' }} />{text}</Space> : '-' },
         { title: t('branches.colEmail'), dataIndex: 'email', key: 'email', render: (text: string) => text ? <Space><MailOutlined style={{ color: '#1890ff' }} />{text}</Space> : '-' },
-        { title: t('branches.filterBranch'), dataIndex: 'branchId', key: 'branchId', width: 120, render: (id: string) => { const b = branches.find((br: Branch) => br.id === id); return b ? <Tag>{b.code}</Tag> : '-'; } },
-        { title: t('branches.colCollabNote'), dataIndex: 'note', key: 'note', render: (text: string) => <Text type="secondary">{text || '-'}</Text> },
+        { title: t('branches.colCollabNote'), dataIndex: 'note', key: 'note', width: 160, ellipsis: true, render: (text: string) => <Text type="secondary">{text || '-'}</Text> },
         {
-            title: t('common.actions'), key: 'action', width: 120, align: 'center',
+            title: t('common.actions'), key: 'action', width: 100, align: 'center', fixed: 'right' as const,
             render: (_, record) => (
                 <VcmActionGroup
                     onEdit={() => handleEditCollaborator(record)}
@@ -518,6 +531,7 @@ const Branches: React.FC = () => {
                         }}
                         size="small"
                         bordered
+                        scroll={{ x: 750 }}
                         className="branches-table"
                     />
                 </>
@@ -541,6 +555,7 @@ const Branches: React.FC = () => {
                         }}
                         size="small"
                         bordered
+                        scroll={{ x: 1000 }}
                         className="branches-table"
                     />
                 </>
@@ -615,7 +630,7 @@ const Branches: React.FC = () => {
                 <Form form={staffForm} layout="vertical" onFinish={handleStaffSubmit}>
                     <Form.Item name="branchId" label={t('branches.filterBranch')} rules={[{ required: true, message: t('branches.formBranchReq') }]}>
                         <Select placeholder={t('branches.filterBranch')}>
-                            {branches.map((b: Branch) => <Select.Option key={b.id} value={b.id}>{b.code} - {b.name}</Select.Option>)}
+                            {branches.map((b: Branch) => <Select.Option key={b.id} value={b.id}>{b.code}</Select.Option>)}
                         </Select>
                     </Form.Item>
                     <Form.Item name="name" label={t('branches.formStaffName')} rules={[{ required: true, message: t('branches.formStaffNameReq') }]}>

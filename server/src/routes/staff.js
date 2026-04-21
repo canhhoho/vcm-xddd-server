@@ -14,14 +14,19 @@ async function logActivity(email, action, desc) {
 router.get('/', async (req, res) => {
   try {
     const { branchId } = req.query;
-    let sql = 'SELECT * FROM staff';
+    let sql = `
+      SELECT s.*, b.code AS branch_code, b.name AS branch_name
+      FROM staff s
+      LEFT JOIN branches b ON s.branch_id = b.id
+    `;
     const params = [];
-    if (branchId) { sql += ' WHERE branch_id = $1'; params.push(branchId); }
-    sql += ' ORDER BY created_at DESC';
+    if (branchId) { sql += ' WHERE s.branch_id = $1'; params.push(branchId); }
+    sql += ' ORDER BY s.created_at DESC';
 
     const result = await query(sql, params);
     const data = result.rows.map(r => ({
-      id: r.id, branchId: r.branch_id, name: r.name,
+      id: r.id, branchId: r.branch_id, branchCode: r.branch_code || '',
+      branchName: r.branch_name || '', name: r.name,
       position: r.position || '', phone: r.phone || '',
       email: r.email || '', createdAt: r.created_at,
     }));
