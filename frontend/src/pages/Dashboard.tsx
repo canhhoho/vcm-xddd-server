@@ -329,8 +329,16 @@ const Dashboard: React.FC = () => {
                     <div className="dash-kpi-card">
                         <div className="dash-kpi-header">
                             <span className="dash-kpi-label">{t('dashboard.nguonViec')}</span>
-                            <div className="dash-kpi-icon" style={{ backgroundColor: '#EE0033' }}>
-                                <FileTextOutlined style={{ color: '#fff' }} />
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                {viewMode !== 'ALL' && (
+                                    <div style={{ textAlign: 'right' }}>
+                                        <div style={{ fontSize: '10px', color: '#9CA3AF', textTransform: 'uppercase', fontWeight: 700, marginBottom: '2px' }}>{t('dashboard.target')} (Tr)</div>
+                                        <div style={{ fontSize: '22px', fontWeight: 900, color: '#111827', lineHeight: 1 }}>{(viewMode === 'YEAR' ? kpi.nguonViec.targetYTD : kpi.nguonViec.target)?.toLocaleString()}</div>
+                                    </div>
+                                )}
+                                <div className="dash-kpi-icon" style={{ backgroundColor: '#EE0033' }}>
+                                    <FileTextOutlined style={{ color: '#fff' }} />
+                                </div>
                             </div>
                         </div>
                         <div className="dash-kpi-main">
@@ -346,8 +354,8 @@ const Dashboard: React.FC = () => {
                                 size="small"
                             />
                             <div className="dash-kpi-bar-info">
-                                <span>{viewMode === 'YEAR' ? kpi.nguonViec.yearPct : kpi.nguonViec.achievedPct}%</span>
-                                <span>{t('dashboard.target')}: {(viewMode === 'YEAR' ? kpi.nguonViec.targetYTD : kpi.nguonViec.target)?.toLocaleString()} Tr</span>
+                                <span>{t('dashboard.achieved', 'Đạt')}:</span>
+                                <span style={{ fontWeight: 700, color: '#111827' }}>{viewMode === 'YEAR' ? kpi.nguonViec.yearPct : kpi.nguonViec.achievedPct}%</span>
                             </div>
                         </div>
                         <div className="dash-kpi-footer" style={{ visibility: viewMode === 'ALL' ? 'hidden' : 'visible' }}>
@@ -374,8 +382,16 @@ const Dashboard: React.FC = () => {
                     <div className="dash-kpi-card">
                         <div className="dash-kpi-header">
                             <span className="dash-kpi-label">{t('dashboard.doanhThu')}</span>
-                            <div className="dash-kpi-icon" style={{ backgroundColor: '#FFD700' }}>
-                                <DollarOutlined style={{ color: '#fff' }} />
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                {viewMode !== 'ALL' && (
+                                    <div style={{ textAlign: 'right' }}>
+                                        <div style={{ fontSize: '10px', color: '#9CA3AF', textTransform: 'uppercase', fontWeight: 700, marginBottom: '2px' }}>{t('dashboard.target')} (Tr)</div>
+                                        <div style={{ fontSize: '22px', fontWeight: 900, color: '#111827', lineHeight: 1 }}>{(viewMode === 'YEAR' ? kpi.doanhThu.targetYTD : kpi.doanhThu.target)?.toLocaleString()}</div>
+                                    </div>
+                                )}
+                                <div className="dash-kpi-icon" style={{ backgroundColor: '#FFD700' }}>
+                                    <DollarOutlined style={{ color: '#fff' }} />
+                                </div>
                             </div>
                         </div>
                         <div className="dash-kpi-main">
@@ -391,8 +407,8 @@ const Dashboard: React.FC = () => {
                                 size="small"
                             />
                             <div className="dash-kpi-bar-info">
-                                <span>{viewMode === 'YEAR' ? kpi.doanhThu.yearPct : kpi.doanhThu.achievedPct}%</span>
-                                <span>{t('dashboard.target')}: {(viewMode === 'YEAR' ? kpi.doanhThu.targetYTD : kpi.doanhThu.target)?.toLocaleString()} Tr</span>
+                                <span>{t('dashboard.achieved', 'Đạt')}:</span>
+                                <span style={{ fontWeight: 700, color: '#111827' }}>{viewMode === 'YEAR' ? kpi.doanhThu.yearPct : kpi.doanhThu.achievedPct}%</span>
                             </div>
                         </div>
                         <div className="dash-kpi-footer" style={{ visibility: viewMode === 'ALL' ? 'hidden' : 'visible' }}>
@@ -419,8 +435,16 @@ const Dashboard: React.FC = () => {
                     <div className="dash-kpi-card">
                         <div className="dash-kpi-header">
                             <span className="dash-kpi-label">{t('dashboard.thuTien')}</span>
-                            <div className="dash-kpi-icon" style={{ backgroundColor: '#00C853' }}>
-                                <CreditCardOutlined style={{ color: '#fff' }} />
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                {viewMode !== 'ALL' && (
+                                    <div style={{ textAlign: 'right' }}>
+                                        <div style={{ fontSize: '10px', color: '#9CA3AF', textTransform: 'uppercase', fontWeight: 700, marginBottom: '2px' }}>{t('dashboard.target')} (Tr)</div>
+                                        <div style={{ fontSize: '22px', fontWeight: 900, color: '#111827', lineHeight: 1 }}>{(viewMode === 'YEAR' ? kpi.thuTien.targetYTD : kpi.thuTien.target)?.toLocaleString() || '-'}</div>
+                                    </div>
+                                )}
+                                <div className="dash-kpi-icon" style={{ backgroundColor: '#00C853' }}>
+                                    <CreditCardOutlined style={{ color: '#fff' }} />
+                                </div>
                             </div>
                         </div>
                         <div className="dash-kpi-main">
@@ -436,8 +460,8 @@ const Dashboard: React.FC = () => {
                                 size="small"
                             />
                             <div className="dash-kpi-bar-info">
-                                <span>{viewMode === 'YEAR' ? (kpi.thuTien.yearPct || 0) : (kpi.thuTien.achievedPct || 0)}%</span>
-                                <span>{t('dashboard.target')}: {(viewMode === 'YEAR' ? kpi.thuTien.targetYTD : kpi.thuTien.target)?.toLocaleString() || '-'} Tr</span>
+                                <span>{t('dashboard.achieved', 'Đạt')}:</span>
+                                <span style={{ fontWeight: 700, color: '#111827' }}>{viewMode === 'YEAR' ? (kpi.thuTien.yearPct || 0) : (kpi.thuTien.achievedPct || 0)}%</span>
                             </div>
                         </div>
                         <div className="dash-kpi-footer" style={{ visibility: viewMode === 'ALL' ? 'hidden' : 'visible' }}>
