@@ -49,6 +49,14 @@ const CacheService = {
   },
 
   /**
+   * Clear all keys that start with the given prefix
+   */
+  clearByPrefix(prefix) {
+    const keys = cache.keys().filter(k => k.startsWith(prefix));
+    if (keys.length > 0) cache.del(keys);
+  },
+
+  /**
    * Flush all cache
    */
   flushAll() {

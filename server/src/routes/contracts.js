@@ -107,7 +107,7 @@ router.post('/', async (req, res) => {
     ]);
 
     await logActivity(req.user?.email || userId, 'CONTRACT_CREATE', `Created contract ${d.code}`);
-    CacheService.clear(['CONTRACTS_LIST', 'DASHBOARD_STATS']);
+    CacheService.clear(['CONTRACTS_LIST']); CacheService.clearByPrefix('DASHBOARD_STATS');
 
     res.json({ success: true, data: { id } });
   } catch (err) {
@@ -149,7 +149,7 @@ router.put('/:id', async (req, res) => {
     await query(`UPDATE contracts SET ${fields.join(', ')} WHERE id = $${idx}`, values);
 
     await logActivity(req.user?.email || '', 'CONTRACT_UPDATE', `Updated contract ${id}`);
-    CacheService.clear(['CONTRACTS_LIST', 'DASHBOARD_STATS']);
+    CacheService.clear(['CONTRACTS_LIST']); CacheService.clearByPrefix('DASHBOARD_STATS');
 
     res.json({ success: true });
   } catch (err) {
@@ -168,7 +168,7 @@ router.delete('/:id', async (req, res) => {
     }
 
     await logActivity(req.user?.email || '', 'CONTRACT_DELETE', `Deleted contract ${result.rows[0].code}`);
-    CacheService.clear(['CONTRACTS_LIST', 'DASHBOARD_STATS']);
+    CacheService.clear(['CONTRACTS_LIST']); CacheService.clearByPrefix('DASHBOARD_STATS');
 
     res.json({ success: true });
   } catch (err) {
