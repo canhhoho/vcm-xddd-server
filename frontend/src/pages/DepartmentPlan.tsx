@@ -1,7 +1,8 @@
 import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { Card, Table, Button, Select, Modal, Form, Input, Tag, message, DatePicker, Empty, Tooltip, Progress } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
-import { PlusOutlined, SyncOutlined, CalendarOutlined, EditOutlined } from '@ant-design/icons';
+import { PlusOutlined, SyncOutlined, CalendarOutlined, EditOutlined, QuestionCircleOutlined } from '@ant-design/icons';
+import PlanGuideModal from '../components/PlanGuideModal';
 import { useTranslation } from 'react-i18next';
 import dayjs from 'dayjs';
 import type { Dayjs } from 'dayjs';
@@ -40,6 +41,7 @@ const DepartmentPlan: React.FC<DepartmentPlanProps> = ({ department, selectedMon
     const [activePlanId, setActivePlanId] = useState<string | null>(null);
     const [users, setUsers] = useState<User[]>([]);
     const [dailyLogItem, setDailyLogItem] = useState<WeeklyPlanItem | null>(null);
+    const [guideVisible, setGuideVisible] = useState(false);
     const [form] = Form.useForm();
 
     const thisWeekStart = getWeekStart(dayjs());
@@ -191,8 +193,8 @@ const DepartmentPlan: React.FC<DepartmentPlanProps> = ({ department, selectedMon
                 return s && e ? `${s} - ${e}` : s || e || '-';
             },
         },
-        { title: t('business.weeklyPlan.where'), dataIndex: 'location', key: 'location', width: 110, ellipsis: true },
-        { title: t('business.weeklyPlan.how'), dataIndex: 'method', key: 'method', width: 120, ellipsis: true },
+        { title: t('business.weeklyPlan.where'), dataIndex: 'location', key: 'location', width: 110, render: (val: string) => <span style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{val || '-'}</span> },
+        { title: t('business.weeklyPlan.how'), dataIndex: 'method', key: 'method', width: 120, render: (val: string) => <span style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{val || '-'}</span> },
         {
             title: t('business.weeklyPlan.status'), dataIndex: 'status', key: 'status', width: 120, align: 'center',
             render: (val: string) => {
@@ -208,7 +210,7 @@ const DepartmentPlan: React.FC<DepartmentPlanProps> = ({ department, selectedMon
                 return <Progress percent={pct} size="small" status={status as any} style={{ margin: 0 }} />;
             },
         },
-        { title: t('business.weeklyPlan.result'), dataIndex: 'result', key: 'result', width: 140, ellipsis: true },
+        { title: t('business.weeklyPlan.result'), dataIndex: 'result', key: 'result', width: 110, render: (val: string) => <span style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{val || '-'}</span> },
         {
             title: t('common.actions'), key: 'action', width: 120, align: 'center',
             render: (_: any, record: WeeklyPlanItem) => (
@@ -316,7 +318,15 @@ const DepartmentPlan: React.FC<DepartmentPlanProps> = ({ department, selectedMon
 
             {/* Item Form Modal */}
             <Modal
-                title={editingItem ? t('business.weeklyPlan.editItem') : t('business.weeklyPlan.addItem')}
+                title={
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span>{editingItem ? t('business.weeklyPlan.editItem') : t('business.weeklyPlan.addItem')}</span>
+                        <Button type="link" size="small" icon={<QuestionCircleOutlined />}
+                            onClick={() => setGuideVisible(true)} style={{ padding: '0 4px', fontSize: 12 }}>
+                            Hướng dẫn
+                        </Button>
+                    </div>
+                }
                 open={modalVisible}
                 onCancel={() => { setModalVisible(false); form.resetFields(); }}
                 onOk={() => form.submit()}
@@ -368,6 +378,8 @@ const DepartmentPlan: React.FC<DepartmentPlanProps> = ({ department, selectedMon
                     </Form.Item>
                 </Form>
             </Modal>
+
+            <PlanGuideModal open={guideVisible} onClose={() => setGuideVisible(false)} />
 
             {/* Daily Log Modal */}
             <DailyLogModal

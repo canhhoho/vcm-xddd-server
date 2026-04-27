@@ -486,7 +486,7 @@
             "addItem": "Thêm mục tiêu",
             "editItem": "Sửa mục tiêu",
             "target": "Mục tiêu (KPI)",
-            "targetPlaceholder": "Mục tiêu cụ thể cần đạt trong tháng",
+            "targetPlaceholder": "VD: Đạt 500 triệu doanh số trong tháng 04",
             "deleteConfirm": "Xóa kế hoạch tháng này và toàn bộ mục tiêu?"
         },
         "weekly": {
@@ -588,12 +588,12 @@
             "statusCarriedOver": "Chuyển sang tuần sau",
             "currentWeek": "Tuần hiện tại",
             "items": "đầu việc",
-            "whatPlaceholder": "Nội dung công việc",
-            "whyPlaceholder": "Mục đích",
+            "whatPlaceholder": "VD: Gọi 10 khách hàng tiềm năng/ngày",
+            "whyPlaceholder": "VD: Đạt KPI doanh số Q2: 500 triệu",
             "whoPlaceholder": "Người phụ trách",
-            "wherePlaceholder": "Địa điểm",
-            "howPlaceholder": "Phương pháp",
-            "resultPlaceholder": "Kết quả đánh giá"
+            "wherePlaceholder": "VD: Văn phòng, Zoom, điện thoại",
+            "howPlaceholder": "VD: Script telesale + theo dõi CRM",
+            "resultPlaceholder": "VD: Hoàn thành 90%, còn 2 KH chưa phản hồi"
         }
     },
     "users": {

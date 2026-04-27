@@ -1,7 +1,8 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { Button, Table, Tag, Modal, Form, Input, Select, message, Empty, Popconfirm, Typography } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
-import { PlusOutlined, DeleteOutlined } from '@ant-design/icons';
+import { PlusOutlined, DeleteOutlined, QuestionCircleOutlined } from '@ant-design/icons';
+import PlanGuideModal from './PlanGuideModal';
 import { useTranslation } from 'react-i18next';
 import type { Dayjs } from 'dayjs';
 import { apiService } from '../services/api';
@@ -30,6 +31,7 @@ const MonthlyPlanSection: React.FC<Props> = ({ department, selectedMonth, canEdi
     const [loading, setLoading] = useState(false);
     const [modalVisible, setModalVisible] = useState(false);
     const [editingItem, setEditingItem] = useState<MonthlyPlanItem | null>(null);
+    const [guideVisible, setGuideVisible] = useState(false);
     const [form] = Form.useForm();
 
     const monthStart = selectedMonth.format('YYYY-MM-DD');
@@ -132,7 +134,7 @@ const MonthlyPlanSection: React.FC<Props> = ({ department, selectedMonth, canEdi
             title: t('business.weeklyPlan.who'), key: 'who', width: 130,
             render: (_: any, r: MonthlyPlanItem) => r.assigneeName || users.find(u => u.id === r.assigneeId)?.name || '-',
         },
-        { title: t('business.weeklyPlan.how'), dataIndex: 'method', key: 'method', width: 130, ellipsis: true },
+        { title: t('business.weeklyPlan.how'), dataIndex: 'method', key: 'method', width: 130, render: (val: string) => <span style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{val || '-'}</span> },
         {
             title: t('business.weeklyPlan.status'), dataIndex: 'status', key: 'status', width: 130, align: 'center',
             render: (val: string) => {
@@ -140,7 +142,7 @@ const MonthlyPlanSection: React.FC<Props> = ({ department, selectedMonth, canEdi
                 return <Tag color={STATUS_COLORS[val]}>{t(`business.weeklyPlan.${labelKey}`)}</Tag>;
             },
         },
-        { title: t('business.weeklyPlan.result'), dataIndex: 'result', key: 'result', width: 160, ellipsis: true },
+        { title: t('business.weeklyPlan.result'), dataIndex: 'result', key: 'result', width: 120, render: (val: string) => <span style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{val || '-'}</span> },
         {
             title: t('common.actions'), key: 'action', width: 90, align: 'center',
             render: (_: any, record: MonthlyPlanItem) => (
@@ -207,7 +209,15 @@ const MonthlyPlanSection: React.FC<Props> = ({ department, selectedMonth, canEdi
 
             {/* Item Modal */}
             <Modal
-                title={editingItem ? t('plans.monthly.editItem') : t('plans.monthly.addItem')}
+                title={
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span>{editingItem ? t('plans.monthly.editItem') : t('plans.monthly.addItem')}</span>
+                        <Button type="link" size="small" icon={<QuestionCircleOutlined />}
+                            onClick={() => setGuideVisible(true)} style={{ padding: '0 4px', fontSize: 12 }}>
+                            Hướng dẫn
+                        </Button>
+                    </div>
+                }
                 open={modalVisible}
                 onCancel={() => { setModalVisible(false); form.resetFields(); }}
                 onOk={() => form.submit()}
@@ -251,6 +261,7 @@ const MonthlyPlanSection: React.FC<Props> = ({ department, selectedMonth, canEdi
                     </Form.Item>
                 </Form>
             </Modal>
+            <PlanGuideModal open={guideVisible} onClose={() => setGuideVisible(false)} />
         </div>
     );
 };
