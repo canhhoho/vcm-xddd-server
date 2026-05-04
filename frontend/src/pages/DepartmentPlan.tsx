@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Card, Table, Button, Select, Modal, Form, Input, Tag, message, DatePicker, Empty, Tooltip, Progress } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { PlusOutlined, SyncOutlined, CalendarOutlined, EditOutlined, QuestionCircleOutlined } from '@ant-design/icons';
@@ -7,10 +7,11 @@ import { useTranslation } from 'react-i18next';
 import dayjs from 'dayjs';
 import type { Dayjs } from 'dayjs';
 import isoWeek from 'dayjs/plugin/isoWeek';
-import { apiService } from '../services/api';
 import { VcmActionGroup } from '../components/VcmActionGroup';
 import DailyLogModal from '../components/DailyLogModal';
-import type { WeeklyPlan, WeeklyPlanItem, User } from '../types';
+import type { WeeklyPlan, WeeklyPlanItem } from '../types';
+import { useWeeklyPlans, usePlanMutations } from '../hooks/usePlans';
+import { useUsers } from '../hooks/useUsers';
 
 dayjs.extend(isoWeek);
 
@@ -33,18 +34,24 @@ interface DepartmentPlanProps {
 const DepartmentPlan: React.FC<DepartmentPlanProps> = ({ department, selectedMonth, canEdit }) => {
     const { t } = useTranslation();
 
-    const [allPlans, setAllPlans] = useState<WeeklyPlan[]>([]);
-    const [planItemsMap, setPlanItemsMap] = useState<Record<string, WeeklyPlanItem[]>>({});
-    const [loadingPlanId, setLoadingPlanId] = useState<string | null>(null);
     const [modalVisible, setModalVisible] = useState(false);
     const [editingItem, setEditingItem] = useState<WeeklyPlanItem | null>(null);
     const [activePlanId, setActivePlanId] = useState<string | null>(null);
-    const [users, setUsers] = useState<User[]>([]);
     const [dailyLogItem, setDailyLogItem] = useState<WeeklyPlanItem | null>(null);
     const [guideVisible, setGuideVisible] = useState(false);
     const [form] = Form.useForm();
 
     const thisWeekStart = getWeekStart(dayjs());
+
+    // React Query Data
+    const { data: allPlans = [], isLoading } = useWeeklyPlans({ department });
+    const { data: users = [] } = useUsers();
+    const { 
+        createWeeklyPlan, 
+        createWeeklyPlanItem, 
+        updateWeeklyPlanItem, 
+        deleteWeeklyPlanItem 
+    } = usePlanMutations();
 
     // Filter plans to selected month: include if weekStart is in selected month
     const plans = useMemo(() => {
@@ -62,62 +69,27 @@ const DepartmentPlan: React.FC<DepartmentPlanProps> = ({ department, selectedMon
         [...allPlans].sort((a, b) => dayjs(b.weekStart).diff(dayjs(a.weekStart)))[0] || null,
     [allPlans]);
 
-    const loadPlans = useCallback(async () => {
-        try {
-            const res = await apiService.getWeeklyPlans({ department });
-            if (res.success) setAllPlans(res.data || []);
-        } catch { /* ignore */ }
-    }, [department]);
-
-    const loadItemsForPlan = useCallback(async (planId: string) => {
-        if (planItemsMap[planId]) return;
-        setLoadingPlanId(planId);
-        try {
-            const res = await apiService.getWeeklyPlanItems(planId);
-            if (res.success) setPlanItemsMap(prev => ({ ...prev, [planId]: res.data || [] }));
-        } catch { /* ignore */ }
-        setLoadingPlanId(null);
-    }, [planItemsMap]);
-
-    const refreshPlanItems = useCallback(async (planId: string) => {
-        try {
-            const res = await apiService.getWeeklyPlanItems(planId);
-            if (res.success) setPlanItemsMap(prev => ({ ...prev, [planId]: res.data || [] }));
-        } catch { /* ignore */ }
-    }, []);
-
-    useEffect(() => {
-        apiService.getUsers().then(r => { if (r.success) setUsers(r.data || []); });
-    }, []);
-
-    useEffect(() => { loadPlans(); }, [department]);
-
-    useEffect(() => {
-        plans.forEach(p => { if (!planItemsMap[p.id]) loadItemsForPlan(p.id); });
-    }, [plans]);
-
     const handleCreatePlan = async (withCarryOver: boolean) => {
-        try {
-            const ws = thisWeekStart;
-            const payload: any = {
-                weekStart: ws.format('YYYY-MM-DD'),
-                weekEnd: getWeekEnd(ws).format('YYYY-MM-DD'),
-                department,
-            };
-            if (withCarryOver && latestPlan) payload.carryOverFromPlanId = latestPlan.id;
-            const res = await apiService.createWeeklyPlan(payload);
-            if (res.success) {
-                message.success(t('common.saveSuccess'));
-                await loadPlans();
-                if (withCarryOver && latestPlan) refreshPlanItems(latestPlan.id);
-            } else {
-                message.error(res.error || t('common.saveError'));
-            }
-        } catch { message.error(t('common.saveError')); }
+        const ws = thisWeekStart;
+        const payload: any = {
+            weekStart: ws.format('YYYY-MM-DD'),
+            weekEnd: getWeekEnd(ws).format('YYYY-MM-DD'),
+            department,
+        };
+        if (withCarryOver && latestPlan) payload.carryOverFromPlanId = latestPlan.id;
+        
+        createWeeklyPlan.mutate(payload, {
+            onSuccess: (res) => {
+                if (res.success) message.success(t('common.saveSuccess'));
+                else message.error(res.error || t('common.saveError'));
+            },
+            onError: () => message.error(t('common.saveError'))
+        });
     };
 
     const handleAddItem = (planId: string) => {
-        const items = planItemsMap[planId] || [];
+        const plan = allPlans.find(p => p.id === planId);
+        const items = plan?.items || [];
         if (items.length >= 5) { message.warning(t('business.weeklyPlan.maxItems')); return; }
         setActivePlanId(planId);
         setEditingItem(null);
@@ -138,31 +110,40 @@ const DepartmentPlan: React.FC<DepartmentPlanProps> = ({ department, selectedMon
     };
 
     const handleSubmitItem = async (values: any) => {
-        try {
-            const payload = {
-                ...values,
-                startDate: values.startDate?.format('YYYY-MM-DD') || null,
-                endDate: values.endDate?.format('YYYY-MM-DD') || null,
-            };
-            if (editingItem) {
-                const res = await apiService.updateWeeklyPlanItem(editingItem.id, payload);
-                if (res.success) message.success(t('common.saveSuccess'));
-            } else if (activePlanId) {
-                const res = await apiService.createWeeklyPlanItem(activePlanId, payload);
-                if (res.success) message.success(t('common.saveSuccess'));
-            }
-            setModalVisible(false);
-            form.resetFields();
-            if (activePlanId) refreshPlanItems(activePlanId);
-        } catch { message.error(t('common.saveError')); }
+        const payload = {
+            ...values,
+            startDate: values.startDate?.format('YYYY-MM-DD') || null,
+            endDate: values.endDate?.format('YYYY-MM-DD') || null,
+        };
+        
+        if (editingItem) {
+            updateWeeklyPlanItem.mutate({ ...payload, id: editingItem.id }, {
+                onSuccess: (res) => {
+                    if (res.success) {
+                        message.success(t('common.saveSuccess'));
+                        setModalVisible(false);
+                    }
+                },
+                onError: () => message.error(t('common.saveError'))
+            });
+        } else if (activePlanId) {
+            createWeeklyPlanItem.mutate({ planId: activePlanId, data: payload }, {
+                onSuccess: (res) => {
+                    if (res.success) {
+                        message.success(t('common.saveSuccess'));
+                        setModalVisible(false);
+                    }
+                },
+                onError: () => message.error(t('common.saveError'))
+            });
+        }
     };
 
     const handleDeleteItem = async (planId: string, id: string) => {
-        try {
-            await apiService.deleteWeeklyPlanItem(id);
-            message.success(t('common.deleteSuccess'));
-            refreshPlanItems(planId);
-        } catch { message.error(t('common.saveError')); }
+        deleteWeeklyPlanItem.mutate(id, {
+            onSuccess: () => message.success(t('common.deleteSuccess')),
+            onError: () => message.error(t('common.saveError'))
+        });
     };
 
     const getColumns = (planId: string): ColumnsType<WeeklyPlanItem> => [
@@ -265,12 +246,12 @@ const DepartmentPlan: React.FC<DepartmentPlanProps> = ({ department, selectedMon
                 </Card>
             ) : (
                 plans.map(plan => {
-                    const planItems = planItemsMap[plan.id] || [];
+                    const planItems = plan.items || [];
                     const weekLabel = `${dayjs(plan.weekStart).format('DD/MM')} – ${dayjs(plan.weekEnd).format('DD/MM/YYYY')}`;
                     const isCurrent = isCurrentWeek(plan);
-                    const doneCount = planItems.filter(i => i.status === 'DONE').length;
+                    const doneCount = planItems.filter((i: any) => i.status === 'DONE').length;
                     const avgProgress = planItems.length
-                        ? Math.round(planItems.reduce((s, i) => s + (i.progressPct || 0), 0) / planItems.length)
+                        ? Math.round(planItems.reduce((s: number, i: any) => s + (i.progressPct || 0), 0) / planItems.length)
                         : 0;
 
                     return (
@@ -306,7 +287,7 @@ const DepartmentPlan: React.FC<DepartmentPlanProps> = ({ department, selectedMon
                                 dataSource={planItems}
                                 columns={getColumns(plan.id)}
                                 rowKey="id"
-                                loading={loadingPlanId === plan.id}
+                                loading={isLoading}
                                 size="small"
                                 pagination={false}
                                 scroll={{ x: 1400 }}
@@ -385,8 +366,7 @@ const DepartmentPlan: React.FC<DepartmentPlanProps> = ({ department, selectedMon
             <DailyLogModal
                 item={dailyLogItem}
                 open={!!dailyLogItem}
-                onClose={(refreshed) => {
-                    if (refreshed && dailyLogItem) refreshPlanItems(dailyLogItem.planId);
+                onClose={() => {
                     setDailyLogItem(null);
                 }}
             />

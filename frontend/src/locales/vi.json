@@ -137,6 +137,8 @@
         "selectBranchRequired": "Chọn chi nhánh",
         "targetValue": "Giá trị chỉ tiêu",
         "targetValueRequired": "Nhập giá trị",
+        "hintSourceWork": "Nguồn việc tương ứng (x1.2)",
+        "hintRevenue": "Doanh thu tương ứng (/1.2)",
         "company": "Công ty",
         "filterYear": "Năm",
         "filterMonth": "Tháng",

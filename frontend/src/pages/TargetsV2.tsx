@@ -25,7 +25,6 @@ import { useTargets, useBranchPerformance, useGeneralPerformance, useTargetMutat
 import { useAppConfig } from '../hooks/useAppConfig';
 
 const { Option } = Select;
-const { Text } = Typography;
 
 // --- TYPES ---
 interface Target {
@@ -79,11 +78,11 @@ const Targets: React.FC = () => {
     }
 
     // Filters for General Targets
-    const [generalYear, setGeneralYear] = useFilterSync('year', '2026');
+    const [generalYear, setGeneralYear] = useFilterSync('year', dayjs().year().toString());
     const [generalType, setGeneralType] = useState<'NGUON_VIEC' | 'DOANH_THU'>('NGUON_VIEC');
 
     // Filters for Branch Targets
-    const [branchYear, setBranchYear] = useFilterSync('b_year', '2026');
+    const [branchYear, setBranchYear] = useFilterSync('b_year', dayjs().year().toString());
     const [branchMonth, setBranchMonth] = useFilterSync('b_month', '');
     const [branchFilter, setBranchFilter] = useFilterSync<string | undefined>('branch', undefined);
 
@@ -110,14 +109,14 @@ const Targets: React.FC = () => {
     const activeFilters = useMemo(() => {
         const filters: any[] = [];
         if (activeTab === 'general') {
-            if (generalYear && generalYear !== '2026') {
-                filters.push({ key: 'year', label: t('targets.filterYear'), value: generalYear, onRemove: () => setGeneralYear('2026') });
+            if (generalYear && generalYear !== dayjs().year().toString()) {
+                filters.push({ key: 'year', label: t('targets.filterYear'), value: generalYear, onRemove: () => setGeneralYear(dayjs().year().toString()) });
             }
         } else {
             if (branchMonth) {
                 filters.push({ key: 'b_month', label: `${t('targets.filterMonth')}/${t('targets.filterYear')}`, value: `T${parseInt(branchMonth)}/${branchYear}`, onRemove: () => setBranchMonth('') });
-            } else if (branchYear && branchYear !== '2026') {
-                filters.push({ key: 'b_year', label: t('targets.filterYear'), value: branchYear, onRemove: () => setBranchYear('2026') });
+            } else if (branchYear && branchYear !== dayjs().year().toString()) {
+                filters.push({ key: 'b_year', label: t('targets.filterYear'), value: branchYear, onRemove: () => setBranchYear(dayjs().year().toString()) });
             }
             if (branchFilter) {
                 const br = branches.find((b: any) => b.id === branchFilter);
@@ -125,13 +124,14 @@ const Targets: React.FC = () => {
             }
         }
         return filters;
-    }, [activeTab, generalYear, branchYear, branchMonth, branchFilter, branches]);
+    }, [activeTab, generalYear, branchYear, branchMonth, branchFilter, branches, t, setGeneralYear, setBranchYear, setBranchMonth, setBranchFilter]);
 
     const clearAllFilters = () => {
+        const currentYearStr = dayjs().year().toString();
         if (activeTab === 'general') {
-            setGeneralYear('2026');
+            setGeneralYear(currentYearStr);
         } else {
-            setBranchYear('2026');
+            setBranchYear(currentYearStr);
             setBranchMonth('');
             setBranchFilter(undefined);
         }
@@ -324,31 +324,8 @@ const Targets: React.FC = () => {
         return rows;
     };
 
-    // ========== BRANCH TARGETS DATA (Legacy - not used in new layout) ==========
-    const getBranchTableData = () => {
-        const period = `${branchYear}-${branchMonth}`;
-        const branchTargets = targets.filter((t: Target) =>
-            t.unitType === 'BRANCH' &&
-            t.period === period
-        );
-
-        return branches.map((branch: Branch) => {
-            const target = branchTargets.find((t: Target) => t.unitId === branch.id);
-            return {
-                key: branch.id,
-                branchId: branch.id,
-                branchName: branch.name,
-                branchCode: branch.code,
-                targetId: target?.id,
-                targetValue: target?.targetValue || 0,
-                actualValue: target?.actualValue || 0,
-                hasTarget: !!target,
-                target
-            };
-        });
-    };
-
-    const getBranchMetric = (branchId: string, type: 'NGUON_VIEC' | 'DOANH_THU') => {
+    // ========== BRANCH TARGETS DATA ==========
+    const getBranchMetric = useCallback((branchId: string, type: 'NGUON_VIEC' | 'DOANH_THU') => {
         const perf = branchActuals[branchId];
         if (!perf) return 0;
         const metric = type === 'NGUON_VIEC' ? perf.sourceWork : perf.revenue;
@@ -359,7 +336,7 @@ const Targets: React.FC = () => {
         } else {
             return metric.total || 0;
         }
-    };
+    }, [branchActuals, branchMonth]);
 
     // Columns for General Targets
     const generalColumns = [
@@ -521,9 +498,10 @@ const Targets: React.FC = () => {
             dataIndex: 'actualValueDT',
             key: 'actualValueDT',
             align: 'right' as const,
-            render: (val: number) => {
+            render: (val: number, record: any) => {
+                const rate = getRate(val, record.targetValueDT);
                 return (
-                    <span style={{ color: '#f5222d', fontWeight: 600 }}>
+                    <span style={{ color: rate >= 100 ? '#52c41a' : rate >= 50 ? '#faad14' : '#f5222d' }}>
                         {formatNumber(val)}
                     </span>
                 );
@@ -577,6 +555,53 @@ const Targets: React.FC = () => {
     // const totalTarget = generalTotals.targetValue + branchTotals.targetValue;
     // const totalActual = generalTotals.actualValue + branchTotals.actualValue;
     // const achievementRate = totalTarget > 0 ? Math.round((totalActual / totalTarget) * 100) : 0;
+
+    // Memoized Branch Data to improve performance and support filtering
+    const filteredBranches = useMemo(() => {
+        return branches.filter((b: any) => !branchFilter || b.id === branchFilter);
+    }, [branches, branchFilter]);
+
+    const branchSourceWorkData = useMemo(() => {
+        return filteredBranches.map((branch: Branch) => {
+            const targetPeriod = branchMonth ? `${branchYear}-${branchMonth}` : branchYear;
+            const branchTargets = targets.filter((t: Target) => t.unitType === 'BRANCH' && t.type === 'NGUON_VIEC' && t.period === targetPeriod && t.unitId === branch.id);
+            const targetValue = branchTargets.reduce((sum: number, t: Target) => sum + (t.targetValue || 0), 0);
+            const actual = getBranchMetric(branch.id, 'NGUON_VIEC');
+
+            return {
+                key: branch.id,
+                branchId: branch.id,
+                branchName: branch.name,
+                branchCode: branch.code,
+                targetId: branchTargets[0]?.id,
+                targetValue: targetValue,
+                actualValue: actual,
+                hasTarget: branchTargets.length > 0,
+                target: branchTargets[0]
+            };
+        });
+    }, [filteredBranches, targets, branchMonth, branchYear, getBranchMetric]);
+
+    const branchRevenueData = useMemo(() => {
+        return filteredBranches.map((branch: Branch) => {
+            const targetPeriod = branchMonth ? `${branchYear}-${branchMonth}` : branchYear;
+            const branchTargets = targets.filter((t: Target) => t.unitType === 'BRANCH' && t.type === 'DOANH_THU' && t.period === targetPeriod && t.unitId === branch.id);
+            const targetValue = branchTargets.reduce((sum: number, t: Target) => sum + (t.targetValue || 0), 0);
+            const actual = getBranchMetric(branch.id, 'DOANH_THU');
+
+            return {
+                key: branch.id,
+                branchId: branch.id,
+                branchName: branch.name,
+                branchCode: branch.code,
+                targetId: branchTargets[0]?.id,
+                targetValueDT: targetValue,
+                actualValueDT: actual,
+                hasTarget: branchTargets.length > 0,
+                targetDT: branchTargets[0]
+            };
+        });
+    }, [filteredBranches, targets, branchMonth, branchYear, getBranchMetric]);
 
     // Use appConfig for periods if available, otherwise fallback
     const yearOptions = appConfig?.PERIODS?.YEARS || ['2024', '2025', '2026', '2027'];
@@ -746,24 +771,7 @@ const Targets: React.FC = () => {
                                             </div>
                                             <Table
                                                 columns={branchColumns}
-                                                dataSource={branches.map((branch: Branch) => {
-                                                    const targetPeriod = branchMonth ? `${branchYear}-${branchMonth}` : branchYear;
-                                                    const branchTargets = targets.filter((t: Target) => t.unitType === 'BRANCH' && t.type === 'NGUON_VIEC' && t.period === targetPeriod && t.unitId === branch.id);
-                                                    const targetValue = branchTargets.reduce((sum: number, t: Target) => sum + (t.targetValue || 0), 0);
-                                                    const actual = getBranchMetric(branch.id, 'NGUON_VIEC');
-
-                                                    return {
-                                                        key: branch.id,
-                                                        branchId: branch.id,
-                                                        branchName: branch.name,
-                                                        branchCode: branch.code,
-                                                        targetId: branchTargets[0]?.id, // Use first ID for editing
-                                                        targetValue: targetValue,
-                                                        actualValue: actual,
-                                                        hasTarget: branchTargets.length > 0,
-                                                        target: branchTargets[0]
-                                                    };
-                                                })}
+                                                dataSource={branchSourceWorkData}
                                                 pagination={false}
                                                 size="small"
                                                 loading={loading}
@@ -800,23 +808,7 @@ const Targets: React.FC = () => {
                                             </div>
                                             <Table
                                                 columns={branchRevenueColumns}
-                                                dataSource={branches.map((branch: Branch) => {
-                                                    const targetPeriod = branchMonth ? `${branchYear}-${branchMonth}` : branchYear;
-                                                    const branchTargets = targets.filter((t: Target) => t.unitType === 'BRANCH' && t.type === 'DOANH_THU' && t.period === targetPeriod && t.unitId === branch.id);
-                                                    const targetValue = branchTargets.reduce((sum: number, t: Target) => sum + (t.targetValue || 0), 0);
-                                                    const actual = getBranchMetric(branch.id, 'DOANH_THU');
-                                                    return {
-                                                        key: branch.id,
-                                                        branchId: branch.id,
-                                                        branchName: branch.name,
-                                                        branchCode: branch.code,
-                                                        targetId: branchTargets[0]?.id,
-                                                        targetValueDT: targetValue,
-                                                        actualValueDT: actual,
-                                                        hasTarget: branchTargets.length > 0,
-                                                        targetDT: branchTargets[0]
-                                                    };
-                                                })}
+                                                dataSource={branchRevenueData}
                                                 pagination={false}
                                                 size="small"
                                                 loading={loading}
@@ -961,6 +953,30 @@ const Targets: React.FC = () => {
                             }}
                             placeholder="0"
                         />
+                    </Form.Item>
+
+                    <Form.Item noStyle shouldUpdate={(prev, curr) => prev.targetValue !== curr.targetValue || prev.type !== curr.type}>
+                        {({ getFieldValue }) => {
+                            const val = getFieldValue('targetValue');
+                            const type = getFieldValue('type');
+                            if (!val) return null;
+
+                            if (type === 'DOANH_THU') {
+                                return (
+                                    <div style={{ marginTop: -20, marginBottom: 16, fontSize: '12px', color: '#1890ff', fontStyle: 'italic', paddingLeft: 4 }}>
+                                        💡 {t('targets.hintSourceWork')}: <strong>{formatNumber(val * 1.2)}</strong>
+                                    </div>
+                                );
+                            }
+                            if (type === 'NGUON_VIEC') {
+                                return (
+                                    <div style={{ marginTop: -20, marginBottom: 16, fontSize: '12px', color: '#1890ff', fontStyle: 'italic', paddingLeft: 4 }}>
+                                        💡 {t('targets.hintRevenue')}: <strong>{formatNumber(val / 1.2)}</strong>
+                                    </div>
+                                );
+                            }
+                            return null;
+                        }}
                     </Form.Item>
                 </Form>
             </Modal>

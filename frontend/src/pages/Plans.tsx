@@ -39,10 +39,12 @@ const Plans: React.FC = () => {
         );
     }
 
+    const [activeTab, setActiveTab] = useState('BD');
+
     const tabItems = DEPARTMENTS.map(({ key, label, icon }) => ({
         key,
         label: <span>{icon} {t(label)}</span>,
-        children: (
+        children: activeTab === key ? (
             <div>
                 <MonthlyPlanSection
                     department={key}
@@ -60,7 +62,7 @@ const Plans: React.FC = () => {
                     canEdit={canEdit}
                 />
             </div>
-        ),
+        ) : <div />, // Only render content for active tab
     }));
 
     return (
@@ -103,7 +105,8 @@ const Plans: React.FC = () => {
             </div>
 
             <Tabs
-                defaultActiveKey="BD"
+                activeKey={activeTab}
+                onChange={setActiveTab}
                 items={tabItems}
                 className="vcm-main-tabs"
                 style={{ marginTop: 16 }}

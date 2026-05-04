@@ -49,14 +49,39 @@ function toItem(row) {
 // GET /weekly-plans?department=BD&weekStart=2026-03-24
 router.get('/', async (req, res) => {
   try {
-    const { department, weekStart } = req.query;
+    const { department, weekStart, includeItems } = req.query;
     let query = 'SELECT * FROM weekly_plans WHERE 1=1';
     const params = [];
     if (department) { params.push(department); query += ` AND department=$${params.length}`; }
     if (weekStart) { params.push(weekStart); query += ` AND week_start=$${params.length}`; }
     query += ' ORDER BY week_start DESC, department';
+    
     const result = await pool.query(query, params);
-    res.json({ success: true, data: result.rows.map(toPlan) });
+    const plans = result.rows.map(toPlan);
+
+    if (includeItems === 'true' && plans.length > 0) {
+      const planIds = plans.map(p => p.id);
+      const itemsResult = await pool.query(
+        `SELECT wi.*, u.name as assignee_name 
+         FROM weekly_plan_items wi 
+         LEFT JOIN users u ON wi.assignee_id = u.id 
+         WHERE wi.plan_id = ANY($1) 
+         ORDER BY wi.plan_id, wi.sort_order`,
+        [planIds]
+      );
+      
+      const itemsMap = {};
+      itemsResult.rows.forEach(row => {
+        if (!itemsMap[row.plan_id]) itemsMap[row.plan_id] = [];
+        itemsMap[row.plan_id].push(toItem(row));
+      });
+
+      plans.forEach(p => {
+        p.items = itemsMap[p.id] || [];
+      });
+    }
+
+    res.json({ success: true, data: plans });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }

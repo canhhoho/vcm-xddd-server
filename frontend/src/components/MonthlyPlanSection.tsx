@@ -1,13 +1,14 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useState } from 'react';
 import { Button, Table, Tag, Modal, Form, Input, Select, message, Empty, Popconfirm, Typography } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { PlusOutlined, DeleteOutlined, QuestionCircleOutlined } from '@ant-design/icons';
 import PlanGuideModal from './PlanGuideModal';
 import { useTranslation } from 'react-i18next';
 import type { Dayjs } from 'dayjs';
-import { apiService } from '../services/api';
 import { VcmActionGroup } from './VcmActionGroup';
-import type { MonthlyPlan, MonthlyPlanItem, User } from '../types';
+import type { MonthlyPlanItem } from '../types';
+import { useMonthlyPlans, usePlanMutations } from '../hooks/usePlans';
+import { useUsers } from '../hooks/useUsers';
 
 const { TextArea } = Input;
 const { Option } = Select;
@@ -25,10 +26,6 @@ interface Props {
 
 const MonthlyPlanSection: React.FC<Props> = ({ department, selectedMonth, canEdit }) => {
     const { t } = useTranslation();
-    const [plan, setPlan] = useState<MonthlyPlan | null>(null);
-    const [items, setItems] = useState<MonthlyPlanItem[]>([]);
-    const [users, setUsers] = useState<User[]>([]);
-    const [loading, setLoading] = useState(false);
     const [modalVisible, setModalVisible] = useState(false);
     const [editingItem, setEditingItem] = useState<MonthlyPlanItem | null>(null);
     const [guideVisible, setGuideVisible] = useState(false);
@@ -36,48 +33,36 @@ const MonthlyPlanSection: React.FC<Props> = ({ department, selectedMonth, canEdi
 
     const monthStart = selectedMonth.format('YYYY-MM-DD');
 
-    const loadPlan = useCallback(async () => {
-        setLoading(true);
-        try {
-            const res = await apiService.getMonthlyPlans({ department, monthStart });
-            if (res.success && res.data?.length > 0) {
-                const p = res.data[0];
-                setPlan(p);
-                const itemsRes = await apiService.getMonthlyPlanItems(p.id);
-                if (itemsRes.success) setItems(itemsRes.data || []);
-            } else {
-                setPlan(null);
-                setItems([]);
-            }
-        } catch { /* ignore */ }
-        setLoading(false);
-    }, [department, monthStart]);
+    // React Query Data
+    const { data: plans = [], isLoading: loading } = useMonthlyPlans({ department, monthStart });
+    const { data: users = [] } = useUsers();
+    const { 
+        createMonthlyPlan, 
+        deleteMonthlyPlan, 
+        createMonthlyPlanItem, 
+        updateMonthlyPlanItem, 
+        deleteMonthlyPlanItem 
+    } = usePlanMutations();
 
-    useEffect(() => {
-        loadPlan();
-        apiService.getUsers().then(r => { if (r.success) setUsers(r.data || []); });
-    }, [loadPlan]);
+    const plan = plans.length > 0 ? plans[0] : null;
+    const items = plan?.items || [];
 
     const handleCreatePlan = async () => {
-        try {
-            const res = await apiService.createMonthlyPlan({ monthStart, department });
-            if (res.success) {
-                message.success(t('common.saveSuccess'));
-                await loadPlan();
-            } else {
-                message.error(res.error || t('common.saveError'));
-            }
-        } catch { message.error(t('common.saveError')); }
+        createMonthlyPlan.mutate({ monthStart, department }, {
+            onSuccess: (res) => {
+                if (res.success) message.success(t('common.saveSuccess'));
+                else message.error(res.error || t('common.saveError'));
+            },
+            onError: () => message.error(t('common.saveError'))
+        });
     };
 
     const handleDeletePlan = async () => {
         if (!plan) return;
-        try {
-            await apiService.deleteMonthlyPlan(plan.id);
-            message.success(t('common.deleteSuccess'));
-            setPlan(null);
-            setItems([]);
-        } catch { message.error(t('common.saveError')); }
+        deleteMonthlyPlan.mutate(plan.id, {
+            onSuccess: () => message.success(t('common.deleteSuccess')),
+            onError: () => message.error(t('common.saveError'))
+        });
     };
 
     const openAddModal = () => {
@@ -94,32 +79,35 @@ const MonthlyPlanSection: React.FC<Props> = ({ department, selectedMonth, canEdi
     };
 
     const handleDeleteItem = async (id: string) => {
-        try {
-            await apiService.deleteMonthlyPlanItem(id);
-            message.success(t('common.deleteSuccess'));
-            setItems(prev => prev.filter(i => i.id !== id));
-        } catch { message.error(t('common.saveError')); }
+        deleteMonthlyPlanItem.mutate(id, {
+            onSuccess: () => message.success(t('common.deleteSuccess')),
+            onError: () => message.error(t('common.saveError'))
+        });
     };
 
     const handleSubmit = async (values: any) => {
         if (!plan) return;
-        try {
-            if (editingItem) {
-                const res = await apiService.updateMonthlyPlanItem(editingItem.id, values);
-                if (res.success) {
-                    message.success(t('common.saveSuccess'));
-                    setModalVisible(false);
-                    await loadPlan();
-                }
-            } else {
-                const res = await apiService.createMonthlyPlanItem(plan.id, values);
-                if (res.success) {
-                    message.success(t('common.saveSuccess'));
-                    setModalVisible(false);
-                    setItems(prev => [...prev, res.data]);
-                }
-            }
-        } catch { message.error(t('common.saveError')); }
+        if (editingItem) {
+            updateMonthlyPlanItem.mutate({ id: editingItem.id, data: values }, {
+                onSuccess: (res) => {
+                    if (res.success) {
+                        message.success(t('common.saveSuccess'));
+                        setModalVisible(false);
+                    }
+                },
+                onError: () => message.error(t('common.saveError'))
+            });
+        } else {
+            createMonthlyPlanItem.mutate({ planId: plan.id, data: values }, {
+                onSuccess: (res) => {
+                    if (res.success) {
+                        message.success(t('common.saveSuccess'));
+                        setModalVisible(false);
+                    }
+                },
+                onError: () => message.error(t('common.saveError'))
+            });
+        }
     };
 
     const columns: ColumnsType<MonthlyPlanItem> = [
