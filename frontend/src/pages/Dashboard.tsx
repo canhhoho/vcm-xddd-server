@@ -79,7 +79,6 @@ const Dashboard: React.FC = () => {
     const kpi = useMemo(() => stats?.kpi, [stats]);
     const businessStructure = useMemo(() => stats?.businessStructure, [stats]);
     const projectExecution = useMemo(() => stats?.projectExecution, [stats]);
-    const recentActivities = useMemo(() => stats?.recentActivities || [], [stats]);
     const pipelineData = useMemo(() => stats?.pipelineData || [], [stats]);
     const pipelineDataB2C = useMemo(() => stats?.pipelineDataB2C || [], [stats]);
 
@@ -145,51 +144,7 @@ const Dashboard: React.FC = () => {
         );
     };
 
-    const userName = stats?.userName || localStorage.getItem('userName') || 'User';
-
-    const activityColumns = useMemo(() => [
-        {
-            title: t('dashboard.account'),
-            dataIndex: 'userName',
-            key: 'userName',
-            width: 150,
-            render: (text: string) => <span style={{ fontWeight: 500 }}>{text || '-'}</span>,
-        },
-        {
-            title: t('dashboard.activity'),
-            dataIndex: 'description',
-            key: 'description',
-            render: (text: string) => <span className="dash-activity-text">{text}</span>,
-        },
-        {
-            title: t('dashboard.time'),
-            dataIndex: 'createdAt',
-            key: 'timestamp',
-            width: 80,
-            render: (text: string) => {
-                if (!text) return '-';
-                const d = new Date(text);
-                return <span className="dash-time">{isNaN(d.getTime()) ? '-' : d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>;
-            },
-        },
-        {
-            title: t('dashboard.date'),
-            dataIndex: 'createdAt',
-            key: 'date',
-            width: 110,
-            render: (text: string) => {
-                if (!text) return '-';
-                const d = new Date(text);
-                return <span className="dash-date">{isNaN(d.getTime()) ? '-' : d.toLocaleDateString('vi-VN')}</span>;
-            },
-        },
-    ], [t]);
-
-    const statusLabelMap = useMemo(() => ({
-        URGENT: { label: t('dashboard.urgent'), color: '#EF4444' },
-        PENDING_APPROVAL: { label: t('dashboard.pendingApproval'), color: '#F59E0B' },
-        HIGH: { label: t('dashboard.high'), color: '#E11D2E' },
-    }), [t]);
+    const userName = useMemo(() => stats?.userName || localStorage.getItem('userName') || 'User', [stats?.userName]);
 
     // Render logic
     if (loading && !stats) {
@@ -231,46 +186,63 @@ const Dashboard: React.FC = () => {
     };
 
     const renderMiniDonut = (title: string, data: any[], colorB2B: string, colorB2C: string) => {
-        const dominantField = data && data.length > 0
-            ? data.reduce((a, b) => a.percent >= b.percent ? a : b)
-            : null;
+        const total = data.reduce((acc, curr) => acc + curr.value, 0);
+        const totalInM = (total / 1000000).toLocaleString(i18n.language === 'en' ? 'en-US' : 'vi-VN');
 
         return (
-            <div style={{ textAlign: 'center' }}>
-                <div style={{ fontSize: '13px', fontWeight: 600, marginBottom: '8px', color: '#4B5563' }}>{title}</div>
-                <Pie
-                    data={data}
-                    angleField="value"
-                    colorField="type"
-                    radius={1}
-                    innerRadius={0.7}
-                    color={({ type }: any) => type === 'B2B' ? colorB2B : colorB2C}
-                    label={false}
-                    statistic={{
-                        title: {
-                            content: dominantField ? `${dominantField.percent}%` : '0%',
-                            style: { fontSize: '18px', fontWeight: 700, color: '#171717' },
-                        },
-                        content: false,
-                    }}
-                    tooltip={{
-                        formatter: (datum: any) => {
-                            const valInM = (datum.value / 1000000).toLocaleString(i18n.language === 'en' ? 'en-US' : 'vi-VN');
-                            return { name: datum.field, value: `${datum.percent}% | ${valInM} ${t('dashboard.millionUnit')}` };
-                        }
-                    }}
-                    legend={false}
-                    height={150}
-                />
-                <div style={{ marginTop: '12px', fontSize: '11.5px', textAlign: 'left', padding: '0 4px' }}>
+            <div className="dash-donut-wrapper" style={{ textAlign: 'center', background: '#fff', borderRadius: '12px', padding: '16px 12px', border: '1px solid #f0f0f0', height: '100%' }}>
+                <div style={{ fontSize: '13px', fontWeight: 700, marginBottom: '16px', color: '#374151', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{title}</div>
+                <div style={{ position: 'relative', height: 160 }}>
+                    <Pie
+                        data={data}
+                        angleField="value"
+                        colorField="type"
+                        radius={1}
+                        innerRadius={0.75}
+                        color={({ type }: any) => type === 'B2B' ? colorB2B : colorB2C}
+                        padding="auto"
+                        appendPadding={10}
+                        stroke="#fff"
+                        lineWidth={2}
+                        label={false}
+                        statistic={{
+                            title: {
+                                content: totalInM,
+                                style: { fontSize: '20px', fontWeight: 800, color: '#111827', lineHeight: '24px' },
+                            },
+                            content: {
+                                content: t('dashboard.millionUnit'),
+                                style: { fontSize: '12px', color: '#6B7280', fontWeight: 500 },
+                            },
+                        }}
+                        tooltip={{
+                            formatter: (datum: any) => {
+                                const valInM = (datum.value / 1000000).toLocaleString(i18n.language === 'en' ? 'en-US' : 'vi-VN');
+                                return { name: datum.field, value: `${datum.percent}% | ${valInM} ${t('dashboard.millionUnit')}` };
+                            }
+                        }}
+                        legend={false}
+                        height={160}
+                    />
+                </div>
+                <div style={{ marginTop: '20px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                     {data.map(d => (
-                        <div key={d.field} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-                            <span style={{ color: d.field === 'B2B' ? colorB2B : colorB2C, fontWeight: 700 }}>
-                                {d.field}
-                            </span>
-                            <span style={{ color: '#4B5563', fontWeight: 500 }}>
-                                {d.percent}% ({(d.value / 1000000).toLocaleString(i18n.language === 'en' ? 'en-US' : 'vi-VN')} {t('dashboard.millionUnit')})
-                            </span>
+                        <div key={d.field} className="dash-donut-legend-item" style={{ 
+                            display: 'flex', 
+                            justifyContent: 'space-between', 
+                            alignItems: 'center',
+                            padding: '8px 10px',
+                            background: '#F9FAFB',
+                            borderRadius: '8px',
+                            borderLeft: `4px solid ${d.field === 'B2B' ? colorB2B : colorB2C}`
+                        }}>
+                            <div style={{ textAlign: 'left' }}>
+                                <div style={{ fontSize: '11px', fontWeight: 700, color: d.field === 'B2B' ? colorB2B : colorB2C }}>{d.field}</div>
+                                <div style={{ fontSize: '12px', fontWeight: 600, color: '#1F2937' }}>
+                                    {(d.value / 1000000).toLocaleString(i18n.language === 'en' ? 'en-US' : 'vi-VN')} <small style={{ fontWeight: 400 }}>{t('dashboard.millionUnit')}</small>
+                                </div>
+                            </div>
+                            <div style={{ fontSize: '14px', fontWeight: 800, color: '#374151' }}>{d.percent}%</div>
                         </div>
                     ))}
                 </div>

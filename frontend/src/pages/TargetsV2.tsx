@@ -12,7 +12,6 @@ import {
     SearchOutlined,
     FilterOutlined
 } from '@ant-design/icons';
-import { apiService } from '../services/api'; // STILL NEEDED FOR NOW? Or remove?
 import './Targets.css';
 import { useFilterSync } from '../hooks/useFilterSync';
 import { usePermissions } from '../hooks/usePermissions';
@@ -26,6 +25,7 @@ import { useTargets, useBranchPerformance, useGeneralPerformance, useTargetMutat
 import { useAppConfig } from '../hooks/useAppConfig';
 
 const { Option } = Select;
+const { Text } = Typography;
 
 // --- TYPES ---
 interface Target {

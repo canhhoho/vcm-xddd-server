@@ -83,7 +83,7 @@ const UserManagement: React.FC = () => {
     const { t } = useTranslation();
     const { isAdmin } = usePermissions();
     const canEdit = isAdmin; // Only admins can manage users
-    const [activeTab, setActiveTab] = useState<'users' | 'permissions' | 'positions' | 'activities'>('users');
+    const [activeTab, setActiveTab] = useFilterSync<'users' | 'permissions' | 'positions' | 'activities'>('tab', 'users');
 
     // --- REACT QUERY DATA ---
     const { data: positions = [] } = usePositions();
@@ -463,6 +463,22 @@ const UserManagement: React.FC = () => {
         setPermissionsDirty(true);
     };
 
+    const handleBulkPermissionChange = (userId: string, value: ModuleAccess) => {
+        setLocalPermissions(prev =>
+            prev.map(p => {
+                if (p.userId === userId) {
+                    const updated = { ...p };
+                    MODULE_KEYS.forEach(key => {
+                        (updated as any)[key] = value;
+                    });
+                    return updated;
+                }
+                return p;
+            })
+        );
+        setPermissionsDirty(true);
+    };
+
     const handleSavePermissions = () => {
         savePermissions.mutate(localPermissions, {
             onSuccess: (res: any) => {
@@ -554,18 +570,18 @@ const UserManagement: React.FC = () => {
             title: t('users.colPosition'),
             dataIndex: 'positionName',
             key: 'positionName',
-            width: 150,
+            width: 140,
             render: (text: string, record: User) => {
                 const pos = positions.find((p: Position) => p.id === record.positionId);
                 const label = pos ? t(`users.positions.${pos.code}`, pos.name) : text;
-                return label || <Text type="secondary">-</Text>;
+                return label ? <Text strong style={{ color: '#1890ff' }}>{label}</Text> : <Text type="secondary">-</Text>;
             }
         },
         {
             title: t('users.colName'),
             dataIndex: 'name',
             key: 'name',
-            width: 180,
+            width: 160,
             render: (text: string) => <Text strong>{text}</Text>
         },
         {
@@ -573,46 +589,36 @@ const UserManagement: React.FC = () => {
             dataIndex: 'email',
             key: 'email',
             width: 200,
+            ellipsis: true,
+            render: (text: string) => <Text type="secondary">{text}</Text>
         },
         {
             title: t('users.colGroup'),
             dataIndex: 'category',
             key: 'category',
-            width: 120,
-            render: (text: string) => <Text>{text ? t(`users.groups.${text}`, text) : '-'}</Text>
+            width: 110,
+            align: 'center' as const,
+            render: (text: string) => text ? <Tag style={{ margin: 0 }}>{t(`users.groups.${text}`, text)}</Tag> : '-'
         },
         {
             title: t('users.colDescription'),
             dataIndex: 'description',
             key: 'description',
-            width: 250,
             ellipsis: true,
             render: (text: string) => {
                 const desc = text || '-';
                 return (
                     <Tooltip title={desc} placement="topLeft">
-                        <Text
-                            style={{ cursor: 'pointer' }}
-                            ellipsis
-                        >
-                            {desc}
-                        </Text>
+                        <Text type="secondary" ellipsis>{desc}</Text>
                     </Tooltip>
                 );
             }
         },
         {
-            title: t('users.colPassword'),
-            key: 'password',
-            width: 100,
-            render: () => (
-                <Text type="secondary">••••••</Text>
-            )
-        },
-        {
             title: t('common.actions'),
             key: 'actions',
-            width: 110, // Narrowed from 150 to be "vừa đủ"
+            width: 100,
+            align: 'center' as const,
             fixed: 'right' as const,
             render: (_: any, record: User) => (
                 <VcmActionGroup
@@ -632,7 +638,7 @@ const UserManagement: React.FC = () => {
                                 e.stopPropagation();
                                 handlePasswordReset(record);
                             }}
-                            style={{ color: '#fa8c16', backgroundColor: '#FFF7E6' }}
+                            style={{ color: '#fa8c16' }}
                         />
                     </Tooltip>
                 </VcmActionGroup>
@@ -647,29 +653,24 @@ const UserManagement: React.FC = () => {
             dataIndex: 'userName',
             key: 'userName',
             fixed: 'left' as const,
-            width: 180,
+            width: 160,
             render: (text: string) => <Text strong>{text}</Text>
         },
         {
             title: t('users.colPosition'),
             key: 'position',
-            width: 200,
+            width: 150,
             render: (_: any, record: ModulePermission) => {
-                // Use positionName and category directly from permission record
                 const posName = (record as any).positionName || '';
-                const cat = (record as any).category || '';
-                return (
-                    <Text type="secondary">
-                        {posName || '-'} {cat ? `(${cat})` : ''}
-                    </Text>
-                );
+                return <Text type="secondary" small>{posName || '-'}</Text>;
             }
         },
         ...MODULE_KEYS.map(key => ({
             title: t(`users.modules.${key}`),
             dataIndex: key,
             key: key,
-            width: 140, // Consistent width for all permission columns
+            width: 110,
+            align: 'center' as const,
             render: (access: ModuleAccess, record: ModulePermission) => (
                 <Select
                     value={access || 'NO_ACCESS'}
@@ -677,20 +678,36 @@ const UserManagement: React.FC = () => {
                     style={{ width: '100%' }}
                     size="small"
                     popupMatchSelectWidth={false}
+                    className={`permission-select-${access}`}
                 >
-                    <Option value="EDIT">
-                        <Tag color="blue">✓ {t('users.formDefaultRoleEdit')}</Tag>
-                    </Option>
-                    <Option value="VIEW">
-                        <Tag color="green">• {t('users.formDefaultRoleView')}</Tag>
-                    </Option>
-                    <Option value="NO_ACCESS">
-                        <Tag color="default">✕ {t('users.formDefaultRoleNo')}</Tag>
-                    </Option>
+                    <Option value="EDIT"><Text type="primary" strong>EDIT</Text></Option>
+                    <Option value="VIEW"><Text type="success">VIEW</Text></Option>
+                    <Option value="NO_ACCESS"><Text type="secondary">NONE</Text></Option>
                 </Select>
             )
-        }))
-    ], [users, positions, handlePermissionChange, t]);
+        })),
+        {
+            title: t('common.setAll') || 'Set All',
+            key: 'bulk',
+            width: 100,
+            fixed: 'right' as const,
+            align: 'center' as const,
+            render: (_: any, record: ModulePermission) => (
+                <Dropdown
+                    menu={{
+                        items: [
+                            { key: 'EDIT', label: <Tag color="blue">EDIT ALL</Tag>, onClick: () => handleBulkPermissionChange(record.userId, 'EDIT') },
+                            { key: 'VIEW', label: <Tag color="green">VIEW ALL</Tag>, onClick: () => handleBulkPermissionChange(record.userId, 'VIEW') },
+                            { key: 'NO_ACCESS', label: <Tag>NONE ALL</Tag>, onClick: () => handleBulkPermissionChange(record.userId, 'NO_ACCESS') },
+                        ]
+                    }}
+                    trigger={['click']}
+                >
+                    <Button size="small" icon={<EditOutlined />}>{t('common.set') || 'Set'}</Button>
+                </Dropdown>
+            )
+        }
+    ], [users, positions, handlePermissionChange, handleBulkPermissionChange, t]);
 
     // Position Table Columns
     const positionColumns = [
@@ -698,43 +715,48 @@ const UserManagement: React.FC = () => {
             title: t('common.code'),
             dataIndex: 'code',
             key: 'code',
-            width: 120,
-            render: (text: string) => <Tag color="blue">{text}</Tag>
+            width: 100,
+            align: 'center' as const,
+            render: (text: string) => <Tag color="blue" style={{ margin: 0 }}>{text}</Tag>
         },
         {
             title: t('users.formPositionName'),
             dataIndex: 'name',
             key: 'name',
-            width: 200,
+            width: 180,
             render: (text: string, record: Position) => <Text strong>{t(`users.positions.${record.code}`, text)}</Text>
         },
         {
             title: t('users.colGroup'),
             dataIndex: 'category',
             key: 'category',
-            width: 150,
-            filters: (categories as string[]).map(c => ({ text: t(`users.groups.${c}`, c), value: c })),
-            onFilter: (value: any, record: Position) => record.category === value,
+            width: 120,
+            align: 'center' as const,
+            render: (text: string) => text ? <Tag style={{ margin: 0 }}>{t(`users.groups.${text}`, text)}</Tag> : '-'
         },
         {
             title: t('users.formDefaultRole'),
             dataIndex: 'defaultRole',
             key: 'defaultRole',
-            width: 150,
+            width: 120,
+            align: 'center' as const,
             render: (role: UserRole) => (
-                <Tag color={getRoleColor(role)}>{getRoleLabel(role)}</Tag>
+                <Tag color={getRoleColor(role)} style={{ margin: 0 }}>{getRoleLabel(role)}</Tag>
             )
         },
         {
             title: t('common.description'),
             dataIndex: 'description',
             key: 'description',
-            ellipsis: true
+            ellipsis: true,
+            render: (text: string) => <Text type="secondary" ellipsis>{text || '-'}</Text>
         },
         {
             title: t('common.actions'),
             key: 'actions',
-            width: 100,
+            width: 80,
+            align: 'center' as const,
+            fixed: 'right' as const,
             render: (_: any, record: Position) => (
                 <VcmActionGroup
                     onEdit={() => handleEditPosition(record)}

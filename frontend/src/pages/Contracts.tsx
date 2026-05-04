@@ -60,19 +60,7 @@ import { VcmActionGroup } from '../components/VcmActionGroup';
 
 const { Option } = Select;
 const { RangePicker } = DatePicker;
-
-// Icon mapping
-const ICON_MAP: Record<string, React.ReactNode> = {
-    'CrownOutlined': <span role="img" aria-label="director" className="anticon"><svg viewBox="64 64 896 896" focusable="false" data-icon="crown" width="1em" height="1em" fill="currentColor" aria-hidden="true"><path d="M899.6 276.5L705 396.4 518.4 147.5a8.06 8.06 0 00-12.9 0L319 396.4 124.3 276.5c-5.7-3.5-13 1.2-12.2 7.9l48.8 403.2c.7 5.5 5.3 9.6 10.8 9.6h680.5c5.5 0 10.1-4.1 10.8-9.6l48.8-403.2c.8-6.7-6.5-11.4-12.2-7.9zM738.2 624.7l-9.4 69.4H295.2l-9.4-69.4 225.8-138.7 226.6 138.7z"></path></svg></span>,
-    'SafetyCertificateOutlined': <GlobalOutlined />, // Fallback
-    'TeamOutlined': <PlusOutlined />, // Fallback
-    'UsergroupAddOutlined': <PlusOutlined />, // Fallback
-    'SolutionOutlined': <PlusOutlined />,
-    'UserOutlined': <PlusOutlined />,
-    'EyeOutlined': <EyeOutlined />,
-    'EditOutlined': <EditOutlined />,
-    'DeleteOutlined': <DeleteOutlined />,
-};
+const { Text } = Typography;
 
 // --- HELPERS ---
 const normalizeId = (id: any): string => {
@@ -85,11 +73,6 @@ const normalizeId = (id: any): string => {
         if (!isNaN(num)) return num.toString();
     }
     return str;
-};
-
-const getInvoicedAmount = (contract: Contract) => {
-    // Placeholder for actual logic if needed
-    return 0; // Or some default value
 };
 
 const Contracts: React.FC = () => {
@@ -293,8 +276,9 @@ const Contracts: React.FC = () => {
             key: 'code',
             width: 120,
             fixed: 'left',
+            align: 'center' as const,
             render: (text: string, record: Contract) => (
-                <a onClick={() => handleDetail(record)} className="font-semibold text-blue-600 hover:underline">
+                <a onClick={() => handleDetail(record)} className="font-semibold text-blue-600 hover:underline" style={{ fontWeight: 600 }}>
                     {text}
                 </a>
             ),
@@ -304,10 +288,13 @@ const Contracts: React.FC = () => {
             dataIndex: 'name',
             key: 'name',
             width: 200,
+            ellipsis: true,
             render: (text: string, record: Contract) => (
-                <a onClick={() => handleDetail(record)} className="text-gray-900 hover:text-blue-600">
-                    {text}
-                </a>
+                <Tooltip title={text}>
+                    <a onClick={() => handleDetail(record)} className="text-gray-900 hover:text-blue-600">
+                        {text}
+                    </a>
+                </Tooltip>
             ),
         },
         {
@@ -315,13 +302,14 @@ const Contracts: React.FC = () => {
             dataIndex: 'provinceId',
             key: 'provinceId',
             width: 100,
+            align: 'center' as const,
             render: (provinceId: string) => {
                 const normalizedSearch = normalizeId(provinceId);
                 const branch = branches.find(
                     (p) => normalizeId(p.id) === normalizedSearch ||
                         normalizeId(p.code) === normalizedSearch
                 );
-                return branch?.code || provinceId;
+                return <Text strong style={{ color: '#E11D2E' }}>{branch?.code || provinceId}</Text>;
             },
         },
         {
@@ -332,7 +320,7 @@ const Contracts: React.FC = () => {
             align: 'center' as const,
             render: (field: string) => {
                 const colors = { ALL: 'purple', B2B: 'blue', B2C: 'green' };
-                return <Tag color={colors[field as keyof typeof colors]}>{field}</Tag>;
+                return <Tag color={colors[field as keyof typeof colors]} style={{ margin: 0 }}>{field}</Tag>;
             },
         },
         {
@@ -340,7 +328,8 @@ const Contracts: React.FC = () => {
             dataIndex: 'value',
             key: 'value',
             width: 150,
-            render: (value: number) => value.toLocaleString('vi-VN'),
+            align: 'right' as const,
+            render: (value: number) => <Text strong>{value.toLocaleString('vi-VN')}</Text>,
         },
         {
             title: t('contracts.colProgress'),
@@ -355,14 +344,16 @@ const Contracts: React.FC = () => {
             title: t('contracts.colStartDate'),
             dataIndex: 'startDate',
             key: 'startDate',
-            width: 120,
+            width: 110,
+            align: 'center' as const,
             render: (date: string) => dayjs(date).format('DD/MM/YYYY'),
         },
         {
             title: t('contracts.colEndDate'),
             dataIndex: 'endDate',
             key: 'endDate',
-            width: 120,
+            width: 110,
+            align: 'center' as const,
             render: (date: string) => dayjs(date).format('DD/MM/YYYY'),
         },
         {
@@ -388,14 +379,15 @@ const Contracts: React.FC = () => {
                     text = appConfig.STATUS[status];
                 }
 
-                return <Tag color={color}>{text}</Tag>;
+                return <Tag color={color} style={{ margin: 0 }}>{text}</Tag>;
             },
         },
         {
             title: t('contracts.colActions'),
             key: 'action',
-            width: 120,
+            width: 100,
             fixed: 'right',
+            align: 'center' as const,
             render: (_: any, record: Contract) => (
                 <VcmActionGroup
                     onView={() => handleDetail(record)}
@@ -666,7 +658,7 @@ const Contracts: React.FC = () => {
                     dataSource={filteredContracts}
                     rowKey="id"
                     loading={loading}
-                    scroll={{ x: 1400 }}
+                    scroll={{ x: 1200 }}
                     pagination={{
                         pageSize: 10,
                         showSizeChanger: true,

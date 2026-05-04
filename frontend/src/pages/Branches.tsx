@@ -15,6 +15,8 @@ import { VcmFilterBar } from '../components/VcmFilterBar';
 import { VcmActionGroup } from '../components/VcmActionGroup';
 import { useBranches, useStaff, useBranchMutations, useStaffMutations, useCollaborators, useCollaboratorMutations } from '../hooks/useBranches';
 import { useAppConfig } from '../hooks/useAppConfig';
+import { FilterChips } from '../components/FilterChips';
+import { useFilterSync } from '../hooks/useFilterSync';
 
 // Icon mapping
 const ICON_MAP: Record<string, React.ReactNode> = {
@@ -62,7 +64,7 @@ interface BranchStaff {
 
 const Branches: React.FC = () => {
     const { t } = useTranslation();
-    const [activeTab, setActiveTab] = useState('collaborators');
+    const [activeTab, setActiveTab] = useFilterSync('tab', 'collaborators');
     // React Query Hooks
     const { data: branches = [], isLoading: branchesLoading } = useBranches();
     // Lazy load staff and collaborators only when their tab is active
@@ -96,12 +98,12 @@ const Branches: React.FC = () => {
     const canEdit = isAdmin || permissions.branches === 'EDIT';
 
     // Filters for Staff tab
-    const [selectedBranchFilter, setSelectedBranchFilter] = useState<string | undefined>();
-    const [selectedPositionFilter, setSelectedPositionFilter] = useState<string | undefined>();
-    const [searchText, setSearchText] = useState('');
+    const [selectedBranchFilter, setSelectedBranchFilter] = useFilterSync<string | undefined>('branch', undefined);
+    const [selectedPositionFilter, setSelectedPositionFilter] = useFilterSync<string | undefined>('pos', undefined);
+    const [searchText, setSearchText] = useFilterSync('q', '');
 
-    const [collabSearchText, setCollabSearchText] = useState('');
-    const [collabBranchFilter, setCollabBranchFilter] = useState<string | undefined>();
+    const [collabSearchText, setCollabSearchText] = useFilterSync('cq', '');
+    const [collabBranchFilter, setCollabBranchFilter] = useFilterSync<string | undefined>('cbranch', undefined);
 
     if (permissions.branches === 'NO_ACCESS' && !isAdmin) {
         return (
@@ -155,11 +157,52 @@ const Branches: React.FC = () => {
         return positionOptions.find((p: any) => p.value === position || p.label === position) || { label: position, color: '#666', icon: null };
     };
 
+    // Filter Chips Logic
+    const staffActiveFilters = useMemo(() => [
+        { key: 'q', label: t('common.search'), value: searchText, onRemove: () => setSearchText('') },
+        {
+            key: 'branch',
+            label: t('branches.filterBranch'),
+            value: selectedBranchFilter,
+            displayValue: branches.find(b => b.id === selectedBranchFilter)?.code,
+            onRemove: () => setSelectedBranchFilter(undefined)
+        },
+        {
+            key: 'pos',
+            label: t('branches.filterPosition'),
+            value: selectedPositionFilter,
+            displayValue: positionOptions.find(p => p.value === selectedPositionFilter)?.label,
+            onRemove: () => setSelectedPositionFilter(undefined)
+        }
+    ], [searchText, selectedBranchFilter, selectedPositionFilter, branches, positionOptions, t, setSearchText, setSelectedBranchFilter, setSelectedPositionFilter]);
+
+    const clearStaffFilters = useCallback(() => {
+        setSearchText('');
+        setSelectedBranchFilter(undefined);
+        setSelectedPositionFilter(undefined);
+    }, [setSearchText, setSelectedBranchFilter, setSelectedPositionFilter]);
+
+    const collabActiveFilters = useMemo(() => [
+        { key: 'cq', label: t('common.search'), value: collabSearchText, onRemove: () => setCollabSearchText('') },
+        {
+            key: 'cbranch',
+            label: t('branches.filterBranch'),
+            value: collabBranchFilter,
+            displayValue: branches.find(b => b.id === collabBranchFilter)?.code,
+            onRemove: () => setCollabBranchFilter(undefined)
+        }
+    ], [collabSearchText, collabBranchFilter, branches, t, setCollabSearchText, setCollabBranchFilter]);
+
+    const clearCollabFilters = useCallback(() => {
+        setCollabSearchText('');
+        setCollabBranchFilter(undefined);
+    }, [setCollabSearchText, setCollabBranchFilter]);
+
     // Filtered staff based on filters
     const filteredStaff = useMemo(() => {
         return staff.filter((s: BranchStaff) => {
-            const matchBranch = !selectedBranchFilter || s.branchId === selectedBranchFilter || s.branchCode === selectedBranchFilter;
-            const matchPosition = !selectedPositionFilter || s.position === selectedPositionFilter;
+            const matchBranch = !selectedBranchFilter || selectedBranchFilter === 'ALL' || s.branchId === selectedBranchFilter || s.branchCode === selectedBranchFilter;
+            const matchPosition = !selectedPositionFilter || selectedPositionFilter === 'ALL' || s.position === selectedPositionFilter;
             const matchSearch = !searchText ||
                 s.name.toLowerCase().includes(searchText.toLowerCase()) ||
                 s.phone.includes(searchText) ||
@@ -170,7 +213,7 @@ const Branches: React.FC = () => {
 
     const filteredCollaborators = useMemo(() => {
         return collaborators.filter((c: Collaborator) => {
-            const matchBranch = !collabBranchFilter || c.branchId === collabBranchFilter;
+            const matchBranch = !collabBranchFilter || collabBranchFilter === 'ALL' || c.branchId === collabBranchFilter;
             const matchSearch = !collabSearchText ||
                 c.name.toLowerCase().includes(collabSearchText.toLowerCase()) ||
                 c.company.toLowerCase().includes(collabSearchText.toLowerCase()) ||
@@ -354,12 +397,12 @@ const Branches: React.FC = () => {
 
     // Branch columns
     const branchColumns: ColumnsType<Branch> = [
-        { title: t('branches.colIndex') || 'STT', key: 'index', width: 50, align: 'center', render: (_, __, index) => index + 1 },
-        { title: t('branches.colCode'), dataIndex: 'code', key: 'code', width: 100, render: (text: string) => <Text strong style={{ color: '#E11D2E', whiteSpace: 'nowrap' }}>{text}</Text> },
-        { title: t('branches.colName'), dataIndex: 'name', key: 'name', width: 180 },
-        { title: t('branches.colAddress'), dataIndex: 'address', key: 'address', render: (text: string) => <Text type="secondary">{text || '-'}</Text> },
+        { title: t('branches.colIndex') || 'STT', key: 'index', width: 60, align: 'center', render: (_, __, index) => index + 1 },
+        { title: t('branches.colCode'), dataIndex: 'code', key: 'code', width: 80, align: 'center', render: (text: string) => <Text strong style={{ color: '#E11D2E' }}>{text}</Text> },
+        { title: t('branches.colName'), dataIndex: 'name', key: 'name', width: 200 },
+        { title: t('branches.colAddress'), dataIndex: 'address', key: 'address', ellipsis: true, render: (text: string) => <Text type="secondary">{text || '-'}</Text> },
         {
-            title: t('common.actions'), key: 'action', width: 120, align: 'center',
+            title: t('common.actions'), key: 'action', width: 80, align: 'center',
             render: (_, record) => (
                 <VcmActionGroup
                     onEdit={() => handleEditBranch(record)}
@@ -371,25 +414,25 @@ const Branches: React.FC = () => {
 
     // Staff columns
     const staffColumns: ColumnsType<BranchStaff> = [
-        { title: t('branches.colIndex') || 'STT', key: 'index', width: 50, align: 'center', render: (_, __, index) => index + 1 },
+        { title: t('branches.colIndex') || 'STT', key: 'index', width: 60, align: 'center', render: (_, __, index) => index + 1 },
         {
-            title: t('branches.filterBranch'), dataIndex: 'branchCode', key: 'branchCode', width: 90,
+            title: t('branches.filterBranch'), dataIndex: 'branchCode', key: 'branchCode', width: 80, align: 'center',
             render: (text: string, record: BranchStaff) => (
                 <Tooltip title={(record as any).branchName || text}>
-                    <Text strong style={{ color: '#E11D2E', whiteSpace: 'nowrap' }}>{text || '-'}</Text>
+                    <Text strong style={{ color: '#E11D2E' }}>{text || '-'}</Text>
                 </Tooltip>
             )
         },
-        { title: t('branches.colStaffName'), dataIndex: 'name', key: 'name', render: (text: string) => <Text strong>{text}</Text> },
+        { title: t('branches.colStaffName'), dataIndex: 'name', key: 'name', width: 180, render: (text: string) => <Text strong>{text}</Text> },
         {
-            title: t('branches.colPosition'), dataIndex: 'position', key: 'position', width: 140,
+            title: t('branches.colPosition'), dataIndex: 'position', key: 'position', width: 150,
             render: (position: string) => {
                 const info = getPositionInfo(position);
-                return <Tag color={info.color}>{info.label}</Tag>;
+                return <Tag color={info.color} style={{ margin: 0 }}>{info.label}</Tag>;
             }
         },
-        { title: t('branches.colPhone'), dataIndex: 'phone', key: 'phone', width: 130, render: (text: string) => <Space><PhoneOutlined style={{ color: '#52c41a' }} />{text || '-'}</Space> },
-        { title: t('branches.colEmail'), dataIndex: 'email', key: 'email', width: 220, render: (text: string) => text ? <Space><MailOutlined style={{ color: '#1890ff' }} />{text}</Space> : '-' },
+        { title: t('branches.colPhone'), dataIndex: 'phone', key: 'phone', width: 140, render: (text: string) => <Space><PhoneOutlined style={{ color: '#52c41a' }} />{text || '-'}</Space> },
+        { title: t('branches.colEmail'), dataIndex: 'email', key: 'email', width: 220, ellipsis: true, render: (text: string) => text ? <Space><MailOutlined style={{ color: '#1890ff' }} />{text}</Space> : '-' },
         {
             title: t('common.actions'), key: 'action', width: 100, align: 'center', fixed: 'right' as const,
             render: (_, record) => (
@@ -405,17 +448,17 @@ const Branches: React.FC = () => {
 
     // Collaborator columns
     const collaboratorColumns: ColumnsType<Collaborator> = [
-        { title: t('branches.colIndex'), key: 'index', width: 50, align: 'center', render: (_, __, index) => index + 1 },
+        { title: t('branches.colIndex'), key: 'index', width: 60, align: 'center', render: (_, __, index) => index + 1 },
         {
-            title: t('branches.filterBranch'), dataIndex: 'branchId', key: 'branchId', width: 90,
+            title: t('branches.filterBranch'), dataIndex: 'branchId', key: 'branchId', width: 80, align: 'center',
             render: (id: string) => { const b = branches.find((br: Branch) => br.id === id); return b ? <Text strong style={{ color: '#E11D2E' }}>{b.code}</Text> : '-'; }
         },
-        { title: t('branches.colCollabName'), dataIndex: 'name', key: 'name', width: 160, render: (text: string) => <Text strong>{text}</Text> },
-        { title: t('branches.colCollabCompany'), dataIndex: 'company', key: 'company', width: 170, render: (text: string) => <Text>{text || '-'}</Text> },
-        { title: t('branches.colCollabSpeciality'), dataIndex: 'speciality', key: 'speciality', width: 130, render: (text: string) => text ? <Tag color="blue">{text}</Tag> : <Text type="secondary">-</Text> },
-        { title: t('branches.colPhone'), dataIndex: 'phone', key: 'phone', width: 130, render: (text: string) => text ? <Space><PhoneOutlined style={{ color: '#52c41a' }} />{text}</Space> : '-' },
-        { title: t('branches.colEmail'), dataIndex: 'email', key: 'email', render: (text: string) => text ? <Space><MailOutlined style={{ color: '#1890ff' }} />{text}</Space> : '-' },
-        { title: t('branches.colCollabNote'), dataIndex: 'note', key: 'note', width: 160, ellipsis: true, render: (text: string) => <Text type="secondary">{text || '-'}</Text> },
+        { title: t('branches.colCollabName'), dataIndex: 'name', key: 'name', width: 180, render: (text: string) => <Text strong>{text}</Text> },
+        { title: t('branches.colCollabCompany'), dataIndex: 'company', key: 'company', width: 180, ellipsis: true, render: (text: string) => <Text>{text || '-'}</Text> },
+        { title: t('branches.colCollabSpeciality'), dataIndex: 'speciality', key: 'speciality', width: 140, render: (text: string) => text ? <Tag color="blue" style={{ margin: 0 }}>{text}</Tag> : <Text type="secondary">-</Text> },
+        { title: t('branches.colPhone'), dataIndex: 'phone', key: 'phone', width: 140, render: (text: string) => text ? <Space><PhoneOutlined style={{ color: '#52c41a' }} />{text}</Space> : '-' },
+        { title: t('branches.colEmail'), dataIndex: 'email', key: 'email', width: 220, ellipsis: true, render: (text: string) => text ? <Space><MailOutlined style={{ color: '#1890ff' }} />{text}</Space> : '-' },
+        { title: t('branches.colCollabNote'), dataIndex: 'note', key: 'note', width: 200, ellipsis: true, render: (text: string) => <Text type="secondary">{text || '-'}</Text> },
         {
             title: t('common.actions'), key: 'action', width: 100, align: 'center', fixed: 'right' as const,
             render: (_, record) => (
@@ -444,15 +487,16 @@ const Branches: React.FC = () => {
             <Col xs={24} sm={12} md={8}>
                 <Select
                     placeholder={t('branches.filterBranch')}
-                    value={selectedBranchFilter}
+                    value={selectedBranchFilter === 'ALL' ? undefined : selectedBranchFilter}
                     onChange={setSelectedBranchFilter}
                     allowClear
                     style={{ width: '100%' }}
                     suffixIcon={<FilterOutlined />}
                 >
+                    <Select.Option value="ALL">{t('common.all')}</Select.Option>
                     {branches.map((b: Branch) => (
                         <Select.Option key={b.id} value={b.id}>
-                            {b.code} - {b.name}
+                            {b.code}
                         </Select.Option>
                     ))}
                 </Select>
@@ -460,11 +504,12 @@ const Branches: React.FC = () => {
             <Col xs={24} sm={12} md={8}>
                 <Select
                     placeholder={t('branches.filterPosition')}
-                    value={selectedPositionFilter}
+                    value={selectedPositionFilter === 'ALL' ? undefined : selectedPositionFilter}
                     onChange={setSelectedPositionFilter}
                     allowClear
                     style={{ width: '100%' }}
                 >
+                    <Select.Option value="ALL">{t('common.all')}</Select.Option>
                     {positionOptions.map((p: any) => (
                         <Select.Option key={p.value} value={p.value}>
                             <Tag color={p.color} style={{ marginRight: 8 }}>{p.label}</Tag>
@@ -489,15 +534,16 @@ const Branches: React.FC = () => {
             <Col xs={24} sm={12} md={8}>
                 <Select
                     placeholder={t('branches.filterBranch')}
-                    value={collabBranchFilter}
+                    value={collabBranchFilter === 'ALL' ? undefined : collabBranchFilter}
                     onChange={setCollabBranchFilter}
                     allowClear
                     style={{ width: '100%' }}
                     suffixIcon={<FilterOutlined />}
                 >
+                    <Select.Option value="ALL">{t('common.all')}</Select.Option>
                     {branches.map((b: Branch) => (
                         <Select.Option key={b.id} value={b.id}>
-                            {b.code} - {b.name}
+                            {b.code}
                         </Select.Option>
                     ))}
                 </Select>
@@ -512,6 +558,9 @@ const Branches: React.FC = () => {
             children: (
                 <>
                     {renderCollaboratorFilters()}
+                    <div style={{ padding: '0 16px 8px' }}>
+                        <FilterChips filters={collabActiveFilters} onClearAll={clearCollabFilters} />
+                    </div>
                     <Table
                         columns={collaboratorColumns}
                         dataSource={filteredCollaborators}
@@ -524,7 +573,7 @@ const Branches: React.FC = () => {
                         }}
                         size="small"
                         bordered
-                        scroll={{ x: 1000 }}
+                        scroll={{ x: 1200 }}
                         className="branches-table"
                     />
                 </>
@@ -536,6 +585,9 @@ const Branches: React.FC = () => {
             children: (
                 <>
                     {renderStaffFilters()}
+                    <div style={{ padding: '0 16px 8px' }}>
+                        <FilterChips filters={staffActiveFilters} onClearAll={clearStaffFilters} />
+                    </div>
                     <Table
                         columns={staffColumns}
                         dataSource={filteredStaff}
@@ -548,7 +600,7 @@ const Branches: React.FC = () => {
                         }}
                         size="small"
                         bordered
-                        scroll={{ x: 750 }}
+                        scroll={{ x: 900 }}
                         className="branches-table"
                     />
                 </>
@@ -558,7 +610,7 @@ const Branches: React.FC = () => {
             key: 'branches',
             label: <span><BankOutlined /> {t('branches.tabBranches')}</span>,
             children: (
-                <Table columns={branchColumns} dataSource={branches} rowKey="id" loading={loading} pagination={false} size="small" bordered className="branches-table" />
+                <Table columns={branchColumns} dataSource={branches} rowKey="id" loading={loading} pagination={false} size="small" bordered scroll={{ x: 600 }} className="branches-table" />
             )
         }
     ];
@@ -682,7 +734,7 @@ const Branches: React.FC = () => {
                         <Col span={12}>
                             <Form.Item name="branchId" label={t('branches.filterBranch')}>
                                 <Select placeholder={t('branches.filterBranch')} allowClear>
-                                    {branches.map((b: Branch) => <Select.Option key={b.id} value={b.id}>{b.code} - {b.name}</Select.Option>)}
+                                    {branches.map((b: Branch) => <Select.Option key={b.id} value={b.id}>{b.code}</Select.Option>)}
                                 </Select>
                             </Form.Item>
                         </Col>
