@@ -379,6 +379,10 @@ export class RestApiService implements IApiService {
         return this.request('PUT', `/weekly-plans/items/${id}`, data);
     }
 
+    async updateWeeklyPlanItemsStatus(ids: string[], status: string) {
+        return this.request('PUT', '/weekly-plans/items/batch-status', { ids, status });
+    }
+
     async deleteWeeklyPlanItem(id: string) {
         return this.request('DELETE', `/weekly-plans/items/${id}`);
     }

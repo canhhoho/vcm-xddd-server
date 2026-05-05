@@ -50,7 +50,7 @@ const Plans: React.FC = () => {
         return {
             key,
             label: <span>{icon} {t(label)}</span>,
-            children: activeTab === key ? (
+            children: (
                 <div>
                     <MonthlyPlanSection
                         department={key}
@@ -68,7 +68,7 @@ const Plans: React.FC = () => {
                         canEdit={canEditTab}
                     />
                 </div>
-            ) : <div />, // Only render content for active tab
+            ),
         };
     });
 

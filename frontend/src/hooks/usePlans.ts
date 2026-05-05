@@ -11,19 +11,9 @@ export const useMonthlyPlans = (filters: any, enabled = true) => {
     return useQuery({
         queryKey: PLAN_KEYS.monthly(filters),
         queryFn: async () => {
-            const res = await apiService.getMonthlyPlans(filters);
+            const res = await apiService.getMonthlyPlans({ ...filters, includeItems: 'true' });
             if (!res.success) throw new Error(res.error || 'Failed to fetch monthly plans');
-            
-            // If plans exist, fetch their items
-            const plans = res.data || [];
-            if (plans.length > 0) {
-                const planId = plans[0].id;
-                const itemsRes = await apiService.getMonthlyPlanItems(planId);
-                if (itemsRes.success) {
-                    plans[0].items = itemsRes.data || [];
-                }
-            }
-            return plans;
+            return res.data || [];
         },
         enabled,
     });
@@ -90,6 +80,11 @@ export const usePlanMutations = () => {
         onSuccess: () => queryClient.invalidateQueries({ queryKey: [...PLAN_KEYS.all, 'weekly'] }),
     });
 
+    const updateWeeklyPlanItemsStatus = useMutation({
+        mutationFn: ({ ids, status }: { ids: string[], status: string }) => apiService.updateWeeklyPlanItemsStatus(ids, status),
+        onSuccess: () => queryClient.invalidateQueries({ queryKey: [...PLAN_KEYS.all, 'weekly'] }),
+    });
+
     return {
         createMonthlyPlan,
         updateMonthlyPlanItem,
@@ -99,6 +94,7 @@ export const usePlanMutations = () => {
         createWeeklyPlan,
         updateWeeklyPlanItem,
         createWeeklyPlanItem,
-        deleteWeeklyPlanItem
+        deleteWeeklyPlanItem,
+        updateWeeklyPlanItemsStatus
     };
 };

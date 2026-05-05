@@ -147,6 +147,7 @@ export interface IApiService {
     getWeeklyPlanItems(planId: string): Promise<ApiResponse>;
     createWeeklyPlanItem(planId: string, data: any): Promise<ApiResponse>;
     updateWeeklyPlanItem(id: string, data: any): Promise<ApiResponse>;
+    updateWeeklyPlanItemsStatus(ids: string[], status: string): Promise<ApiResponse>;
     deleteWeeklyPlanItem(id: string): Promise<ApiResponse>;
 
     // ==================== MONTHLY PLANS ====================

@@ -198,6 +198,7 @@ CREATE TABLE IF NOT EXISTS weekly_plan_items (
   status       VARCHAR(20) DEFAULT 'TODO',
   result       TEXT DEFAULT '',
   progress_pct INTEGER DEFAULT 0,
+  monthly_item_id VARCHAR(50) DEFAULT '',
   carried_from VARCHAR(50) DEFAULT '',
   created_at   TIMESTAMPTZ DEFAULT NOW()
 );
@@ -281,6 +282,7 @@ DO $$ BEGIN
   ALTER TABLE weekly_plan_items ADD COLUMN IF NOT EXISTS location TEXT DEFAULT '';
   ALTER TABLE weekly_plan_items ADD COLUMN IF NOT EXISTS method TEXT DEFAULT '';
   ALTER TABLE weekly_plan_items ADD COLUMN IF NOT EXISTS progress_pct INTEGER DEFAULT 0;
+  ALTER TABLE weekly_plan_items ADD COLUMN IF NOT EXISTS monthly_item_id VARCHAR(50) DEFAULT '';
   -- Increase invoice_number from VARCHAR(100) to VARCHAR(500)
   ALTER TABLE invoices ALTER COLUMN invoice_number TYPE VARCHAR(500);
   -- Add file_urls column to projects for PDF attachments

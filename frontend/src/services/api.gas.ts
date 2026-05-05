@@ -658,6 +658,10 @@ export class GasApiService implements IApiService {
         return this.runGasFunction('updateWeeklyPlanItem', { id, ...data });
     }
 
+    async updateWeeklyPlanItemsStatus(ids: string[], status: string) {
+        return this.runGasFunction('updateWeeklyPlanItemsStatus', { ids, status });
+    }
+
     async deleteWeeklyPlanItem(id: string) {
         return this.runGasFunction('deleteWeeklyPlanItem', { id });
     }

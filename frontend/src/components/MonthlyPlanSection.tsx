@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
-import { Button, Table, Tag, Modal, Form, Input, Select, message, Empty, Popconfirm, Typography } from 'antd';
+import React, { useState, useMemo } from 'react';
+import { Button, Table, Tag, Modal, Form, Input, Select, message, Empty, Popconfirm, Typography, Space, Tooltip } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
-import { PlusOutlined, DeleteOutlined, QuestionCircleOutlined } from '@ant-design/icons';
+import { PlusOutlined, DeleteOutlined, QuestionCircleOutlined, SearchOutlined, FileExcelOutlined, FilterOutlined } from '@ant-design/icons';
 import PlanGuideModal from './PlanGuideModal';
 import { useTranslation } from 'react-i18next';
 import type { Dayjs } from 'dayjs';
@@ -9,10 +9,11 @@ import { VcmActionGroup } from './VcmActionGroup';
 import type { MonthlyPlanItem } from '../types';
 import { useMonthlyPlans, usePlanMutations } from '../hooks/usePlans';
 import { useUsers } from '../hooks/useUsers';
+import * as XLSX from 'xlsx';
 
 const { TextArea } = Input;
 const { Option } = Select;
-const { Title } = Typography;
+const { Title, Text } = Typography;
 
 const STATUS_COLORS: Record<string, string> = {
     TODO: 'default', IN_PROGRESS: 'processing', DONE: 'success',
@@ -31,6 +32,11 @@ const MonthlyPlanSection: React.FC<Props> = ({ department, selectedMonth, canEdi
     const [guideVisible, setGuideVisible] = useState(false);
     const [form] = Form.useForm();
 
+    // Filters state
+    const [searchText, setSearchText] = useState('');
+    const [statusFilter, setStatusFilter] = useState<string | undefined>(undefined);
+    const [assigneeFilter, setAssigneeFilter] = useState<string | undefined>(undefined);
+
     const monthStart = selectedMonth.format('YYYY-MM-DD');
 
     // React Query Data
@@ -45,7 +51,35 @@ const MonthlyPlanSection: React.FC<Props> = ({ department, selectedMonth, canEdi
     } = usePlanMutations();
 
     const plan = plans.length > 0 ? plans[0] : null;
-    const items = plan?.items || [];
+    const rawItems = plan?.items || [];
+
+    const filteredItems = useMemo(() => {
+        return rawItems.filter((item: MonthlyPlanItem) => {
+            const matchesSearch = !searchText || item.title.toLowerCase().includes(searchText.toLowerCase());
+            const matchesStatus = !statusFilter || item.status === statusFilter;
+            const matchesAssignee = !assigneeFilter || item.assigneeId === assigneeFilter;
+            return matchesSearch && matchesStatus && matchesAssignee;
+        });
+    }, [rawItems, searchText, statusFilter, assigneeFilter]);
+
+    const handleExportExcel = () => {
+        const exportData = filteredItems.map((item, index) => ({
+            [t('common.index') || '#']: index + 1,
+            [t('business.weeklyPlan.what')]: item.title,
+            [t('plans.monthly.target')]: item.target || '',
+            [t('business.weeklyPlan.why')]: item.why || '',
+            [t('business.weeklyPlan.who')]: item.assigneeName || users.find(u => u.id === item.assigneeId)?.name || '',
+            [t('business.weeklyPlan.how')]: item.method || '',
+            [t('business.weeklyPlan.status')]: t(`business.weeklyPlan.status${item.status.charAt(0) + item.status.slice(1).toLowerCase().replace('_', '')}`),
+            [t('business.weeklyPlan.result')]: item.result || '',
+        }));
+
+        const ws = XLSX.utils.json_to_sheet(exportData);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "MonthlyPlan");
+        XLSX.writeFile(wb, `MonthlyPlan_${department}_${selectedMonth.format('MM_YYYY')}.xlsx`);
+        message.success(t('common.exportSuccess'));
+    };
 
     const handleCreatePlan = async () => {
         createMonthlyPlan.mutate({ monthStart, department }, {
@@ -68,7 +102,7 @@ const MonthlyPlanSection: React.FC<Props> = ({ department, selectedMonth, canEdi
     const openAddModal = () => {
         setEditingItem(null);
         form.resetFields();
-        form.setFieldsValue({ sortOrder: items.length + 1, status: 'TODO' });
+        form.setFieldsValue({ sortOrder: rawItems.length + 1, status: 'TODO' });
         setModalVisible(true);
     };
 
@@ -113,16 +147,16 @@ const MonthlyPlanSection: React.FC<Props> = ({ department, selectedMonth, canEdi
     const columns: ColumnsType<MonthlyPlanItem> = [
         { title: '#', dataIndex: 'sortOrder', key: 'sortOrder', width: 45, align: 'center' },
         {
-            title: t('business.weeklyPlan.what'), dataIndex: 'title', key: 'title', width: 200,
-            render: (val: string) => <span style={{ fontWeight: 500 }}>{val}</span>,
+            title: t('business.weeklyPlan.what'), dataIndex: 'title', key: 'title', width: 220,
+            render: (val: string) => <Text strong>{val}</Text>,
         },
         { title: t('plans.monthly.target'), dataIndex: 'target', key: 'target', width: 180, ellipsis: true },
-        { title: t('business.weeklyPlan.why'), dataIndex: 'why', key: 'why', width: 150, ellipsis: true },
+        { title: t('business.weeklyPlan.why'), dataIndex: 'why', key: 'why', width: 150, ellipsis: true, responsive: ['lg'] },
         {
             title: t('business.weeklyPlan.who'), key: 'who', width: 130,
             render: (_: any, r: MonthlyPlanItem) => r.assigneeName || users.find((u: any) => u.id === r.assigneeId)?.name || '-',
         },
-        { title: t('business.weeklyPlan.how'), dataIndex: 'method', key: 'method', width: 130, render: (val: string) => <span style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{val || '-'}</span> },
+        { title: t('business.weeklyPlan.how'), dataIndex: 'method', key: 'method', width: 150, responsive: ['xl'], render: (val: string) => <span style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{val || '-'}</span> },
         {
             title: t('business.weeklyPlan.status'), dataIndex: 'status', key: 'status', width: 130, align: 'center',
             render: (val: string) => {
@@ -132,7 +166,7 @@ const MonthlyPlanSection: React.FC<Props> = ({ department, selectedMonth, canEdi
         },
         { title: t('business.weeklyPlan.result'), dataIndex: 'result', key: 'result', width: 120, render: (val: string) => <span style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{val || '-'}</span> },
         {
-            title: t('common.actions'), key: 'action', width: 90, align: 'center',
+            title: t('common.actions'), key: 'action', width: 90, align: 'center', fixed: 'right',
             render: (_: any, record: MonthlyPlanItem) => (
                 <VcmActionGroup
                     onEdit={canEdit ? () => openEditModal(record) : undefined}
@@ -149,33 +183,82 @@ const MonthlyPlanSection: React.FC<Props> = ({ department, selectedMonth, canEdi
             {/* Section header */}
             <div style={{
                 padding: '12px 16px',
-                display: 'flex', alignItems: 'center', gap: 12,
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                 background: 'linear-gradient(135deg, #fff7f7 0%, #fff 100%)',
                 borderBottom: '1px solid #f1f5f9',
+                flexWrap: 'wrap', gap: 12
             }}>
-                <Title level={5} style={{ margin: 0, color: '#E11D2E', fontSize: 13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                    {t('plans.monthly.sectionTitle')} — {selectedMonth.format('MM/YYYY')}
-                </Title>
-                {plan && canEdit && (
-                    <>
-                        <Button size="small" type="primary" icon={<PlusOutlined />} onClick={openAddModal}>
-                            {t('plans.monthly.addItem')}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <Title level={5} style={{ margin: 0, color: '#E11D2E', fontSize: 13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                        {t('plans.monthly.sectionTitle')} — {selectedMonth.format('MM/YYYY')}
+                    </Title>
+                    {plan && (
+                        <Button size="small" icon={<FileExcelOutlined />} onClick={handleExportExcel}>
+                            {t('common.export')}
                         </Button>
-                        <Popconfirm
-                            title={t('plans.monthly.deleteConfirm')}
-                            onConfirm={handleDeletePlan}
-                            okText={t('common.delete')}
-                            cancelText={t('common.cancel')}
-                        >
-                            <Button size="small" danger icon={<DeleteOutlined />} />
-                        </Popconfirm>
-                    </>
-                )}
-                {!plan && canEdit && (
-                    <Button size="small" type="primary" icon={<PlusOutlined />} onClick={handleCreatePlan}>
-                        {t('plans.monthly.createPlan')}
-                    </Button>
-                )}
+                    )}
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    {plan && (
+                        <>
+                            <Input
+                                placeholder={t('common.search') + '...'}
+                                prefix={<SearchOutlined style={{ color: '#bfbfbf' }} />}
+                                size="small"
+                                style={{ width: 150 }}
+                                value={searchText}
+                                onChange={e => setSearchText(e.target.value)}
+                                allowClear
+                            />
+                            <Select
+                                size="small"
+                                style={{ width: 120 }}
+                                placeholder={t('business.weeklyPlan.status')}
+                                allowClear
+                                value={statusFilter}
+                                onChange={setStatusFilter}
+                            >
+                                <Option value="TODO">{t('business.weeklyPlan.statusTodo')}</Option>
+                                <Option value="IN_PROGRESS">{t('business.weeklyPlan.statusInProgress')}</Option>
+                                <Option value="DONE">{t('business.weeklyPlan.statusDone')}</Option>
+                            </Select>
+                            <Select
+                                size="small"
+                                style={{ width: 140 }}
+                                placeholder={t('business.weeklyPlan.who')}
+                                allowClear
+                                showSearch
+                                value={assigneeFilter}
+                                onChange={setAssigneeFilter}
+                                filterOption={(input, option) => ((option?.children as any) || '').toLowerCase().includes(input.toLowerCase())}
+                            >
+                                {users.map((u: any) => <Option key={u.id} value={u.id}>{u.name}</Option>)}
+                            </Select>
+                        </>
+                    )}
+
+                    {plan && canEdit && (
+                        <>
+                            <Button size="small" type="primary" icon={<PlusOutlined />} onClick={openAddModal}>
+                                {t('plans.monthly.addItem')}
+                            </Button>
+                            <Popconfirm
+                                title={t('plans.monthly.deleteConfirm')}
+                                onConfirm={handleDeletePlan}
+                                okText={t('common.delete')}
+                                cancelText={t('common.cancel')}
+                            >
+                                <Button size="small" danger icon={<DeleteOutlined />} />
+                            </Popconfirm>
+                        </>
+                    )}
+                    {!plan && canEdit && (
+                        <Button size="small" type="primary" icon={<PlusOutlined />} onClick={handleCreatePlan}>
+                            {t('plans.monthly.createPlan')}
+                        </Button>
+                    )}
+                </div>
             </div>
 
             {!plan ? (
@@ -184,13 +267,13 @@ const MonthlyPlanSection: React.FC<Props> = ({ department, selectedMonth, canEdi
                 </div>
             ) : (
                 <Table
-                    dataSource={items}
+                    dataSource={filteredItems}
                     columns={columns}
                     rowKey="id"
                     loading={loading}
                     size="small"
                     pagination={false}
-                    scroll={{ x: 1200 }}
+                    scroll={{ x: 1100 }}
                     style={{ background: '#fffbfb' }}
                 />
             )}
@@ -202,19 +285,21 @@ const MonthlyPlanSection: React.FC<Props> = ({ department, selectedMonth, canEdi
                         <span>{editingItem ? t('plans.monthly.editItem') : t('plans.monthly.addItem')}</span>
                         <Button type="link" size="small" icon={<QuestionCircleOutlined />}
                             onClick={() => setGuideVisible(true)} style={{ padding: '0 4px', fontSize: 12 }}>
-                            Hướng dẫn
+                            {t('plans.guideBtn')}
                         </Button>
                     </div>
                 }
                 open={modalVisible}
                 onCancel={() => { setModalVisible(false); form.resetFields(); }}
                 onOk={() => form.submit()}
+                okText={t('common.save')}
+                cancelText={t('common.cancel')}
                 width={620}
                 destroyOnClose
             >
                 <Form form={form} layout="vertical" onFinish={handleSubmit}>
                     <Form.Item name="sortOrder" label="#" rules={[{ required: true }]}>
-                        <Select>{[1,2,3,4,5,6,7,8,9,10].map(n => <Option key={n} value={n}>{n}</Option>)}</Select>
+                        <Select>{[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15].map(n => <Option key={n} value={n}>{n}</Option>)}</Select>
                     </Form.Item>
                     <Form.Item name="title" label={t('business.weeklyPlan.what')} rules={[{ required: true }]}>
                         <Input placeholder={t('business.weeklyPlan.whatPlaceholder')} />

@@ -142,7 +142,7 @@ const DailyLogModal: React.FC<Props> = ({ item, open, onClose }) => {
                                 <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, width: '100%' }}>
                                     <Text style={{ fontSize: 12, color: '#64748b', minWidth: 70 }}>
                                         {dayjs(log.logDate).format('DD/MM')}
-                                        {isToday && <Tag color="red" style={{ marginLeft: 4, fontSize: 10 }}>Hôm nay</Tag>}
+                                        {isToday && <Tag color="red" style={{ marginLeft: 4, fontSize: 10 }}>{t('plans.today')}</Tag>}
                                     </Text>
                                     <Tag color={color} style={{ minWidth: 48, textAlign: 'center' }}>{pct}%</Tag>
                                     <Text style={{ fontSize: 12, color: '#475569', flex: 1 }}>{log.note || '-'}</Text>

@@ -13,7 +13,7 @@ const mapItem = (r) => ({
 // GET /monthly-plans?department=BD&monthStart=2026-04-01
 router.get('/', async (req, res) => {
     try {
-        const { department, monthStart } = req.query;
+        const { department, monthStart, includeItems } = req.query;
         let sql = 'SELECT * FROM monthly_plans WHERE 1=1';
         const params = [];
         let idx = 1;
@@ -21,10 +21,29 @@ router.get('/', async (req, res) => {
         if (monthStart) { sql += ` AND month_start = $${idx++}`; params.push(monthStart); }
         sql += ' ORDER BY month_start DESC, department';
         const result = await query(sql, params);
-        res.json({ success: true, data: result.rows.map(r => ({
+        const plans = result.rows.map(r => ({
             id: r.id, monthStart: r.month_start, department: r.department,
             createdBy: r.created_by, createdAt: r.created_at,
-        }))});
+        }));
+
+        if (includeItems === 'true' && plans.length > 0) {
+            const planIds = plans.map(p => p.id);
+            const itemsResult = await query(
+                `SELECT i.*, u.name as assignee_name FROM monthly_plan_items i
+                 LEFT JOIN users u ON i.assignee_id = u.id
+                 WHERE i.plan_id = ANY($1) ORDER BY i.plan_id, i.sort_order`,
+                [planIds]
+            );
+            const itemsMap = {};
+            itemsResult.rows.forEach(row => {
+                if (!itemsMap[row.plan_id]) itemsMap[row.plan_id] = [];
+                itemsMap[row.plan_id].push(mapItem(row));
+            });
+            plans.forEach(p => {
+                p.items = itemsMap[p.id] || [];
+            });
+        }
+        res.json({ success: true, data: plans });
     } catch (err) {
         res.json({ success: false, error: err.message });
     }
