@@ -32,6 +32,11 @@ CREATE TABLE IF NOT EXISTS users (
   targets       VARCHAR(20) DEFAULT 'NO_ACCESS',
   business      VARCHAR(20) DEFAULT 'NO_ACCESS',
   plans         VARCHAR(20) DEFAULT 'NO_ACCESS',
+  plans_bd      VARCHAR(20) DEFAULT 'NO_ACCESS',
+  plans_mkt     VARCHAR(20) DEFAULT 'NO_ACCESS',
+  plans_qs      VARCHAR(20) DEFAULT 'NO_ACCESS',
+  plans_des     VARCHAR(20) DEFAULT 'NO_ACCESS',
+  plans_pm      VARCHAR(20) DEFAULT 'NO_ACCESS',
   created_at    TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -192,8 +197,58 @@ CREATE TABLE IF NOT EXISTS weekly_plan_items (
   method       TEXT DEFAULT '',
   status       VARCHAR(20) DEFAULT 'TODO',
   result       TEXT DEFAULT '',
+  progress_pct INTEGER DEFAULT 0,
   carried_from VARCHAR(50) DEFAULT '',
   created_at   TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 14. monthly_plans
+CREATE TABLE IF NOT EXISTS monthly_plans (
+  id          VARCHAR(50) PRIMARY KEY,
+  month_start DATE NOT NULL,
+  department  VARCHAR(50) NOT NULL,
+  created_by  VARCHAR(50) DEFAULT '',
+  created_at  TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 15. monthly_plan_items
+CREATE TABLE IF NOT EXISTS monthly_plan_items (
+  id           VARCHAR(50) PRIMARY KEY,
+  plan_id      VARCHAR(50) REFERENCES monthly_plans(id) ON DELETE CASCADE,
+  sort_order   INTEGER DEFAULT 1,
+  title        TEXT NOT NULL,
+  why          TEXT DEFAULT '',
+  assignee_id  VARCHAR(50) DEFAULT '',
+  target       TEXT DEFAULT '',
+  method       TEXT DEFAULT '',
+  status       VARCHAR(20) DEFAULT 'TODO',
+  result       TEXT DEFAULT '',
+  created_at   TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 16. daily_logs
+CREATE TABLE IF NOT EXISTS daily_logs (
+  id           VARCHAR(50) PRIMARY KEY,
+  item_id      VARCHAR(50) REFERENCES weekly_plan_items(id) ON DELETE CASCADE,
+  log_date     DATE NOT NULL,
+  progress_pct INTEGER DEFAULT 0,
+  note         TEXT DEFAULT '',
+  updated_by   VARCHAR(50) DEFAULT '',
+  created_at   TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 17. collaborators
+CREATE TABLE IF NOT EXISTS collaborators (
+  id          VARCHAR(50) PRIMARY KEY,
+  name        VARCHAR(255) NOT NULL,
+  company     VARCHAR(255) DEFAULT '',
+  speciality  VARCHAR(255) DEFAULT '',
+  phone       VARCHAR(50) DEFAULT '',
+  email       VARCHAR(255) DEFAULT '',
+  address     TEXT DEFAULT '',
+  note        TEXT DEFAULT '',
+  branch_id   VARCHAR(50) DEFAULT '',
+  created_at  TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- ============================================================
@@ -213,6 +268,8 @@ CREATE INDEX IF NOT EXISTS idx_prospects_status ON prospects(status);
 CREATE INDEX IF NOT EXISTS idx_prospects_branch ON prospects(branch_id);
 CREATE INDEX IF NOT EXISTS idx_weekly_plans_week ON weekly_plans(week_start, department);
 CREATE INDEX IF NOT EXISTS idx_weekly_plan_items_plan ON weekly_plan_items(plan_id);
+CREATE INDEX IF NOT EXISTS idx_monthly_plans_month ON monthly_plans(month_start, department);
+CREATE INDEX IF NOT EXISTS idx_daily_logs_item ON daily_logs(item_id);
 
 -- ============================================================
 -- Migrations (safe to re-run: ADD COLUMN IF NOT EXISTS)
@@ -223,6 +280,7 @@ DO $$ BEGIN
   ALTER TABLE weekly_plan_items ADD COLUMN IF NOT EXISTS end_date DATE;
   ALTER TABLE weekly_plan_items ADD COLUMN IF NOT EXISTS location TEXT DEFAULT '';
   ALTER TABLE weekly_plan_items ADD COLUMN IF NOT EXISTS method TEXT DEFAULT '';
+  ALTER TABLE weekly_plan_items ADD COLUMN IF NOT EXISTS progress_pct INTEGER DEFAULT 0;
   -- Increase invoice_number from VARCHAR(100) to VARCHAR(500)
   ALTER TABLE invoices ALTER COLUMN invoice_number TYPE VARCHAR(500);
   -- Add file_urls column to projects for PDF attachments
@@ -233,6 +291,12 @@ DO $$ BEGIN
   ALTER TABLE prospects ADD COLUMN IF NOT EXISTS prospect_type VARCHAR(10) DEFAULT 'B2B';
   -- Add staff group
   ALTER TABLE staff ADD COLUMN IF NOT EXISTS staff_group VARCHAR(100) DEFAULT '';
+  -- Add tab-specific plan permissions
+  ALTER TABLE users ADD COLUMN IF NOT EXISTS plans_bd VARCHAR(20) DEFAULT 'NO_ACCESS';
+  ALTER TABLE users ADD COLUMN IF NOT EXISTS plans_mkt VARCHAR(20) DEFAULT 'NO_ACCESS';
+  ALTER TABLE users ADD COLUMN IF NOT EXISTS plans_qs VARCHAR(20) DEFAULT 'NO_ACCESS';
+  ALTER TABLE users ADD COLUMN IF NOT EXISTS plans_des VARCHAR(20) DEFAULT 'NO_ACCESS';
+  ALTER TABLE users ADD COLUMN IF NOT EXISTS plans_pm VARCHAR(20) DEFAULT 'NO_ACCESS';
 END $$;
 
 -- ============================================================

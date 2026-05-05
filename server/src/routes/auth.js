@@ -77,6 +77,11 @@ router.post('/login', async (req, res) => {
         targets: safeUser.targets,
         business: safeUser.business,
         plans: safeUser.plans,
+        plans_bd: safeUser.plans_bd,
+        plans_mkt: safeUser.plans_mkt,
+        plans_qs: safeUser.plans_qs,
+        plans_des: safeUser.plans_des,
+        plans_pm: safeUser.plans_pm,
       },
       token
     });

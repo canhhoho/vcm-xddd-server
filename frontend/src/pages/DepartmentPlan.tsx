@@ -90,7 +90,6 @@ const DepartmentPlan: React.FC<DepartmentPlanProps> = ({ department, selectedMon
     const handleAddItem = (planId: string) => {
         const plan = allPlans.find((p: any) => p.id === planId);
         const items = plan?.items || [];
-        if (items.length >= 5) { message.warning(t('business.weeklyPlan.maxItems')); return; }
         setActivePlanId(planId);
         setEditingItem(null);
         form.resetFields();
@@ -304,13 +303,15 @@ const DepartmentPlan: React.FC<DepartmentPlanProps> = ({ department, selectedMon
                         <span>{editingItem ? t('business.weeklyPlan.editItem') : t('business.weeklyPlan.addItem')}</span>
                         <Button type="link" size="small" icon={<QuestionCircleOutlined />}
                             onClick={() => setGuideVisible(true)} style={{ padding: '0 4px', fontSize: 12 }}>
-                            Hướng dẫn
+                            {t('plans.guideBtn')}
                         </Button>
                     </div>
                 }
                 open={modalVisible}
                 onCancel={() => { setModalVisible(false); form.resetFields(); }}
                 onOk={() => form.submit()}
+                okText={t('common.save')}
+                cancelText={t('common.cancel')}
                 width={650}
                 destroyOnClose
             >

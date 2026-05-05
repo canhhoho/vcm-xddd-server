@@ -14,6 +14,11 @@ export interface PermissionResult {
         business: ModuleAccess;
         branches: ModuleAccess;
         plans: ModuleAccess;
+        plans_bd: ModuleAccess;
+        plans_mkt: ModuleAccess;
+        plans_qs: ModuleAccess;
+        plans_des: ModuleAccess;
+        plans_pm: ModuleAccess;
     };
 }
 
@@ -38,6 +43,11 @@ export const usePermissions = (): PermissionResult => {
                 business: (user?.business || 'NO_ACCESS').toUpperCase() as ModuleAccess,
                 branches: (user?.branches || 'NO_ACCESS').toUpperCase() as ModuleAccess,
                 plans: (user?.plans || 'NO_ACCESS').toUpperCase() as ModuleAccess,
+                plans_bd: (user?.plans_bd || 'NO_ACCESS').toUpperCase() as ModuleAccess,
+                plans_mkt: (user?.plans_mkt || 'NO_ACCESS').toUpperCase() as ModuleAccess,
+                plans_qs: (user?.plans_qs || 'NO_ACCESS').toUpperCase() as ModuleAccess,
+                plans_des: (user?.plans_des || 'NO_ACCESS').toUpperCase() as ModuleAccess,
+                plans_pm: (user?.plans_pm || 'NO_ACCESS').toUpperCase() as ModuleAccess,
             }
         };
     }, []);

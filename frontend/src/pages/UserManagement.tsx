@@ -74,7 +74,10 @@ const ICON_MAP: Record<string, React.ReactNode> = {
 };
 
 // Module definitions for permission matrix - moved labels to translation files
-const MODULE_KEYS = ['targets', 'business', 'plans', 'contracts', 'projects', 'branches'];
+const MODULE_KEYS = [
+    'targets', 'business', 'plans', 'contracts', 'projects', 'branches',
+    'plans_bd', 'plans_mkt', 'plans_qs', 'plans_des', 'plans_pm'
+];
 
 // Position categories defaults (keys for translation or absolute values)
 const DEFAULT_CATEGORY_KEYS = ['leader', 'construction', 'business', 'qs', 'project', 'other'];

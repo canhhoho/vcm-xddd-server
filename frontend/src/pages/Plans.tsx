@@ -41,29 +41,36 @@ const Plans: React.FC = () => {
 
     const [activeTab, setActiveTab] = useState('BD');
 
-    const tabItems = DEPARTMENTS.map(({ key, label, icon }) => ({
-        key,
-        label: <span>{icon} {t(label)}</span>,
-        children: activeTab === key ? (
-            <div>
-                <MonthlyPlanSection
-                    department={key}
-                    selectedMonth={selectedMonth}
-                    canEdit={canEdit}
-                />
-                <div style={{ padding: '8px 16px 4px', borderTop: '1px solid #f1f5f9' }}>
-                    <Title level={5} style={{ margin: 0, color: '#475569', fontSize: 13, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                        {t('plans.weekly.sectionTitle')}
-                    </Title>
+    const tabItems = DEPARTMENTS.map(({ key, label, icon }) => {
+        // Granular permission check
+        const permKey = `plans_${key.toLowerCase()}` as keyof typeof permissions;
+        const deptPermission = permissions[permKey] as ModuleAccess;
+        const canEditTab = isAdmin || deptPermission === 'EDIT' || (permissions.plans === 'EDIT' && deptPermission !== 'NO_ACCESS');
+
+        return {
+            key,
+            label: <span>{icon} {t(label)}</span>,
+            children: activeTab === key ? (
+                <div>
+                    <MonthlyPlanSection
+                        department={key}
+                        selectedMonth={selectedMonth}
+                        canEdit={canEditTab}
+                    />
+                    <div style={{ padding: '8px 16px 4px', borderTop: '1px solid #f1f5f9' }}>
+                        <Title level={5} style={{ margin: 0, color: '#475569', fontSize: 13, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                            {t('plans.weekly.sectionTitle')}
+                        </Title>
+                    </div>
+                    <DepartmentPlan
+                        department={key}
+                        selectedMonth={selectedMonth}
+                        canEdit={canEditTab}
+                    />
                 </div>
-                <DepartmentPlan
-                    department={key}
-                    selectedMonth={selectedMonth}
-                    canEdit={canEdit}
-                />
-            </div>
-        ) : <div />, // Only render content for active tab
-    }));
+            ) : <div />, // Only render content for active tab
+        };
+    });
 
     return (
         <div className="vcm-page-container">

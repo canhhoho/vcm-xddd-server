@@ -15,7 +15,7 @@ async function logActivity(email, action, desc) {
 router.get('/', async (req, res) => {
   try {
     const result = await query(
-      'SELECT id, name, position_name, category, contracts, projects, targets, business, branches, plans FROM users ORDER BY name'
+      'SELECT id, name, position_name, category, contracts, projects, targets, business, branches, plans, plans_bd, plans_mkt, plans_qs, plans_des, plans_pm FROM users ORDER BY name'
     );
     const data = result.rows.map(r => ({
       userId: r.id, userName: r.name,
@@ -23,6 +23,9 @@ router.get('/', async (req, res) => {
       contracts: r.contracts || 'NO_ACCESS', projects: r.projects || 'NO_ACCESS',
       targets: r.targets || 'NO_ACCESS', business: r.business || 'NO_ACCESS',
       branches: r.branches || 'NO_ACCESS', plans: r.plans || 'NO_ACCESS',
+      plans_bd: r.plans_bd || 'NO_ACCESS', plans_mkt: r.plans_mkt || 'NO_ACCESS',
+      plans_qs: r.plans_qs || 'NO_ACCESS', plans_des: r.plans_des || 'NO_ACCESS',
+      plans_pm: r.plans_pm || 'NO_ACCESS',
     }));
     res.json({ success: true, data });
   } catch (err) {
@@ -46,6 +49,11 @@ router.put('/', async (req, res) => {
       if (p.business) { fields.push(`business = $${idx}`); values.push(p.business); idx++; }
       if (p.branches) { fields.push(`branches = $${idx}`); values.push(p.branches); idx++; }
       if (p.plans) { fields.push(`plans = $${idx}`); values.push(p.plans); idx++; }
+      if (p.plans_bd) { fields.push(`plans_bd = $${idx}`); values.push(p.plans_bd); idx++; }
+      if (p.plans_mkt) { fields.push(`plans_mkt = $${idx}`); values.push(p.plans_mkt); idx++; }
+      if (p.plans_qs) { fields.push(`plans_qs = $${idx}`); values.push(p.plans_qs); idx++; }
+      if (p.plans_des) { fields.push(`plans_des = $${idx}`); values.push(p.plans_des); idx++; }
+      if (p.plans_pm) { fields.push(`plans_pm = $${idx}`); values.push(p.plans_pm); idx++; }
 
       if (fields.length > 0) {
         values.push(p.userId);

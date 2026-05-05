@@ -10,6 +10,11 @@ export interface ModulePermission {
     business: ModuleAccess;
     branches: ModuleAccess;
     plans: ModuleAccess;
+    plans_bd: ModuleAccess;
+    plans_mkt: ModuleAccess;
+    plans_qs: ModuleAccess;
+    plans_des: ModuleAccess;
+    plans_pm: ModuleAccess;
 }
 
 export interface Position {

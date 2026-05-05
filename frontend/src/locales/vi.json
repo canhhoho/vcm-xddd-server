@@ -479,11 +479,40 @@
     },
     "plans": {
         "pageTitle": "Quản lý Kế hoạch",
-        "noAccess": "Không có quyền truy cập",
+        "noAccess": "Từ chối truy cập",
         "noAccessDesc": "Bạn không có quyền xem trang kế hoạch.",
         "prevMonth": "Tháng trước",
         "nextMonth": "Tháng sau",
         "today": "Hôm nay",
+        "guideBtn": "Hướng dẫn",
+        "guide": {
+            "title": "Hướng dẫn lập kế hoạch 5W1H",
+            "intro": "Mỗi đầu việc phải trả lời đủ 6 câu hỏi sau. Kế hoạch càng cụ thể, càng dễ thực hiện và đánh giá.",
+            "smartTitle": "Mục tiêu phải đạt chuẩn SMART",
+            "smartExample": "Ví dụ SMART:",
+            "smartExampleText": "Tăng doanh số từ 300tr → 500tr trong tháng 04/2025 bằng cách gọi 10 KH/ngày + demo sản phẩm 2 lần/tuần",
+            "labels": {
+                "WHAT": "Nội dung (What)",
+                "WHY": "Mục đích (Why)",
+                "WHO": "Phụ trách (Who)",
+                "WHEN": "Thời gian (When)",
+                "WHERE": "Địa điểm (Where)",
+                "HOW": "Phương pháp (How)"
+            },
+            "descs": {
+                "WHAT": "Mô tả hành động cụ thể, đo lường được — không dùng từ mơ hồ.",
+                "WHY": "Lý do thực hiện — kết nối trực tiếp với KPI hoặc mục tiêu phòng ban.",
+                "WHO": "Tên người chịu trách nhiệm chính — cụ thể, không để chung chung.",
+                "WHEN": "Ngày bắt đầu và deadline rõ ràng.",
+                "WHERE": "Địa điểm hoặc kênh thực hiện công việc.",
+                "HOW": "Công cụ, quy trình hoặc cách thức thực hiện cụ thể."
+            },
+            "smartS": "Rõ số liệu — không dùng từ \"cải thiện\", \"tăng cường\"",
+            "smartM": "Có chỉ số để đánh giá hoàn thành",
+            "smartA": "Thực tế với nguồn lực và thời gian hiện có",
+            "smartR": "Gắn với mục tiêu công ty hoặc phòng ban",
+            "smartT": "Deadline cụ thể, không để ngỏ"
+        },
         "monthly": {
             "sectionTitle": "Kế hoạch tháng",
             "createPlan": "Tạo kế hoạch tháng",
@@ -711,7 +740,12 @@
         "modules": {
             "targets": "Chỉ tiêu",
             "business": "Kinh doanh",
-            "plans": "Kế hoạch",
+            "plans": "Kế hoạch (Chung)",
+            "plans_bd": "Kế hoạch BD",
+            "plans_mkt": "Kế hoạch MKT",
+            "plans_qs": "Kế hoạch QS",
+            "plans_des": "Kế hoạch DES",
+            "plans_pm": "Kế hoạch PM",
             "contracts": "Hợp đồng",
             "projects": "Dự án",
             "branches": "Chi nhánh"
