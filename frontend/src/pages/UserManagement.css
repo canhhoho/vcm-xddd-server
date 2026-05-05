@@ -76,6 +76,30 @@
     margin-right: 12px;
 }
 
+/* Permission Radio.Group — color per level */
+.perm-radio .ant-radio-button-wrapper {
+    padding: 0 5px;
+    font-size: 11px;
+}
+
+.perm-radio-EDIT .ant-radio-button-wrapper-checked:not(.ant-radio-button-wrapper-disabled) {
+    background: #1677ff !important;
+    border-color: #1677ff !important;
+    color: #fff !important;
+}
+
+.perm-radio-VIEW .ant-radio-button-wrapper-checked:not(.ant-radio-button-wrapper-disabled) {
+    background: #52c41a !important;
+    border-color: #52c41a !important;
+    color: #fff !important;
+}
+
+.perm-radio-NO_ACCESS .ant-radio-button-wrapper-checked:not(.ant-radio-button-wrapper-disabled) {
+    background: #8c8c8c !important;
+    border-color: #8c8c8c !important;
+    color: #fff !important;
+}
+
 .positions-quick-view {
     background: #fafafa;
     padding: 12px 16px;

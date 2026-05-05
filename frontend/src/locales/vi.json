@@ -792,7 +792,9 @@
         "saveSuccess": "Lưu thành công",
         "saveError": "Lỗi khi lưu",
         "deleteSuccess": "Xóa thành công",
-        "exportSuccess": "Xuất file thành công!"
+        "exportSuccess": "Xuất file thành công!",
+        "set": "Đặt",
+        "setAll": "Đặt tất cả"
     },
     "changePassword": {
         "title": "Đổi mật khẩu",

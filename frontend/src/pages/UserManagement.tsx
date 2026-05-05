@@ -16,7 +16,8 @@ import {
     Tooltip,
     Row,
     Col,
-    Dropdown
+    Dropdown,
+    Radio
 } from 'antd';
 import type { MenuProps } from 'antd';
 import { useTranslation } from 'react-i18next';
@@ -672,25 +673,24 @@ const UserManagement: React.FC = () => {
             title: t(`users.modules.${key}`),
             dataIndex: key,
             key: key,
-            width: 110,
+            width: 115,
             align: 'center' as const,
             render: (access: ModuleAccess, record: ModulePermission) => (
-                <Select
+                <Radio.Group
                     value={access || 'NO_ACCESS'}
-                    onChange={(val) => handlePermissionChange(record.userId, key, val)}
-                    style={{ width: '100%' }}
+                    onChange={(e) => handlePermissionChange(record.userId, key, e.target.value)}
                     size="small"
-                    popupMatchSelectWidth={false}
-                    className={`permission-select-${access}`}
+                    buttonStyle="solid"
+                    className={`perm-radio perm-radio-${access || 'NO_ACCESS'}`}
                 >
-                    <Option value="EDIT"><Text strong style={{ color: '#1890ff' }}>EDIT</Text></Option>
-                    <Option value="VIEW"><Text type="success">VIEW</Text></Option>
-                    <Option value="NO_ACCESS"><Text type="secondary">NONE</Text></Option>
-                </Select>
+                    <Radio.Button value="EDIT">{t('common.edit')}</Radio.Button>
+                    <Radio.Button value="VIEW">{t('common.view')}</Radio.Button>
+                    <Radio.Button value="NO_ACCESS">{t('common.no')}</Radio.Button>
+                </Radio.Group>
             )
         })),
         {
-            title: t('common.setAll') || 'Set All',
+            title: t('common.setAll'),
             key: 'bulk',
             width: 100,
             fixed: 'right' as const,
@@ -699,14 +699,14 @@ const UserManagement: React.FC = () => {
                 <Dropdown
                     menu={{
                         items: [
-                            { key: 'EDIT', label: <Tag color="blue">EDIT ALL</Tag>, onClick: () => handleBulkPermissionChange(record.userId, 'EDIT') },
-                            { key: 'VIEW', label: <Tag color="green">VIEW ALL</Tag>, onClick: () => handleBulkPermissionChange(record.userId, 'VIEW') },
-                            { key: 'NO_ACCESS', label: <Tag>NONE ALL</Tag>, onClick: () => handleBulkPermissionChange(record.userId, 'NO_ACCESS') },
+                            { key: 'EDIT', label: <Tag color="blue">{t('common.edit')} {t('common.all')}</Tag>, onClick: () => handleBulkPermissionChange(record.userId, 'EDIT') },
+                            { key: 'VIEW', label: <Tag color="green">{t('common.view')} {t('common.all')}</Tag>, onClick: () => handleBulkPermissionChange(record.userId, 'VIEW') },
+                            { key: 'NO_ACCESS', label: <Tag>{t('common.no')} {t('common.all')}</Tag>, onClick: () => handleBulkPermissionChange(record.userId, 'NO_ACCESS') },
                         ]
                     }}
                     trigger={['click']}
                 >
-                    <Button size="small" icon={<EditOutlined />}>{t('common.set') || 'Set'}</Button>
+                    <Button size="small" icon={<EditOutlined />}>{t('common.set')}</Button>
                 </Dropdown>
             )
         }

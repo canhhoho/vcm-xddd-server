@@ -791,7 +791,9 @@
         "saveSuccess": "Saved successfully",
         "saveError": "Save failed",
         "deleteSuccess": "Deleted successfully",
-        "exportSuccess": "Export successful!"
+        "exportSuccess": "Export successful!",
+        "set": "Set",
+        "setAll": "Set All"
     },
     "changePassword": {
         "title": "Change Password",

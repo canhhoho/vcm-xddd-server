@@ -53,7 +53,7 @@ const DepartmentPlan: React.FC<DepartmentPlanProps> = ({ department, selectedMon
     const monthStart = selectedMonth.format('YYYY-MM-DD');
 
     // React Query Data
-    const { data: allPlans = [], isLoading } = useWeeklyPlans({ department });
+    const { data: allPlans = [], isLoading, refetch: refetchWeeklyPlans } = useWeeklyPlans({ department });
     const { data: monthlyPlans = [] } = useMonthlyPlans({ department, monthStart });
     const { data: users = [] } = useUsers();
     const { 
@@ -523,6 +523,7 @@ const DepartmentPlan: React.FC<DepartmentPlanProps> = ({ department, selectedMon
                 open={!!dailyLogItem}
                 onClose={(refreshed) => {
                     setDailyLogItem(null);
+                    if (refreshed) refetchWeeklyPlans();
                 }}
             />
         </div>

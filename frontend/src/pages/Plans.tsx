@@ -27,9 +27,9 @@ const Plans: React.FC = () => {
     const { t } = useTranslation();
     const { permissions, isAdmin } = usePermissions();
     const [selectedMonth, setSelectedMonth] = useState(dayjs().startOf('month'));
+    const [activeTab, setActiveTab] = useState('BD');
 
     const hasAccess = isAdmin || permissions.plans !== 'NO_ACCESS';
-    const canEdit = isAdmin || permissions.plans === 'EDIT';
 
     if (!hasAccess) {
         return (
@@ -40,15 +40,16 @@ const Plans: React.FC = () => {
         );
     }
 
-    const [activeTab, setActiveTab] = useState('BD');
-
-    const tabItems = DEPARTMENTS.map(({ key, label, icon }) => {
-        // Granular permission check
+    const tabItems = DEPARTMENTS.flatMap(({ key, label, icon }) => {
         const permKey = `plans_${key.toLowerCase()}`;
         const deptPermission = (permissions as any)[permKey] as ModuleAccess;
+        // Ẩn tab nếu không có quyền truy cập department (trừ admin và global EDIT)
+        const hasTabAccess = isAdmin || permissions.plans === 'EDIT' || deptPermission !== 'NO_ACCESS';
+        if (!hasTabAccess) return [];
+
         const canEditTab = isAdmin || deptPermission === 'EDIT' || (permissions.plans === 'EDIT' && deptPermission !== 'NO_ACCESS');
 
-        return {
+        return [{
             key,
             label: <span>{icon} {t(label)}</span>,
             children: (
@@ -70,7 +71,7 @@ const Plans: React.FC = () => {
                     />
                 </div>
             ),
-        };
+        }];
     });
 
     return (
