@@ -62,7 +62,7 @@ const DepartmentPlan: React.FC<DepartmentPlanProps> = ({ department, selectedMon
     }, [allPlans, selectedMonth]);
 
     const currentWeekPlan = useMemo(() =>
-        allPlans.find(p => dayjs(p.weekStart).format('YYYY-MM-DD') === thisWeekStart.format('YYYY-MM-DD')),
+        allPlans.find((p: any) => dayjs(p.weekStart).format('YYYY-MM-DD') === thisWeekStart.format('YYYY-MM-DD')),
     [allPlans, thisWeekStart]);
 
     const latestPlan = useMemo(() =>
@@ -88,7 +88,7 @@ const DepartmentPlan: React.FC<DepartmentPlanProps> = ({ department, selectedMon
     };
 
     const handleAddItem = (planId: string) => {
-        const plan = allPlans.find(p => p.id === planId);
+        const plan = allPlans.find((p: any) => p.id === planId);
         const items = plan?.items || [];
         if (items.length >= 5) { message.warning(t('business.weeklyPlan.maxItems')); return; }
         setActivePlanId(planId);
@@ -164,7 +164,7 @@ const DepartmentPlan: React.FC<DepartmentPlanProps> = ({ department, selectedMon
         { title: t('business.weeklyPlan.why'), dataIndex: 'why', key: 'why', width: 130, ellipsis: true },
         {
             title: t('business.weeklyPlan.who'), key: 'assignee', width: 110,
-            render: (_: any, r: WeeklyPlanItem) => r.assigneeName || users.find(u => u.id === r.assigneeId)?.name || '',
+            render: (_: any, r: WeeklyPlanItem) => r.assigneeName || users.find((u: any) => u.id === r.assigneeId)?.name || '',
         },
         {
             title: t('business.weeklyPlan.when'), key: 'when', width: 120, align: 'center',
@@ -330,7 +330,7 @@ const DepartmentPlan: React.FC<DepartmentPlanProps> = ({ department, selectedMon
                                 const label = (option?.children as unknown as string) || '';
                                 return label.toLowerCase().includes(input.toLowerCase());
                             }}>
-                            {users.map(u => <Option key={u.id} value={u.id}>{u.name}</Option>)}
+                            {users.map((u: any) => <Option key={u.id} value={u.id}>{u.name}</Option>)}
                         </Select>
                     </Form.Item>
                     <div style={{ display: 'flex', gap: 16 }}>

@@ -120,7 +120,7 @@ const MonthlyPlanSection: React.FC<Props> = ({ department, selectedMonth, canEdi
         { title: t('business.weeklyPlan.why'), dataIndex: 'why', key: 'why', width: 150, ellipsis: true },
         {
             title: t('business.weeklyPlan.who'), key: 'who', width: 130,
-            render: (_: any, r: MonthlyPlanItem) => r.assigneeName || users.find(u => u.id === r.assigneeId)?.name || '-',
+            render: (_: any, r: MonthlyPlanItem) => r.assigneeName || users.find((u: any) => u.id === r.assigneeId)?.name || '-',
         },
         { title: t('business.weeklyPlan.how'), dataIndex: 'method', key: 'method', width: 130, render: (val: string) => <span style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{val || '-'}</span> },
         {
@@ -231,7 +231,7 @@ const MonthlyPlanSection: React.FC<Props> = ({ department, selectedMonth, canEdi
                                 const label = (option?.children as unknown as string) || '';
                                 return label.toLowerCase().includes(input.toLowerCase());
                             }}>
-                            {users.map(u => <Option key={u.id} value={u.id}>{u.name}</Option>)}
+                            {users.map((u: any) => <Option key={u.id} value={u.id}>{u.name}</Option>)}
                         </Select>
                     </Form.Item>
                     <Form.Item name="method" label={t('business.weeklyPlan.how')}>

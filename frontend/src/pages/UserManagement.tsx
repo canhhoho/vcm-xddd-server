@@ -573,7 +573,7 @@ const UserManagement: React.FC = () => {
             width: 140,
             render: (text: string, record: User) => {
                 const pos = positions.find((p: Position) => p.id === record.positionId);
-                const label = pos ? t(`users.positions.${pos.code}`, pos.name) : text;
+                const label = pos ? (t(`users.positions.${pos.code}`, pos.name) as string) : text;
                 return label ? <Text strong style={{ color: '#1890ff' }}>{label}</Text> : <Text type="secondary">-</Text>;
             }
         },
@@ -662,7 +662,7 @@ const UserManagement: React.FC = () => {
             width: 150,
             render: (_: any, record: ModulePermission) => {
                 const posName = (record as any).positionName || '';
-                return <Text type="secondary" small>{posName || '-'}</Text>;
+                return <Text type="secondary">{posName || '-'}</Text>;
             }
         },
         ...MODULE_KEYS.map(key => ({
@@ -680,7 +680,7 @@ const UserManagement: React.FC = () => {
                     popupMatchSelectWidth={false}
                     className={`permission-select-${access}`}
                 >
-                    <Option value="EDIT"><Text type="primary" strong>EDIT</Text></Option>
+                    <Option value="EDIT"><Text strong style={{ color: '#1890ff' }}>EDIT</Text></Option>
                     <Option value="VIEW"><Text type="success">VIEW</Text></Option>
                     <Option value="NO_ACCESS"><Text type="secondary">NONE</Text></Option>
                 </Select>

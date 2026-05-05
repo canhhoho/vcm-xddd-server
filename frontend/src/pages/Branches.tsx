@@ -164,14 +164,14 @@ const Branches: React.FC = () => {
             key: 'branch',
             label: t('branches.filterBranch'),
             value: selectedBranchFilter,
-            displayValue: branches.find(b => b.id === selectedBranchFilter)?.code,
+            displayValue: branches.find((b: any) => b.id === selectedBranchFilter)?.code,
             onRemove: () => setSelectedBranchFilter(undefined)
         },
         {
             key: 'pos',
             label: t('branches.filterPosition'),
             value: selectedPositionFilter,
-            displayValue: positionOptions.find(p => p.value === selectedPositionFilter)?.label,
+            displayValue: positionOptions.find((p: any) => p.value === selectedPositionFilter)?.label,
             onRemove: () => setSelectedPositionFilter(undefined)
         }
     ], [searchText, selectedBranchFilter, selectedPositionFilter, branches, positionOptions, t, setSearchText, setSelectedBranchFilter, setSelectedPositionFilter]);
@@ -188,7 +188,7 @@ const Branches: React.FC = () => {
             key: 'cbranch',
             label: t('branches.filterBranch'),
             value: collabBranchFilter,
-            displayValue: branches.find(b => b.id === collabBranchFilter)?.code,
+            displayValue: branches.find((b: any) => b.id === collabBranchFilter)?.code,
             onRemove: () => setCollabBranchFilter(undefined)
         }
     ], [collabSearchText, collabBranchFilter, branches, t, setCollabSearchText, setCollabBranchFilter]);
