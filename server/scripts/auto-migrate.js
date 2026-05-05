@@ -418,10 +418,11 @@ async function migrate() {
       for (const s of rows) {
         try {
           await client.query(
-            `INSERT INTO staff (id, branch_id, name, position, phone, email, created_at)
-             VALUES ($1,$2,$3,$4,$5,$6,$7) ON CONFLICT (id) DO NOTHING`,
+            `INSERT INTO staff (id, branch_id, name, position, phone, email, staff_group, created_at)
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8) ON CONFLICT (id) DO NOTHING`,
             [toStr(g(s,'id')), toStr(g(s,'branchid','branch_id')), toStr(g(s,'name')),
              toStr(g(s,'position')), toStr(g(s,'phone')), toStr(g(s,'email')),
+             toStr(g(s,'group','staffgroup','staff_group')),
              toDate(g(s,'createdat','created_at')) || new Date().toISOString()]
           );
           count++;

@@ -28,7 +28,8 @@ router.get('/', async (req, res) => {
       id: r.id, branchId: r.branch_id, branchCode: r.branch_code || '',
       branchName: r.branch_name || '', name: r.name,
       position: r.position || '', phone: r.phone || '',
-      email: r.email || '', createdAt: r.created_at,
+      email: r.email || '', staffGroup: r.staff_group || '',
+      createdAt: r.created_at,
     }));
     res.json({ success: true, data });
   } catch (err) {
@@ -40,8 +41,8 @@ router.get('/', async (req, res) => {
 router.post('/', async (req, res) => {
   try {
     const d = req.body; const id = uuidv4();
-    await query('INSERT INTO staff (id,branch_id,name,position,phone,email) VALUES ($1,$2,$3,$4,$5,$6)',
-      [id, d.branchId || '', d.name, d.position || '', d.phone || '', d.email || '']);
+    await query('INSERT INTO staff (id,branch_id,name,position,phone,email,staff_group) VALUES ($1,$2,$3,$4,$5,$6,$7)',
+      [id, d.branchId || '', d.name, d.position || '', d.phone || '', d.email || '', d.staffGroup || '']);
     await logActivity(req.user?.email || '', 'CREATE_STAFF', `Created staff ${d.name}`);
     res.json({ success: true, data: { id } });
   } catch (err) {
@@ -53,8 +54,8 @@ router.post('/', async (req, res) => {
 router.put('/:id', async (req, res) => {
   try {
     const d = req.body;
-    await query('UPDATE staff SET branch_id=$1,name=$2,position=$3,phone=$4,email=$5 WHERE id=$6',
-      [d.branchId || '', d.name, d.position || '', d.phone || '', d.email || '', req.params.id]);
+    await query('UPDATE staff SET branch_id=$1,name=$2,position=$3,phone=$4,email=$5,staff_group=$6 WHERE id=$7',
+      [d.branchId || '', d.name, d.position || '', d.phone || '', d.email || '', d.staffGroup || '', req.params.id]);
     await logActivity(req.user?.email || '', 'UPDATE_STAFF', `Updated staff ${d.name}`);
     res.json({ success: true });
   } catch (err) {

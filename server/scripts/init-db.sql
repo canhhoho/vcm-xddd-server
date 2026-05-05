@@ -105,13 +105,14 @@ CREATE TABLE IF NOT EXISTS tasks (
 
 -- 7. staff
 CREATE TABLE IF NOT EXISTS staff (
-  id         VARCHAR(50) PRIMARY KEY,
-  branch_id  VARCHAR(50) DEFAULT '',
-  name       VARCHAR(255),
-  position   VARCHAR(100) DEFAULT '',
-  phone      VARCHAR(50) DEFAULT '',
-  email      VARCHAR(255) DEFAULT '',
-  created_at TIMESTAMPTZ DEFAULT NOW()
+  id          VARCHAR(50) PRIMARY KEY,
+  branch_id   VARCHAR(50) DEFAULT '',
+  name        VARCHAR(255),
+  position    VARCHAR(100) DEFAULT '',
+  phone       VARCHAR(50) DEFAULT '',
+  email       VARCHAR(255) DEFAULT '',
+  staff_group VARCHAR(100) DEFAULT '',
+  created_at  TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- 8. targets
@@ -230,6 +231,8 @@ DO $$ BEGIN
   ALTER TABLE prospects ADD COLUMN IF NOT EXISTS contact_date DATE DEFAULT NULL;
   -- Add prospect type (B2B/B2C)
   ALTER TABLE prospects ADD COLUMN IF NOT EXISTS prospect_type VARCHAR(10) DEFAULT 'B2B';
+  -- Add staff group
+  ALTER TABLE staff ADD COLUMN IF NOT EXISTS staff_group VARCHAR(100) DEFAULT '';
 END $$;
 
 -- ============================================================

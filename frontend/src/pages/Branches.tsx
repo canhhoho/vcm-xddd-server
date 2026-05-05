@@ -60,6 +60,7 @@ interface BranchStaff {
     position: string;
     phone: string;
     email: string;
+    staffGroup?: string;
 }
 
 const Branches: React.FC = () => {
@@ -206,7 +207,8 @@ const Branches: React.FC = () => {
             const matchSearch = !searchText ||
                 s.name.toLowerCase().includes(searchText.toLowerCase()) ||
                 s.phone.includes(searchText) ||
-                s.email.toLowerCase().includes(searchText.toLowerCase());
+                (s.email && s.email.toLowerCase().includes(searchText.toLowerCase())) ||
+                (s.staffGroup && s.staffGroup.toLowerCase().includes(searchText.toLowerCase()));
             return matchBranch && matchPosition && matchSearch;
         });
     }, [staff, selectedBranchFilter, selectedPositionFilter, searchText]);
@@ -423,16 +425,17 @@ const Branches: React.FC = () => {
                 </Tooltip>
             )
         },
-        { title: t('branches.colStaffName'), dataIndex: 'name', key: 'name', width: 180, render: (text: string) => <Text strong>{text}</Text> },
+        { title: t('branches.colStaffName'), dataIndex: 'name', key: 'name', width: 150, render: (text: string) => <Text strong>{text}</Text> },
         {
-            title: t('branches.colPosition'), dataIndex: 'position', key: 'position', width: 150,
+            title: t('branches.colPosition'), dataIndex: 'position', key: 'position', width: 130,
             render: (position: string) => {
                 const info = getPositionInfo(position);
                 return <Tag color={info.color} style={{ margin: 0 }}>{info.label}</Tag>;
             }
         },
-        { title: t('branches.colPhone'), dataIndex: 'phone', key: 'phone', width: 140, render: (text: string) => <Space><PhoneOutlined style={{ color: '#52c41a' }} />{text || '-'}</Space> },
-        { title: t('branches.colEmail'), dataIndex: 'email', key: 'email', width: 220, ellipsis: true, render: (text: string) => text ? <Space><MailOutlined style={{ color: '#1890ff' }} />{text}</Space> : '-' },
+        { title: t('branches.colStaffGroup'), dataIndex: 'staffGroup', key: 'staffGroup', width: 120, render: (text: string) => text || '-' },
+        { title: t('branches.colPhone'), dataIndex: 'phone', key: 'phone', width: 130, render: (text: string) => <Space><PhoneOutlined style={{ color: '#52c41a' }} />{text || '-'}</Space> },
+        { title: t('branches.colEmail'), dataIndex: 'email', key: 'email', width: 180, ellipsis: true, render: (text: string) => text ? <Space><MailOutlined style={{ color: '#1890ff' }} />{text}</Space> : '-' },
         {
             title: t('common.actions'), key: 'action', width: 100, align: 'center', fixed: 'right' as const,
             render: (_, record) => (
@@ -692,6 +695,9 @@ const Branches: React.FC = () => {
                         <Select placeholder={t('branches.formPosition')}>
                             {positionOptions.map((p: any) => <Select.Option key={p.value} value={p.value}>{p.label}</Select.Option>)}
                         </Select>
+                    </Form.Item>
+                    <Form.Item name="staffGroup" label={t('branches.formStaffGroup')}>
+                        <Input placeholder={t('branches.formStaffGroupPlaceholder')} />
                     </Form.Item>
                     <Form.Item name="phone" label={t('branches.formPhone')} rules={[{ required: true, message: t('branches.formPhoneReq') }]}>
                         <Input placeholder="VD: 0901234567" />
