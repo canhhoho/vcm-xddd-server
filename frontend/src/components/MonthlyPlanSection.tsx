@@ -63,12 +63,12 @@ const MonthlyPlanSection: React.FC<Props> = ({ department, selectedMonth, canEdi
     }, [rawItems, searchText, statusFilter, assigneeFilter]);
 
     const handleExportExcel = () => {
-        const exportData = filteredItems.map((item, index) => ({
+        const exportData = filteredItems.map((item: MonthlyPlanItem, index: number) => ({
             [t('common.index') || '#']: index + 1,
             [t('business.weeklyPlan.what')]: item.title,
             [t('plans.monthly.target')]: item.target || '',
             [t('business.weeklyPlan.why')]: item.why || '',
-            [t('business.weeklyPlan.who')]: item.assigneeName || users.find(u => u.id === item.assigneeId)?.name || '',
+            [t('business.weeklyPlan.who')]: item.assigneeName || users.find((u: any) => u.id === item.assigneeId)?.name || '',
             [t('business.weeklyPlan.how')]: item.method || '',
             [t('business.weeklyPlan.status')]: t(`business.weeklyPlan.status${item.status.charAt(0) + item.status.slice(1).toLowerCase().replace('_', '')}`),
             [t('business.weeklyPlan.result')]: item.result || '',

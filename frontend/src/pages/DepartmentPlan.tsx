@@ -64,22 +64,22 @@ const DepartmentPlan: React.FC<DepartmentPlanProps> = ({ department, selectedMon
         updateWeeklyPlanItemsStatus
     } = usePlanMutations();
 
-    const monthlyPlanItems = monthlyPlans.length > 0 ? monthlyPlans[0].items || [] : [];
+    const monthlyPlanItems = monthlyPlans.length > 0 ? (monthlyPlans[0] as any).items || [] : [];
 
     // Filter plans to selected month: include if weekStart is in selected month
     const plans = useMemo(() => {
         const monthStr = selectedMonth.format('YYYY-MM');
         return [...allPlans]
-            .filter(p => dayjs(p.weekStart).format('YYYY-MM') === monthStr)
-            .sort((a, b) => dayjs(b.weekStart).diff(dayjs(a.weekStart)));
+            .filter((p: WeeklyPlan) => dayjs(p.weekStart).format('YYYY-MM') === monthStr)
+            .sort((a: WeeklyPlan, b: WeeklyPlan) => dayjs(b.weekStart).diff(dayjs(a.weekStart)));
     }, [allPlans, selectedMonth]);
 
     const currentWeekPlan = useMemo(() =>
-        allPlans.find((p: any) => dayjs(p.weekStart).format('YYYY-MM-DD') === thisWeekStart.format('YYYY-MM-DD')),
+        allPlans.find((p: WeeklyPlan) => dayjs(p.weekStart).format('YYYY-MM-DD') === thisWeekStart.format('YYYY-MM-DD')),
     [allPlans, thisWeekStart]);
 
     const latestPlan = useMemo(() =>
-        [...allPlans].sort((a, b) => dayjs(b.weekStart).diff(dayjs(a.weekStart)))[0] || null,
+        [...allPlans].sort((a: WeeklyPlan, b: WeeklyPlan) => dayjs(b.weekStart).diff(dayjs(a.weekStart)))[0] || null,
     [allPlans]);
 
     const handleCreatePlan = async (withCarryOver: boolean) => {
@@ -92,7 +92,7 @@ const DepartmentPlan: React.FC<DepartmentPlanProps> = ({ department, selectedMon
         if (withCarryOver && latestPlan) payload.carryOverFromPlanId = latestPlan.id;
         
         createWeeklyPlan.mutate(payload, {
-            onSuccess: (res) => {
+            onSuccess: (res: any) => {
                 if (res.success) message.success(t('common.saveSuccess'));
                 else message.error(res.error || t('common.saveError'));
             },
@@ -101,7 +101,7 @@ const DepartmentPlan: React.FC<DepartmentPlanProps> = ({ department, selectedMon
     };
 
     const handleAddItem = (planId: string) => {
-        const plan = allPlans.find((p: any) => p.id === planId);
+        const plan = allPlans.find((p: WeeklyPlan) => p.id === planId);
         const items = plan?.items || [];
         setActivePlanId(planId);
         setEditingItem(null);
@@ -130,7 +130,7 @@ const DepartmentPlan: React.FC<DepartmentPlanProps> = ({ department, selectedMon
         
         if (editingItem) {
             updateWeeklyPlanItem.mutate({ ...payload, id: editingItem.id }, {
-                onSuccess: (res) => {
+                onSuccess: (res: any) => {
                     if (res.success) {
                         message.success(t('common.saveSuccess'));
                         setModalVisible(false);
@@ -140,7 +140,7 @@ const DepartmentPlan: React.FC<DepartmentPlanProps> = ({ department, selectedMon
             });
         } else if (activePlanId) {
             createWeeklyPlanItem.mutate({ planId: activePlanId, data: payload }, {
-                onSuccess: (res) => {
+                onSuccess: (res: any) => {
                     if (res.success) {
                         message.success(t('common.saveSuccess'));
                         setModalVisible(false);
@@ -169,14 +169,14 @@ const DepartmentPlan: React.FC<DepartmentPlanProps> = ({ department, selectedMon
     };
 
     const handleExportExcel = (planId: string) => {
-        const plan = plans.find(p => p.id === planId);
+        const plan = plans.find((p: WeeklyPlan) => p.id === planId);
         if (!plan) return;
         const items = plan.items || [];
-        const exportData = items.map((item, index) => ({
+        const exportData = items.map((item: WeeklyPlanItem, index: number) => ({
             [t('common.index') || '#']: index + 1,
             [t('business.weeklyPlan.what')]: item.title,
             [t('business.weeklyPlan.why')]: item.why || '',
-            [t('business.weeklyPlan.who')]: item.assigneeName || users.find(u => u.id === item.assigneeId)?.name || '',
+            [t('business.weeklyPlan.who')]: item.assigneeName || users.find((u: any) => u.id === item.assigneeId)?.name || '',
             [t('business.weeklyPlan.when')]: `${item.startDate || ''} - ${item.endDate || ''}`,
             [t('business.weeklyPlan.where')]: item.location || '',
             [t('business.weeklyPlan.how')]: item.method || '',
@@ -318,7 +318,7 @@ const DepartmentPlan: React.FC<DepartmentPlanProps> = ({ department, selectedMon
                         placeholder={t('business.weeklyPlan.status')}
                         allowClear
                         value={statusFilter}
-                        onChange={setStatusFilter}
+                        onChange={(v: string) => setStatusFilter(v)}
                     >
                         <Option value="TODO">{t('business.weeklyPlan.statusTodo')}</Option>
                         <Option value="IN_PROGRESS">{t('business.weeklyPlan.statusInProgress')}</Option>
@@ -331,7 +331,7 @@ const DepartmentPlan: React.FC<DepartmentPlanProps> = ({ department, selectedMon
                         allowClear
                         showSearch
                         value={assigneeFilter}
-                        onChange={setAssigneeFilter}
+                        onChange={(v: string) => setAssigneeFilter(v)}
                         filterOption={(input, option) => ((option?.children as any) || '').toLowerCase().includes(input.toLowerCase())}
                     >
                         {users.map((u: any) => <Option key={u.id} value={u.id}>{u.name}</Option>)}
@@ -344,7 +344,7 @@ const DepartmentPlan: React.FC<DepartmentPlanProps> = ({ department, selectedMon
                     <Empty description={t('business.weeklyPlan.noPlan')} style={{ padding: 40 }} />
                 </Card>
             ) : (
-                plans.map(plan => {
+                plans.map((plan: WeeklyPlan) => {
                     const planItems = (plan.items || []).filter((item: WeeklyPlanItem) => {
                         const matchesSearch = !searchText || item.title.toLowerCase().includes(searchText.toLowerCase());
                         const matchesStatus = !statusFilter || item.status === statusFilter;
@@ -356,9 +356,9 @@ const DepartmentPlan: React.FC<DepartmentPlanProps> = ({ department, selectedMon
 
                     const weekLabel = `${dayjs(plan.weekStart).format('DD/MM')} – ${dayjs(plan.weekEnd).format('DD/MM/YYYY')}`;
                     const isCurrent = isCurrentWeek(plan);
-                    const doneCount = planItems.filter((i: any) => i.status === 'DONE').length;
+                    const doneCount = planItems.filter((i: WeeklyPlanItem) => i.status === 'DONE').length;
                     const avgProgress = planItems.length
-                        ? Math.round(planItems.reduce((s: number, i: any) => s + (i.progressPct || 0), 0) / planItems.length)
+                        ? Math.round(planItems.reduce((s: number, i: WeeklyPlanItem) => s + (i.progressPct || 0), 0) / planItems.length)
                         : 0;
 
                     return (
@@ -411,10 +411,10 @@ const DepartmentPlan: React.FC<DepartmentPlanProps> = ({ department, selectedMon
                                 scroll={{ x: 1200 }}
                                 rowSelection={canEdit ? {
                                     selectedRowKeys,
-                                    onChange: setSelectedRowKeys,
+                                    onChange: (keys: React.Key[]) => setSelectedRowKeys(keys),
                                 } : undefined}
                                 expandable={{
-                                    expandedRowRender: record => (
+                                    expandedRowRender: (record: WeeklyPlanItem) => (
                                         <div style={{ padding: '8px 48px', background: '#f8fafc' }}>
                                             <p><strong>{t('business.weeklyPlan.why')}:</strong> {record.why || '-'}</p>
                                             <p><strong>{t('business.weeklyPlan.where')}:</strong> {record.location || '-'}</p>
@@ -422,7 +422,7 @@ const DepartmentPlan: React.FC<DepartmentPlanProps> = ({ department, selectedMon
                                             {record.result && <p><strong>{t('business.weeklyPlan.result')}:</strong> {record.result}</p>}
                                         </div>
                                     ),
-                                    rowExpandable: record => !!(record.why || record.location || record.method || record.result),
+                                    rowExpandable: (record: WeeklyPlanItem) => !!(record.why || record.location || record.method || record.result),
                                 }}
                             />
                         </Card>

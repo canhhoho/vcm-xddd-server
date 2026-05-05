@@ -113,5 +113,3 @@ const PlanGuideModal: React.FC<Props> = ({ open, onClose }) => {
 };
 
 export default PlanGuideModal;
-
-export default PlanGuideModal;

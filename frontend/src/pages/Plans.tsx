@@ -8,6 +8,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import dayjs from 'dayjs';
 import { usePermissions } from '../hooks/usePermissions';
+import { ModuleAccess } from '../types';
 import MonthlyPlanSection from '../components/MonthlyPlanSection';
 import DepartmentPlan from './DepartmentPlan';
 import './Business.css';
