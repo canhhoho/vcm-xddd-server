@@ -8,7 +8,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import dayjs from 'dayjs';
 import { usePermissions } from '../hooks/usePermissions';
-import { ModuleAccess } from '../types';
+import type { ModuleAccess } from '../types';
 import MonthlyPlanSection from '../components/MonthlyPlanSection';
 import DepartmentPlan from './DepartmentPlan';
 import './Business.css';
@@ -44,8 +44,8 @@ const Plans: React.FC = () => {
 
     const tabItems = DEPARTMENTS.map(({ key, label, icon }) => {
         // Granular permission check
-        const permKey = `plans_${key.toLowerCase()}` as keyof typeof permissions;
-        const deptPermission = permissions[permKey] as ModuleAccess;
+        const permKey = `plans_${key.toLowerCase()}`;
+        const deptPermission = (permissions as any)[permKey] as ModuleAccess;
         const canEditTab = isAdmin || deptPermission === 'EDIT' || (permissions.plans === 'EDIT' && deptPermission !== 'NO_ACCESS');
 
         return {

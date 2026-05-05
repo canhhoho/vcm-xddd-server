@@ -64,7 +64,7 @@ const DepartmentPlan: React.FC<DepartmentPlanProps> = ({ department, selectedMon
         updateWeeklyPlanItemsStatus
     } = usePlanMutations();
 
-    const monthlyPlanItems = monthlyPlans.length > 0 ? (monthlyPlans[0] as any).items || [] : [];
+    const monthlyPlanItems = monthlyPlans.length > 0 ? monthlyPlans[0].items || [] : [];
 
     // Filter plans to selected month: include if weekStart is in selected month
     const plans = useMemo(() => {

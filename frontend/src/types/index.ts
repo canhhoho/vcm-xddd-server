@@ -253,6 +253,7 @@ export interface WeeklyPlan {
     department: Department;
     createdBy: string;
     createdAt: string;
+    items?: WeeklyPlanItem[];
 }
 
 export interface WeeklyPlanItem {
@@ -282,6 +283,7 @@ export interface MonthlyPlan {
     department: Department;
     createdBy?: string;
     createdAt: string;
+    items?: MonthlyPlanItem[];
 }
 
 export interface MonthlyPlanItem {
