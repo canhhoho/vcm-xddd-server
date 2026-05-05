@@ -177,6 +177,13 @@ const Branches: React.FC = () => {
         }
     ], [searchText, selectedBranchFilter, selectedPositionFilter, branches, positionOptions, t, setSearchText, setSelectedBranchFilter, setSelectedPositionFilter]);
 
+    const categories = useMemo(() => {
+        const configGroups = appConfig?.GROUPS;
+        if (configGroups && configGroups.length > 0) return configGroups;
+        const DEFAULT_CATEGORY_KEYS = ['leader', 'construction', 'business', 'qs', 'project', 'other'];
+        return DEFAULT_CATEGORY_KEYS.map(key => t(`users.groups.${key.toUpperCase()}`, key));
+    }, [appConfig, t]);
+
     const clearStaffFilters = useCallback(() => {
         setSearchText('');
         setSelectedBranchFilter(undefined);
@@ -697,7 +704,13 @@ const Branches: React.FC = () => {
                         </Select>
                     </Form.Item>
                     <Form.Item name="staffGroup" label={t('branches.formStaffGroup')}>
-                        <Input placeholder={t('branches.formStaffGroupPlaceholder')} />
+                        <Select placeholder={t('branches.formStaffGroupPlaceholder')} allowClear>
+                            {categories.map((cat: string) => (
+                                <Select.Option key={cat} value={cat}>
+                                    {t(`users.groups.${cat.toUpperCase()}`, cat)}
+                                </Select.Option>
+                            ))}
+                        </Select>
                     </Form.Item>
                     <Form.Item name="phone" label={t('branches.formPhone')} rules={[{ required: true, message: t('branches.formPhoneReq') }]}>
                         <Input placeholder="VD: 0901234567" />
