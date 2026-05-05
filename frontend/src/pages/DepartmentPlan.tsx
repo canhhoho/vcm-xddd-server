@@ -247,13 +247,15 @@ const DepartmentPlan: React.FC<DepartmentPlanProps> = ({ department, selectedMon
             title: t('common.actions'), key: 'action', width: 110, align: 'center', fixed: 'right',
             render: (_: any, record: WeeklyPlanItem) => (
                 <div style={{ display: 'flex', gap: 4, justifyContent: 'center' }}>
-                    <Tooltip title={t('plans.daily.updateBtn')}>
-                        <Button
-                            size="small" type="primary" ghost
-                            icon={<EditOutlined />}
-                            onClick={() => setDailyLogItem(record)}
-                        />
-                    </Tooltip>
+                    {canEdit && (
+                        <Tooltip title={t('plans.daily.updateBtn')}>
+                            <Button
+                                size="small" type="primary" ghost
+                                icon={<EditOutlined />}
+                                onClick={() => setDailyLogItem(record)}
+                            />
+                        </Tooltip>
+                    )}
                     <VcmActionGroup
                         onEdit={canEdit ? () => handleEditItem(planId, record) : undefined}
                         onDelete={canEdit ? () => handleDeleteItem(planId, record.id) : undefined}
