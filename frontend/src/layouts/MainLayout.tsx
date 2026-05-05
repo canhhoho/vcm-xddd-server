@@ -67,8 +67,10 @@ const MainLayout: React.FC = () => {
             });
         }
 
-        // Plans Module
-        if (isAdmin || permissions?.plans !== 'NO_ACCESS') {
+        // Plans Module — visible if any dept-level permission is granted
+        if (isAdmin || ['plans_bd', 'plans_mkt', 'plans_qs', 'plans_des', 'plans_pm'].some(
+            k => (permissions as any)?.[k] !== 'NO_ACCESS'
+        )) {
             items.push({
                 key: '/plans',
                 icon: <ScheduleOutlined />,
