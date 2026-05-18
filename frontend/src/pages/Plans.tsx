@@ -79,11 +79,11 @@ const Plans: React.FC = () => {
             <div className="vcm-premium-header">
                 <div className="vcm-header-decorative-circle vcm-circle-1" />
                 <div className="vcm-header-decorative-circle vcm-circle-2" />
-                <div className="vcm-header-content">
-                    <h2 className="vcm-header-title">{t('plans.pageTitle')}</h2>
+                <div className="vcm-header-content" style={{ flexWrap: 'wrap', gap: 8 }}>
+                    <h2 className="vcm-header-title" style={{ marginBottom: 0 }}>{t('plans.pageTitle')}</h2>
 
                     {/* Month Navigator */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                         <Button
                             icon={<LeftOutlined />}
                             size="small"
@@ -91,8 +91,8 @@ const Plans: React.FC = () => {
                             title={t('plans.prevMonth')}
                         />
                         <span style={{
-                            minWidth: 120, textAlign: 'center', fontWeight: 700,
-                            fontSize: 15, color: '#1e293b',
+                            minWidth: 90, textAlign: 'center', fontWeight: 700,
+                            fontSize: 14, color: '#1e293b',
                         }}>
                             {selectedMonth.format('MM/YYYY')}
                         </span>
@@ -105,7 +105,7 @@ const Plans: React.FC = () => {
                         <Button
                             size="small"
                             onClick={() => setSelectedMonth(dayjs().startOf('month'))}
-                            style={{ marginLeft: 4 }}
+                            style={{ marginLeft: 2 }}
                         >
                             {t('plans.today')}
                         </Button>

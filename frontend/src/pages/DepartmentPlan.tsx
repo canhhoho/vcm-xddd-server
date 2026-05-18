@@ -275,8 +275,8 @@ const DepartmentPlan: React.FC<DepartmentPlanProps> = ({ department, selectedMon
     return (
         <div>
             {/* Toolbar: Search, Filters, Create Buttons */}
-            <div style={{ padding: '12px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12, borderBottom: '1px solid #f1f5f9', background: '#fff' }}>
-                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <div style={{ padding: '12px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8, borderBottom: '1px solid #f1f5f9', background: '#fff' }}>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
                     {isCurrentMonth && canEdit && !currentWeekPlan && (
                         <>
                             <Button type="primary" icon={<PlusOutlined />} onClick={() => handleCreatePlan(false)}>
@@ -292,7 +292,7 @@ const DepartmentPlan: React.FC<DepartmentPlanProps> = ({ department, selectedMon
                         </>
                     )}
                     {selectedRowKeys.length > 0 && canEdit && (
-                        <Space>
+                        <Space wrap>
                             <Text type="secondary" style={{ fontSize: 13 }}>{selectedRowKeys.length} {t('common.total').toLowerCase()}</Text>
                             <Button size="small" type="primary" icon={<CheckCircleOutlined />} onClick={() => handleBatchStatusUpdate('DONE')}>
                                 {t('business.weeklyPlan.statusDone')}
@@ -304,19 +304,19 @@ const DepartmentPlan: React.FC<DepartmentPlanProps> = ({ department, selectedMon
                     )}
                 </div>
 
-                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
                     <Input
                         placeholder={t('common.search') + '...'}
                         prefix={<SearchOutlined style={{ color: '#bfbfbf' }} />}
                         size="small"
-                        style={{ width: 160 }}
+                        style={{ width: 140, minWidth: 100 }}
                         value={searchText}
                         onChange={e => setSearchText(e.target.value)}
                         allowClear
                     />
                     <Select
                         size="small"
-                        style={{ width: 120 }}
+                        style={{ width: 110, minWidth: 90 }}
                         placeholder={t('business.weeklyPlan.status')}
                         allowClear
                         value={statusFilter}
@@ -328,7 +328,7 @@ const DepartmentPlan: React.FC<DepartmentPlanProps> = ({ department, selectedMon
                     </Select>
                     <Select
                         size="small"
-                        style={{ width: 140 }}
+                        style={{ width: 130, minWidth: 100 }}
                         placeholder={t('business.weeklyPlan.who')}
                         allowClear
                         showSearch
@@ -376,8 +376,8 @@ const DepartmentPlan: React.FC<DepartmentPlanProps> = ({ department, selectedMon
                             bodyStyle={{ padding: '0 0 8px' }}
                         >
                             <div style={{
-                                display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap',
-                                padding: '12px 16px',
+                                display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap',
+                                padding: '10px 12px',
                                 borderBottom: '1px solid #f8fafc'
                             }}>
                                 <CalendarOutlined style={{ color: isCurrent ? '#E11D2E' : '#64748b', fontSize: 16 }} />

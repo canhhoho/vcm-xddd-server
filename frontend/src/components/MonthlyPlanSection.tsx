@@ -186,9 +186,9 @@ const MonthlyPlanSection: React.FC<Props> = ({ department, selectedMonth, canEdi
                 display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                 background: 'linear-gradient(135deg, #fff7f7 0%, #fff 100%)',
                 borderBottom: '1px solid #f1f5f9',
-                flexWrap: 'wrap', gap: 12
+                flexWrap: 'wrap', gap: 8
             }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                     <Title level={5} style={{ margin: 0, color: '#E11D2E', fontSize: 13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                         {t('plans.monthly.sectionTitle')} — {selectedMonth.format('MM/YYYY')}
                     </Title>
@@ -199,21 +199,21 @@ const MonthlyPlanSection: React.FC<Props> = ({ department, selectedMonth, canEdi
                     )}
                 </div>
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                     {plan && (
                         <>
                             <Input
                                 placeholder={t('common.search') + '...'}
                                 prefix={<SearchOutlined style={{ color: '#bfbfbf' }} />}
                                 size="small"
-                                style={{ width: 150 }}
+                                style={{ width: 130, minWidth: 90 }}
                                 value={searchText}
                                 onChange={e => setSearchText(e.target.value)}
                                 allowClear
                             />
                             <Select
                                 size="small"
-                                style={{ width: 120 }}
+                                style={{ width: 110, minWidth: 90 }}
                                 placeholder={t('business.weeklyPlan.status')}
                                 allowClear
                                 value={statusFilter}
@@ -225,7 +225,7 @@ const MonthlyPlanSection: React.FC<Props> = ({ department, selectedMonth, canEdi
                             </Select>
                             <Select
                                 size="small"
-                                style={{ width: 140 }}
+                                style={{ width: 130, minWidth: 100 }}
                                 placeholder={t('business.weeklyPlan.who')}
                                 allowClear
                                 showSearch
