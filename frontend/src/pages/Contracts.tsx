@@ -288,14 +288,12 @@ const Contracts: React.FC = () => {
             title: t('contracts.colName'),
             dataIndex: 'name',
             key: 'name',
-            width: 200,
-            ellipsis: true,
+            width: 300,
+            onCell: () => ({ style: { whiteSpace: 'normal', wordBreak: 'break-word' } }),
             render: (text: string, record: Contract) => (
-                <Tooltip title={text}>
-                    <a onClick={() => handleDetail(record)} className="text-gray-900 hover:text-blue-600">
-                        {text}
-                    </a>
-                </Tooltip>
+                <a onClick={() => handleDetail(record)} className="text-gray-900 hover:text-blue-600" style={{ whiteSpace: 'normal', wordBreak: 'break-word' }}>
+                    {text}
+                </a>
             ),
         },
         {
@@ -659,7 +657,7 @@ const Contracts: React.FC = () => {
                     dataSource={filteredContracts}
                     rowKey="id"
                     loading={loading}
-                    scroll={{ x: 1200 }}
+                    scroll={{ x: 1400 }}
                     pagination={{
                         pageSize: 10,
                         showSizeChanger: true,
