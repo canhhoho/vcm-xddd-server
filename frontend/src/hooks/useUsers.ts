@@ -44,11 +44,11 @@ export const usePositions = (enabled: boolean = true) => {
             if (!response.success) {
                 throw new Error(response.error || 'Failed to fetch positions');
             }
-            // Dedup by id to prevent duplicate options in dropdowns
+            // Dedup by name to prevent duplicate options in dropdowns
             const data: any[] = response.data || [];
             const seen = new Set<string>();
             return data.filter((p: any) => {
-                const key = String(p.id);
+                const key = String(p.name || '').trim().toLowerCase();
                 if (seen.has(key)) return false;
                 seen.add(key);
                 return true;
