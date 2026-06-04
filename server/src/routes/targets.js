@@ -15,63 +15,101 @@ async function logActivity(email, action, description) {
 }
 
 /**
- * Calculate actual value for a target based on type and period
+ * Pre-compute ALL actual values in 3 batch queries instead of N per-record queries.
+ * Returns a lookup map: key = `${type}|${periodType}|${period}|${unitId}` -> actualValue
  */
-async function calcActualValue(type, periodType, period, unitType, unitId) {
-  const isGeneral = unitType === 'GENERAL' || !unitType;
+async function calcAllActuals() {
+  const actuals = {};
 
-  // Parse period for date filtering
-  let dateFilter = '';
-  const params = [];
-  let pIdx = 1;
+  const setActual = (type, periodType, period, unitId, value) => {
+    const key = `${type}|${periodType}|${period}|${unitId || ''}`;
+    actuals[key] = (actuals[key] || 0) + value;
+  };
 
-  if (periodType === 'YEAR') {
-    dateFilter = `EXTRACT(YEAR FROM {date_col}) = $${pIdx}`;
-    params.push(parseInt(period));
-    pIdx++;
-  } else if (periodType === 'QUARTER') {
-    // period = "2026-Q1"
-    const [year, q] = period.split('-Q');
-    dateFilter = `EXTRACT(YEAR FROM {date_col}) = $${pIdx} AND CEIL(EXTRACT(MONTH FROM {date_col}) / 3.0) = $${pIdx + 1}`;
-    params.push(parseInt(year), parseInt(q));
-    pIdx += 2;
-  } else if (periodType === 'MONTH') {
-    // period = "2026-03"
-    const [year, month] = period.split('-');
-    dateFilter = `EXTRACT(YEAR FROM {date_col}) = $${pIdx} AND EXTRACT(MONTH FROM {date_col}) = $${pIdx + 1}`;
-    params.push(parseInt(year), parseInt(month));
-    pIdx += 2;
+  // ── Batch 1: NGUON_VIEC ── contracts grouped by branch + year/month
+  const nvRows = await query(`
+    SELECT
+      c.branch_id,
+      EXTRACT(YEAR FROM c.start_date)::int AS yr,
+      EXTRACT(MONTH FROM c.start_date)::int AS mo,
+      COALESCE(SUM(c.value), 0) / 1000000.0 AS total
+    FROM contracts c
+    WHERE c.start_date IS NOT NULL
+    GROUP BY c.branch_id, yr, mo
+  `);
+  for (const r of nvRows.rows) {
+    const yr = r.yr, mo = String(r.mo).padStart(2, '0');
+    const q = Math.ceil(r.mo / 3);
+    const val = parseFloat(r.total);
+    const branchId = r.branch_id || '';
+
+    // MONTH
+    setActual('NGUON_VIEC', 'MONTH', `${yr}-${mo}`, branchId, val);
+    setActual('NGUON_VIEC', 'MONTH', `${yr}-${mo}`, '', val); // GENERAL
+    // QUARTER
+    setActual('NGUON_VIEC', 'QUARTER', `${yr}-Q${q}`, branchId, val);
+    setActual('NGUON_VIEC', 'QUARTER', `${yr}-Q${q}`, '', val);
+    // YEAR
+    setActual('NGUON_VIEC', 'YEAR', `${yr}`, branchId, val);
+    setActual('NGUON_VIEC', 'YEAR', `${yr}`, '', val);
   }
 
-  if (!dateFilter) return 0;
+  // ── Batch 2: DOANH_THU ── invoices grouped by branch + year/month
+  const dtRows = await query(`
+    SELECT
+      c.branch_id,
+      EXTRACT(YEAR FROM i.issued_date)::int AS yr,
+      EXTRACT(MONTH FROM i.issued_date)::int AS mo,
+      COALESCE(SUM(i.value), 0) / 1000000.0 AS total
+    FROM invoices i
+    JOIN contracts c ON i.contract_id = c.id
+    WHERE i.issued_date IS NOT NULL
+    GROUP BY c.branch_id, yr, mo
+  `);
+  for (const r of dtRows.rows) {
+    const yr = r.yr, mo = String(r.mo).padStart(2, '0');
+    const q = Math.ceil(r.mo / 3);
+    const val = parseFloat(r.total);
+    const branchId = r.branch_id || '';
 
-  let branchFilter = '';
-  if (!isGeneral && unitId) {
-    branchFilter = ` AND c.branch_id = $${pIdx}`;
-    params.push(unitId);
-    pIdx++;
+    setActual('DOANH_THU', 'MONTH', `${yr}-${mo}`, branchId, val);
+    setActual('DOANH_THU', 'MONTH', `${yr}-${mo}`, '', val);
+    setActual('DOANH_THU', 'QUARTER', `${yr}-Q${q}`, branchId, val);
+    setActual('DOANH_THU', 'QUARTER', `${yr}-Q${q}`, '', val);
+    setActual('DOANH_THU', 'YEAR', `${yr}`, branchId, val);
+    setActual('DOANH_THU', 'YEAR', `${yr}`, '', val);
   }
 
-  let actual = 0;
+  // ── Batch 3: THU_TIEN ── paid invoices grouped by branch + year/month
+  const ttRows = await query(`
+    SELECT
+      c.branch_id,
+      EXTRACT(YEAR FROM i.issued_date)::int AS yr,
+      EXTRACT(MONTH FROM i.issued_date)::int AS mo,
+      COALESCE(SUM(i.payment), 0) / 1000000.0 AS total
+    FROM invoices i
+    JOIN contracts c ON i.contract_id = c.id
+    WHERE i.payment > 0 AND i.issued_date IS NOT NULL
+    GROUP BY c.branch_id, yr, mo
+  `);
+  for (const r of ttRows.rows) {
+    const yr = r.yr, mo = String(r.mo).padStart(2, '0');
+    const q = Math.ceil(r.mo / 3);
+    const val = parseFloat(r.total);
+    const branchId = r.branch_id || '';
 
-  if (type === 'NGUON_VIEC') {
-    const sql = `SELECT COALESCE(SUM(c.value), 0) as total FROM contracts c WHERE ${dateFilter.replace(/{date_col}/g, 'c.start_date')}${branchFilter}`;
-    const r = await query(sql, params);
-    actual = parseFloat(r.rows[0].total) / 1000000;
-  } else if (type === 'DOANH_THU') {
-    const sql = `SELECT COALESCE(SUM(i.value), 0) as total FROM invoices i JOIN contracts c ON i.contract_id = c.id WHERE ${dateFilter.replace(/{date_col}/g, 'i.issued_date')}${branchFilter}`;
-    const r = await query(sql, params);
-    actual = parseFloat(r.rows[0].total) / 1000000;
-  } else if (type === 'THU_TIEN') {
-    const sql = `SELECT COALESCE(SUM(i.payment), 0) as total FROM invoices i JOIN contracts c ON i.contract_id = c.id WHERE i.payment > 0 AND ${dateFilter.replace(/{date_col}/g, 'i.issued_date')}${branchFilter}`;
-    const r = await query(sql, params);
-    actual = parseFloat(r.rows[0].total) / 1000000;
+    setActual('THU_TIEN', 'MONTH', `${yr}-${mo}`, branchId, val);
+    setActual('THU_TIEN', 'MONTH', `${yr}-${mo}`, '', val);
+    setActual('THU_TIEN', 'QUARTER', `${yr}-Q${q}`, branchId, val);
+    setActual('THU_TIEN', 'QUARTER', `${yr}-Q${q}`, '', val);
+    setActual('THU_TIEN', 'YEAR', `${yr}`, branchId, val);
+    setActual('THU_TIEN', 'YEAR', `${yr}`, '', val);
   }
 
-  return Math.round(actual * 100) / 100;
+  return actuals;
 }
 
-// GET /targets
+  // GET /targets
 router.get('/', async (req, res) => {
   try {
     const data = await CacheService.getOrSet('TARGETS_LIST', async () => {
@@ -81,19 +119,23 @@ router.get('/', async (req, res) => {
       branchResult.rows.forEach(b => {
         branchMap[b.id] = b;
         branchMap[b.code] = b;
-        // Also map by uppercase code for GAS-migrated data
         if (b.code) branchMap[b.code.toUpperCase()] = b;
       });
+
+      // ── Pre-compute ALL actuals in 3 batch queries (replaces N per-record queries) ──
+      const actualsMap = await calcAllActuals();
+      const getActual = (type, periodType, period, unitId) => {
+        const key = `${type}|${periodType}|${period}|${unitId || ''}`;
+        return Math.round((actualsMap[key] || 0) * 100) / 100;
+      };
 
       const currentYear = new Date().getFullYear().toString();
       const targets = [];
       for (const r of result.rows) {
         const isGeneral = r.unit_type === 'GENERAL' || !r.unit_type;
-        // Lookup branch by id first, then by code (GAS saves code as unitId)
         const unitIdStr = (r.unit_id || '').trim();
         const branch = branchMap[unitIdStr] || branchMap[unitIdStr.toUpperCase()];
 
-        // Dynamic normalization for robustness
         let tType = (r.type || '').toUpperCase().trim();
         if (tType.includes('NGUON') || tType.includes('NGUỒN')) tType = 'NGUON_VIEC';
         else if (tType.includes('DOANH')) tType = 'DOANH_THU';
@@ -104,21 +146,19 @@ router.get('/', async (req, res) => {
         else if (pType.includes('QUÝ') || pType.includes('QUY')) pType = 'QUARTER';
         else if (pType.includes('THÁNG') || pType.includes('THANG')) pType = 'MONTH';
 
-        // Period normalization — handle numeric values, empty strings, .0 suffix
         let period = String(r.period || '').trim();
-        period = period.replace(/\.0$/, '').replace(/,/g, ''); // "2026.0" -> "2026", "2,026" -> "2026"
+        period = period.replace(/\.0$/, '').replace(/,/g, '');
         period = period.toUpperCase();
 
         if (pType === 'YEAR') {
           if (period.includes('NĂM') || period.includes('NAM') || !period.includes('-')) {
             period = period.replace(/[^\d]/g, '');
           }
-          // Fallback: if period is empty or 0, use current year
           if (!period || period === '0') period = currentYear;
         } else if (pType === 'QUARTER') {
           if (!period.includes('-')) {
             const digits = period.replace(/[^\d]/g, '');
-            const q = digits ? digits.charAt(digits.length - 1) : '1'; // last digit = quarter number
+            const q = digits ? digits.charAt(digits.length - 1) : '1';
             const yearPart = digits.length > 1 ? digits.slice(0, -1) : currentYear;
             period = `${yearPart}-Q${q}`;
           }
@@ -126,7 +166,6 @@ router.get('/', async (req, res) => {
           if (!period.includes('-')) {
             const digits = period.replace(/[^\d]/g, '');
             if (digits.length >= 6) {
-              // e.g., "202603" -> "2026-03"
               period = `${digits.slice(0, 4)}-${digits.slice(4, 6)}`;
             } else if (digits.length <= 2) {
               const m = (digits || '01').padStart(2, '0');
@@ -137,21 +176,18 @@ router.get('/', async (req, res) => {
           }
         }
 
-        // Resolve actual unitId to branch ID for calcActualValue
         const resolvedUnitId = branch ? branch.id : unitIdStr;
 
-        const actualValue = await calcActualValue(tType, pType, period, r.unit_type, resolvedUnitId);
+        // ── Lookup actual from pre-computed map (O(1), no DB call) ──
+        const lookupId = isGeneral ? '' : resolvedUnitId;
+        const actualValue = getActual(tType, pType, period, lookupId);
 
-        // Auto-generate name if missing (GAS import didn't include name)
         const typeLabel = tType === 'NGUON_VIEC' ? 'Nguồn việc' : tType === 'DOANH_THU' ? 'Doanh thu' : 'Thu tiền';
         const autoName = r.name || `${typeLabel} - ${period}`;
 
-        // Target value normalization:
-        // GAS migration stored GENERAL YEAR/QUARTER targets in tỷ (e.g. 6.8 tỷ) while BRANCH targets in triệu
-        // Actual values are always in triệu → normalize GENERAL targets to triệu for consistency
         let targetVal = parseFloat(r.target_value) || 0;
         if (isGeneral && (pType === 'YEAR' || pType === 'QUARTER') && targetVal > 0 && targetVal < 100) {
-          targetVal = Math.round(targetVal * 1000 * 100) / 100; // tỷ → triệu (×1000), round 2 decimals
+          targetVal = Math.round(targetVal * 1000 * 100) / 100;
         }
 
         targets.push({
@@ -174,6 +210,7 @@ router.get('/', async (req, res) => {
     res.json({ success: false, error: err.message });
   }
 });
+
 
 // POST /targets
 router.post('/', async (req, res) => {

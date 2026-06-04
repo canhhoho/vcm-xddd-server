@@ -58,8 +58,25 @@ export const useGeneralPerformance = (year: string, enabled: boolean = true) => 
 export const useTargetMutations = () => {
     const queryClient = useQueryClient();
 
+    // Query key cho targets list (không có filter)
+    const targetListKey = TARGET_KEYS.list(undefined);
+
     const createTarget = useMutation({
         mutationFn: (data: any) => apiService.createTarget(data),
+        onMutate: async (newData) => {
+            await queryClient.cancelQueries({ queryKey: TARGET_KEYS.all });
+            const previous = queryClient.getQueryData<any[]>(targetListKey);
+            // Thêm record tạm vào đầu list ngay lập tức
+            queryClient.setQueryData<any[]>(targetListKey, (old = []) => [
+                { ...newData, id: `temp_${Date.now()}`, actualValue: 0, createdAt: new Date().toISOString() },
+                ...old,
+            ]);
+            return { previous };
+        },
+        onError: (_err, _data, context) => {
+            if (context?.previous !== undefined)
+                queryClient.setQueryData(targetListKey, context.previous);
+        },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: TARGET_KEYS.all });
         },
@@ -67,6 +84,19 @@ export const useTargetMutations = () => {
 
     const updateTarget = useMutation({
         mutationFn: (data: { id: string;[key: string]: any }) => apiService.updateTarget(data.id, data),
+        onMutate: async (updatedData) => {
+            await queryClient.cancelQueries({ queryKey: TARGET_KEYS.all });
+            const previous = queryClient.getQueryData<any[]>(targetListKey);
+            // Cập nhật record trong cache ngay lập tức
+            queryClient.setQueryData<any[]>(targetListKey, (old = []) =>
+                old.map(t => t.id === updatedData.id ? { ...t, ...updatedData } : t)
+            );
+            return { previous };
+        },
+        onError: (_err, _data, context) => {
+            if (context?.previous !== undefined)
+                queryClient.setQueryData(targetListKey, context.previous);
+        },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: TARGET_KEYS.all });
         },
@@ -74,6 +104,18 @@ export const useTargetMutations = () => {
 
     const deleteTarget = useMutation({
         mutationFn: (id: string) => apiService.deleteTarget(id),
+        onMutate: async (id) => {
+            await queryClient.cancelQueries({ queryKey: TARGET_KEYS.all });
+            const previous = queryClient.getQueryData<any[]>(targetListKey);
+            queryClient.setQueryData<any[]>(targetListKey, (old = []) =>
+                old.filter(t => t.id !== id)
+            );
+            return { previous };
+        },
+        onError: (_err, _id, context) => {
+            if (context?.previous !== undefined)
+                queryClient.setQueryData(targetListKey, context.previous);
+        },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: TARGET_KEYS.all });
         },
