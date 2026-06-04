@@ -250,7 +250,12 @@ const Targets: React.FC = () => {
                     )
                 );
 
+                const branchForLink = values.unitType === 'BRANCH'
+                    ? branches.find((b: any) => b.id === values.unitId)
+                    : null;
+
                 const linkedPayload = {
+                    name: existingNV?.name || `Nguồn việc - ${values.period}`,
                     type: 'NGUON_VIEC',
                     unitType: values.unitType,
                     periodType: values.periodType,
@@ -258,9 +263,7 @@ const Targets: React.FC = () => {
                     targetValue: linkedValue,
                     id: existingNV?.id,
                     unitId: values.unitType === 'BRANCH' ? values.unitId : undefined,
-                    unitName: values.unitType === 'BRANCH'
-                        ? (branches.find((b: any) => b.id === values.unitId)?.name)
-                        : t('targets.company')
+                    unitName: branchForLink?.name ?? t('targets.company')
                 };
 
                 // Create or update the linked NGUON_VIEC record
@@ -269,6 +272,7 @@ const Targets: React.FC = () => {
                     : createTarget.mutateAsync(linkedPayload));
             }
             // ===== END AUTO-LINK =====
+
 
             message.success(editingTarget ? t('targets.updateSuccess') : t('targets.createSuccess'));
             setIsModalVisible(false);
@@ -636,44 +640,27 @@ const Targets: React.FC = () => {
         return branches.filter((b: any) => !branchFilter || b.id === branchFilter);
     }, [branches, branchFilter]);
 
-    const branchSourceWorkData = useMemo(() => {
+    // Merged dataset: 1 row per branch, contains both NV and DT data → ensures row height sync
+    const branchCombinedData = useMemo(() => {
         return filteredBranches.map((branch: Branch) => {
             const targetPeriod = branchMonth ? `${branchYear}-${branchMonth}` : branchYear;
-            const branchTargets = targets.filter((t: Target) => t.unitType === 'BRANCH' && t.type === 'NGUON_VIEC' && t.period === targetPeriod && t.unitId === branch.id);
-            const targetValue = branchTargets.reduce((sum: number, t: Target) => sum + (t.targetValue || 0), 0);
-            const actual = getBranchMetric(branch.id, 'NGUON_VIEC');
+
+            const nvTargets = targets.filter((t: Target) => t.unitType === 'BRANCH' && t.type === 'NGUON_VIEC' && t.period === targetPeriod && t.unitId === branch.id);
+            const dtTargets = targets.filter((t: Target) => t.unitType === 'BRANCH' && t.type === 'DOANH_THU' && t.period === targetPeriod && t.unitId === branch.id);
 
             return {
                 key: branch.id,
                 branchId: branch.id,
                 branchName: branch.name,
                 branchCode: branch.code,
-                targetId: branchTargets[0]?.id,
-                targetValue: targetValue,
-                actualValue: actual,
-                hasTarget: branchTargets.length > 0,
-                target: branchTargets[0]
-            };
-        });
-    }, [filteredBranches, targets, branchMonth, branchYear, getBranchMetric]);
-
-    const branchRevenueData = useMemo(() => {
-        return filteredBranches.map((branch: Branch) => {
-            const targetPeriod = branchMonth ? `${branchYear}-${branchMonth}` : branchYear;
-            const branchTargets = targets.filter((t: Target) => t.unitType === 'BRANCH' && t.type === 'DOANH_THU' && t.period === targetPeriod && t.unitId === branch.id);
-            const targetValue = branchTargets.reduce((sum: number, t: Target) => sum + (t.targetValue || 0), 0);
-            const actual = getBranchMetric(branch.id, 'DOANH_THU');
-
-            return {
-                key: branch.id,
-                branchId: branch.id,
-                branchName: branch.name,
-                branchCode: branch.code,
-                targetId: branchTargets[0]?.id,
-                targetValueDT: targetValue,
-                actualValueDT: actual,
-                hasTarget: branchTargets.length > 0,
-                targetDT: branchTargets[0]
+                // Nguồn việc
+                targetValueNV: nvTargets.reduce((sum: number, t: Target) => sum + (t.targetValue || 0), 0),
+                actualValueNV: getBranchMetric(branch.id, 'NGUON_VIEC'),
+                targetNV: nvTargets[0],
+                // Doanh thu
+                targetValueDT: dtTargets.reduce((sum: number, t: Target) => sum + (t.targetValue || 0), 0),
+                actualValueDT: getBranchMetric(branch.id, 'DOANH_THU'),
+                targetDT: dtTargets[0],
             };
         });
     }, [filteredBranches, targets, branchMonth, branchYear, getBranchMetric]);
@@ -837,82 +824,170 @@ const Targets: React.FC = () => {
                             key: 'branch',
                             label: <span><BankOutlined /> {t('targets.branchTab')}</span>,
                             children: (
-                                <Row gutter={[24, 16]}>
-                                    {/* Cột trái: Nguồn việc */}
-                                    <Col xs={24} lg={12}>
-                                        <div className="targets-column">
-                                            <div className="targets-column-header">
-                                                <span className="column-title">📋 {t('targets.sourceWork')}</span>
-                                            </div>
-                                            <Table
-                                                columns={branchColumns}
-                                                dataSource={branchSourceWorkData}
-                                                pagination={false}
-                                                size="small"
-                                                loading={loading}
-                                                bordered
-                                                summary={(pageData) => {
-                                                    const totalTarget = pageData.reduce((sum: number, t: any) => sum + (t.targetValue || 0), 0);
-                                                    const totalActual = pageData.reduce((sum: number, t: any) => sum + (t.actualValue || 0), 0);
-                                                    return (
-                                                        <Table.Summary fixed>
-                                                            <Table.Summary.Row style={{ background: '#fafafa', fontWeight: 600 }}>
-                                                                <Table.Summary.Cell index={0}>📊 {t('targets.total')}</Table.Summary.Cell>
-                                                                <Table.Summary.Cell index={1} align="right">{formatNumber(totalTarget)}</Table.Summary.Cell>
-                                                                <Table.Summary.Cell index={2} align="right">
-                                                                    <span style={{ color: getRate(totalActual, totalTarget) >= 50 ? '#52c41a' : '#f5222d' }}>
-                                                                        {formatNumber(totalActual)}
-                                                                    </span>
-                                                                </Table.Summary.Cell>
-                                                                <Table.Summary.Cell index={3} align="center">
-                                                                    <Progress percent={Math.min(getRate(totalActual, totalTarget), 100)} size="small" format={() => `${getRate(totalActual, totalTarget)}%`} />
-                                                                </Table.Summary.Cell>
-                                                                <Table.Summary.Cell index={4} />
-                                                            </Table.Summary.Row>
-                                                        </Table.Summary>
-                                                    );
-                                                }}
-                                            />
-                                        </div>
-                                    </Col>
-                                    {/* Cột phải: Doanh thu */}
-                                    <Col xs={24} lg={12}>
-                                        <div className="targets-column">
-                                            <div className="targets-column-header doanh-thu">
-                                                <span className="column-title">💰 {t('targets.revenue')}</span>
-                                            </div>
-                                            <Table
-                                                columns={branchRevenueColumns}
-                                                dataSource={branchRevenueData}
-                                                pagination={false}
-                                                size="small"
-                                                loading={loading}
-                                                bordered
-                                                summary={(pageData) => {
-                                                    const totalTarget = pageData.reduce((sum, t) => sum + (t.targetValueDT || 0), 0);
-                                                    const totalActual = pageData.reduce((sum, t) => sum + (t.actualValueDT || 0), 0);
-                                                    return (
-                                                        <Table.Summary fixed>
-                                                            <Table.Summary.Row style={{ background: '#fafafa', fontWeight: 600 }}>
-                                                                <Table.Summary.Cell index={0}>📊 {t('targets.total')}</Table.Summary.Cell>
-                                                                <Table.Summary.Cell index={1} align="right">{formatNumber(totalTarget)}</Table.Summary.Cell>
-                                                                <Table.Summary.Cell index={2} align="right">
-                                                                    <span style={{ color: getRate(totalActual, totalTarget) >= 50 ? '#52c41a' : '#f5222d' }}>
-                                                                        {formatNumber(totalActual)}
-                                                                    </span>
-                                                                </Table.Summary.Cell>
-                                                                <Table.Summary.Cell index={3} align="center">
-                                                                    <Progress percent={Math.min(getRate(totalActual, totalTarget), 100)} size="small" format={() => `${getRate(totalActual, totalTarget)}%`} />
-                                                                </Table.Summary.Cell>
-                                                                <Table.Summary.Cell index={4} />
-                                                            </Table.Summary.Row>
-                                                        </Table.Summary>
-                                                    );
-                                                }}
-                                            />
-                                        </div>
-                                    </Col>
-                                </Row>
+                                <Table
+                                    columns={[
+                                        {
+                                            title: t('targets.colBranch'),
+                                            dataIndex: 'branchCode',
+                                            key: 'branchCode',
+                                            fixed: 'left' as const,
+                                            width: 130,
+                                            render: (code: string) => (
+                                                <span>
+                                                    <BankOutlined style={{ marginRight: 6, color: '#1890ff' }} />
+                                                    <strong>{code}</strong>
+                                                </span>
+                                            )
+                                        },
+                                        // ── NGUỒN VIỆC group ──
+                                        {
+                                            title: <span>📋 {t('targets.sourceWork')}</span>,
+                                            children: [
+                                                {
+                                                    title: t('targets.colTarget'),
+                                                    dataIndex: 'targetValueNV',
+                                                    key: 'targetValueNV',
+                                                    align: 'right' as const,
+                                                    width: 110,
+                                                    render: (val: number) => <strong>{formatNumber(val)}</strong>
+                                                },
+                                                {
+                                                    title: t('targets.colActual'),
+                                                    dataIndex: 'actualValueNV',
+                                                    key: 'actualValueNV',
+                                                    align: 'right' as const,
+                                                    width: 110,
+                                                    render: (val: number, record: any) => {
+                                                        const rate = getRate(val, record.targetValueNV);
+                                                        return <span style={{ color: rate >= 100 ? '#52c41a' : rate >= 50 ? '#faad14' : '#f5222d' }}>{formatNumber(val)}</span>;
+                                                    }
+                                                },
+                                                {
+                                                    title: t('targets.colRate'),
+                                                    key: 'rateNV',
+                                                    align: 'center' as const,
+                                                    width: 120,
+                                                    render: (_: any, record: any) => {
+                                                        const rate = getRate(record.actualValueNV, record.targetValueNV);
+                                                        return <Progress percent={Math.min(rate, 100)} size="small" status={rate >= 100 ? 'success' : rate >= 50 ? 'active' : 'exception'} format={() => `${rate}%`} />;
+                                                    }
+                                                },
+                                                {
+                                                    title: '',
+                                                    key: 'actionsNV',
+                                                    width: 80,
+                                                    render: (_: any, record: any) => (
+                                                        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                                                            {record.targetNV ? (
+                                                                <VcmActionGroup
+                                                                    onEdit={canEdit ? () => handleEdit(record.targetNV) : undefined}
+                                                                    onDelete={canEdit ? () => handleDelete(record.targetNV) : undefined}
+                                                                    canEdit={canEdit}
+                                                                    canDelete={canEdit}
+                                                                    deleteConfirmTitle={t('targets.deleteConfirm')}
+                                                                />
+                                                            ) : (
+                                                                canEdit && (
+                                                                    <Button type="link" size="small" onClick={() => handleCreate('BRANCH', record.branchId, record.branchName, 'NGUON_VIEC')}>
+                                                                        {t('targets.addInline')}
+                                                                    </Button>
+                                                                )
+                                                            )}
+                                                        </div>
+                                                    )
+                                                }
+                                            ]
+                                        },
+                                        // ── DOANH THU group ──
+                                        {
+                                            title: <span>💰 {t('targets.revenue')}</span>,
+                                            children: [
+                                                {
+                                                    title: t('targets.colTarget'),
+                                                    dataIndex: 'targetValueDT',
+                                                    key: 'targetValueDT',
+                                                    align: 'right' as const,
+                                                    width: 110,
+                                                    render: (val: number) => <strong>{formatNumber(val)}</strong>
+                                                },
+                                                {
+                                                    title: t('targets.colActual'),
+                                                    dataIndex: 'actualValueDT',
+                                                    key: 'actualValueDT',
+                                                    align: 'right' as const,
+                                                    width: 110,
+                                                    render: (val: number, record: any) => {
+                                                        const rate = getRate(val, record.targetValueDT);
+                                                        return <span style={{ color: rate >= 100 ? '#52c41a' : rate >= 50 ? '#faad14' : '#f5222d' }}>{formatNumber(val)}</span>;
+                                                    }
+                                                },
+                                                {
+                                                    title: t('targets.colRate'),
+                                                    key: 'rateDT',
+                                                    align: 'center' as const,
+                                                    width: 120,
+                                                    render: (_: any, record: any) => {
+                                                        const rate = getRate(record.actualValueDT, record.targetValueDT);
+                                                        return <Progress percent={Math.min(rate, 100)} size="small" status={rate >= 100 ? 'success' : rate >= 50 ? 'active' : 'exception'} format={() => `${rate}%`} />;
+                                                    }
+                                                },
+                                                {
+                                                    title: '',
+                                                    key: 'actionsDT',
+                                                    width: 80,
+                                                    render: (_: any, record: any) => (
+                                                        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                                                            {record.targetDT ? (
+                                                                <VcmActionGroup
+                                                                    onEdit={canEdit ? () => handleEdit(record.targetDT) : undefined}
+                                                                    onDelete={canEdit ? () => handleDelete(record.targetDT) : undefined}
+                                                                    canEdit={canEdit}
+                                                                    canDelete={canEdit}
+                                                                    deleteConfirmTitle={t('targets.deleteConfirm')}
+                                                                />
+                                                            ) : (
+                                                                canEdit && (
+                                                                    <Button type="link" size="small" onClick={() => handleCreate('BRANCH', record.branchId, record.branchName, 'DOANH_THU')}>
+                                                                        {t('targets.addInline')}
+                                                                    </Button>
+                                                                )
+                                                            )}
+                                                        </div>
+                                                    )
+                                                }
+                                            ]
+                                        }
+                                    ]}
+                                    dataSource={branchCombinedData}
+                                    pagination={false}
+                                    size="small"
+                                    loading={loading}
+                                    bordered
+                                    scroll={{ x: 'max-content' }}
+                                    summary={(pageData) => {
+                                        const totalNVTarget = pageData.reduce((sum, r) => sum + (r.targetValueNV || 0), 0);
+                                        const totalNVActual = pageData.reduce((sum, r) => sum + (r.actualValueNV || 0), 0);
+                                        const totalDTTarget = pageData.reduce((sum, r) => sum + (r.targetValueDT || 0), 0);
+                                        const totalDTActual = pageData.reduce((sum, r) => sum + (r.actualValueDT || 0), 0);
+                                        const rateNV = getRate(totalNVActual, totalNVTarget);
+                                        const rateDT = getRate(totalDTActual, totalDTTarget);
+                                        return (
+                                            <Table.Summary fixed>
+                                                <Table.Summary.Row style={{ background: '#fafafa', fontWeight: 600 }}>
+                                                    <Table.Summary.Cell index={0}>📊 {t('targets.total')}</Table.Summary.Cell>
+                                                    <Table.Summary.Cell index={1} align="right">{formatNumber(totalNVTarget)}</Table.Summary.Cell>
+                                                    <Table.Summary.Cell index={2} align="right"><span style={{ color: rateNV >= 50 ? '#52c41a' : '#f5222d' }}>{formatNumber(totalNVActual)}</span></Table.Summary.Cell>
+                                                    <Table.Summary.Cell index={3} align="center"><Progress percent={Math.min(rateNV, 100)} size="small" format={() => `${rateNV}%`} /></Table.Summary.Cell>
+                                                    <Table.Summary.Cell index={4} />
+                                                    <Table.Summary.Cell index={5} align="right">{formatNumber(totalDTTarget)}</Table.Summary.Cell>
+                                                    <Table.Summary.Cell index={6} align="right"><span style={{ color: rateDT >= 50 ? '#52c41a' : '#f5222d' }}>{formatNumber(totalDTActual)}</span></Table.Summary.Cell>
+                                                    <Table.Summary.Cell index={7} align="center"><Progress percent={Math.min(rateDT, 100)} size="small" format={() => `${rateDT}%`} /></Table.Summary.Cell>
+                                                    <Table.Summary.Cell index={8} />
+                                                </Table.Summary.Row>
+                                            </Table.Summary>
+                                        );
+                                    }}
+                                />
                             )
                         }
                     ]}
