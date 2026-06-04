@@ -83,7 +83,7 @@ const Targets: React.FC = () => {
 
     // Filters for Branch Targets
     const [branchYear, setBranchYear] = useFilterSync('b_year', dayjs().year().toString());
-    const [branchMonth, setBranchMonth] = useFilterSync('b_month', '');
+    const [branchMonth, setBranchMonth] = useFilterSync('b_month', dayjs().format('MM'));
     const [branchFilter, setBranchFilter] = useFilterSync<string | undefined>('branch', undefined);
 
     // Active Tab
