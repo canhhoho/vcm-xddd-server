@@ -1,5 +1,5 @@
 import React, { memo } from 'react';
-import { Tag } from 'antd';
+import { Tag, Tooltip } from 'antd';
 import {
     EnvironmentOutlined,
     CalendarOutlined,
@@ -8,6 +8,7 @@ import dayjs from 'dayjs';
 import { useTranslation } from 'react-i18next';
 import { VcmActionGroup } from './VcmActionGroup';
 import type { Project, Province } from '../types';
+import { normalizeId, getStatusInfo } from '../utils/projectUtils';
 
 interface ProjectCardProps {
     project: Project;
@@ -18,17 +19,6 @@ interface ProjectCardProps {
     onEdit: (project: Project) => void;
     onDelete: (project: Project) => void;
 }
-
-const normalizeId = (id: any): string => {
-    if (id === null || id === undefined) return '';
-    let str = String(id).trim();
-    if (str.endsWith('.0')) str = str.slice(0, -2);
-    if (/^\d+$/.test(str)) {
-        const num = parseInt(str, 10);
-        if (!isNaN(num)) return num.toString();
-    }
-    return str;
-};
 
 export const ProjectCard: React.FC<ProjectCardProps> = memo(({
     project,
@@ -41,22 +31,7 @@ export const ProjectCard: React.FC<ProjectCardProps> = memo(({
 }) => {
     const { t } = useTranslation();
 
-    const getStatusInfo = (status: string) => {
-        const map = statusMap || {};
-        const label = status === 'INPROCESS' ? map.IN_PROGRESS : (map[status] || status);
-
-        if (status === 'INProcess' || status === 'INPROCESS' || status === 'IN_PROGRESS') {
-            return { label: label || t('projects.statusInProcess'), className: 'status-doing' };
-        } else if (status === 'DONE') {
-            return { label: label || t('projects.statusDone'), className: 'status-done' };
-        } else if (status === 'TODO') {
-            return { label: label || t('projects.statusTodo'), className: 'status-planning' };
-        } else {
-            return { label: label || status, className: 'status-planning' };
-        }
-    };
-
-    const status = getStatusInfo(project.status);
+    const status = getStatusInfo(project.status, statusMap, t);
     const progress = project.progress || 0;
 
     return (
@@ -130,9 +105,17 @@ export const ProjectCard: React.FC<ProjectCardProps> = memo(({
                     </span>
                 </div>
                 {project.investor && (
-                    <div style={{ display: 'flex', alignItems: 'center' }}>
-                        <span style={{ fontWeight: 500, color: '#6B7280' }}>🏢 {project.investor}</span>
-                    </div>
+                    <Tooltip title={project.investor} placement="top">
+                        <div style={{ display: 'flex', alignItems: 'center', maxWidth: '50%' }}>
+                            <span style={{
+                                fontWeight: 500,
+                                color: '#6B7280',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                whiteSpace: 'nowrap'
+                            }}>🏢 {project.investor}</span>
+                        </div>
+                    </Tooltip>
                 )}
             </div>
 

@@ -92,7 +92,7 @@ export interface Task {
     itemName?: string;  // e.g., 'Thi công', 'Hồ sơ chất lượng'
     name: string;
     assigneeId?: string;
-    status: 'TODO' | 'DOING' | 'DONE';
+    status: 'TODO' | 'INPROCESS' | 'DONE';
     progress?: number;
     startDate?: string;
     endDate?: string;
@@ -310,4 +310,40 @@ export interface DailyLog {
     updatedBy?: string;
     updaterName?: string;
     createdAt: string;
+}
+
+// ==================== PROJECT LOGS (Nhat ky Thi cong) ====================
+
+export type WeatherType = 'SUNNY' | 'CLOUDY' | 'RAINY' | 'STORMY';
+
+export interface ProjectLog {
+    id: string;
+    projectId: string;
+    logDate: string;           // 'YYYY-MM-DD'
+    weather?: WeatherType;
+    workersCount?: number;     // So lao dong trong ngay
+    progressPct?: number;      // Tien do tong the (0-100)
+    activities?: string;       // Cong viec da thuc hien
+    issues?: string;           // Vuong mac / su co
+    materials?: string;        // Vat tu su dung
+    equipment?: string;        // Thiet bi thi cong
+    note?: string;
+    createdBy?: string;
+    createdByName?: string;
+    updatedBy?: string;
+    updatedAt?: string;
+    createdAt?: string;
+}
+
+export interface ProjectLogPayload {
+    projectId: string;
+    logDate: string;
+    weather?: WeatherType;
+    workersCount?: number;
+    progressPct?: number;
+    activities?: string;
+    issues?: string;
+    materials?: string;
+    equipment?: string;
+    note?: string;
 }

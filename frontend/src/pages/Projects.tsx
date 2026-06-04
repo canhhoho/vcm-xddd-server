@@ -16,6 +16,7 @@ import ProjectDetail from './ProjectDetail';
 import type { Project, Contract, Province } from '../types';
 import './Projects.css';
 import { useFilterSync } from '../hooks/useFilterSync';
+import { normalizeId } from '../utils/projectUtils';
 import { usePermissions } from '../hooks/usePermissions';
 import { FilterChips } from '../components/FilterChips';
 import { useTranslation } from 'react-i18next';
@@ -30,17 +31,7 @@ import { useAppConfig } from '../hooks/useAppConfig';
 
 const { Option } = Select;
 
-// --- HELPERS ---
-const normalizeId = (id: any): string => {
-    if (id === null || id === undefined) return '';
-    let str = String(id).trim();
-    if (str.endsWith('.0')) str = str.slice(0, -2);
-    if (/^\d+$/.test(str)) {
-        const num = parseInt(str, 10);
-        if (!isNaN(num)) return num.toString();
-    }
-    return str;
-};
+// normalizeId được import từ ../utils/projectUtils
 
 const Projects: React.FC = () => {
     const { t } = useTranslation();
@@ -264,20 +255,7 @@ const Projects: React.FC = () => {
         });
     }, [projects, searchText, statusFilter, locationFilter]);
 
-    const getStatusInfo = (status: string) => {
-        const statusMap: Record<string, string> = appConfig?.STATUS || {};
-        const label = status === 'INPROCESS' ? statusMap.IN_PROGRESS : (statusMap[status] || status);
-
-        if (status === 'INProcess' || status === 'INPROCESS' || status === 'IN_PROGRESS') {
-            return { label: label || t('projects.statusInProcess'), className: 'status-doing' };
-        } else if (status === 'DONE') {
-            return { label: label || t('projects.statusDone'), className: 'status-done' };
-        } else if (status === 'TODO') {
-            return { label: label || t('projects.statusTodo'), className: 'status-planning' };
-        } else {
-            return { label: label || status, className: 'status-planning' };
-        }
-    };
+    // getStatusInfo được dùng trong ProjectCard — không cần khai báo lại ở đây
 
     // --- RENDER HELPERS ---
     const renderDashboard = () => (
@@ -365,6 +343,25 @@ const Projects: React.FC = () => {
                 grid={{ gutter: 24, xs: 1, sm: 1, md: 2, lg: 3, xl: 3, xxl: 4 }}
                 dataSource={filteredProjects}
                 loading={loading}
+                locale={{
+                    emptyText: (
+                        <div style={{ padding: '48px 0', textAlign: 'center' }}>
+                            <div style={{ fontSize: 40, marginBottom: 12 }}>
+                                {(searchText || statusFilter || locationFilter) ? '🔍' : '📋'}
+                            </div>
+                            <div style={{ fontSize: 15, fontWeight: 700, color: '#374151', marginBottom: 6 }}>
+                                {(searchText || statusFilter || locationFilter)
+                                    ? t('projects.emptyFiltered', 'Không tìm thấy project phù hợp')
+                                    : t('projects.emptyAll', 'Chưa có project nào')}
+                            </div>
+                            <div style={{ fontSize: 13, color: '#9CA3AF' }}>
+                                {(searchText || statusFilter || locationFilter)
+                                    ? t('projects.emptyFilteredHint', 'Thử xóa bộ lọc để xem tất cả')
+                                    : t('projects.emptyAllHint', 'Nhấn "Thêm project" để bắt đầu')}
+                            </div>
+                        </div>
+                    )
+                }}
                 renderItem={(item: Project) => (
                     <List.Item>
                         <ProjectCard

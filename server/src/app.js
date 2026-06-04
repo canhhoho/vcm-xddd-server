@@ -32,6 +32,7 @@ const prospectRoutes = require('./routes/prospects');
 const weeklyPlanRoutes = require('./routes/weeklyPlans');
 const monthlyPlanRoutes = require('./routes/monthlyPlans');
 const dailyLogRoutes = require('./routes/dailyLogs');
+const projectLogRoutes = require('./routes/projectLogs');
 const collaboratorRoutes = require('./routes/collaborators');
 const partnerRoutes = require('./routes/partners');
 
@@ -86,6 +87,7 @@ app.use('/api/prospects', prospectRoutes);
 app.use('/api/weekly-plans', weeklyPlanRoutes);
 app.use('/api/monthly-plans', monthlyPlanRoutes);
 app.use('/api/daily-logs', dailyLogRoutes);
+app.use('/api/project-logs', projectLogRoutes);
 app.use('/api/collaborators', collaboratorRoutes);
 app.use('/api/partners', partnerRoutes);
 

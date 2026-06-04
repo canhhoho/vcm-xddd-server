@@ -73,3 +73,25 @@ export const useProjectMutations = () => {
 
     return { createProject, updateProject, deleteProject };
 };
+
+export const useProjectMemberMutations = (projectId: string) => {
+    const queryClient = useQueryClient();
+    const membersKey = [...PROJECT_KEYS.detail(projectId), 'members'] as const;
+
+    const addMember = useMutation({
+        mutationFn: (data: { userId: string; role: string }) =>
+            apiService.addProjectMember({ projectId, ...data }),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: membersKey });
+        },
+    });
+
+    const removeMember = useMutation({
+        mutationFn: (data: { id: string }) => apiService.removeProjectMember(data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: membersKey });
+        },
+    });
+
+    return { addMember, removeMember };
+};

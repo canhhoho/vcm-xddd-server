@@ -28,7 +28,6 @@ export const useTaskMutations = (projectId?: string) => {
     const createTask = useMutation({
         mutationFn: (data: any) => apiService.createTask(data),
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: TASK_KEYS.list({ projectId }) });
             if (projectId) {
                 queryClient.invalidateQueries({ queryKey: TASK_KEYS.list({ projectId }) });
             } else {

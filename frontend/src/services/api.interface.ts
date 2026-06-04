@@ -169,4 +169,20 @@ export interface IApiService {
     // ==================== DAILY LOGS ====================
     getDailyLogs(itemId: string): Promise<ApiResponse>;
     upsertDailyLog(data: any): Promise<ApiResponse>;
+
+    // ==================== PROJECT LOGS (Nhat ky Thi cong) ====================
+    getProjectLogs(params: { projectId: string; month?: string }): Promise<ApiResponse>;
+    upsertProjectLog(data: {
+        projectId: string;
+        logDate: string;
+        weather?: string;
+        workersCount?: number;
+        progressPct?: number;
+        activities?: string;
+        issues?: string;
+        materials?: string;
+        equipment?: string;
+        note?: string;
+    }): Promise<ApiResponse>;
+    deleteProjectLog(id: string): Promise<ApiResponse>;
 }

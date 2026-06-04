@@ -19,36 +19,30 @@ import {
     MoreOutlined,
     BankOutlined
 } from '@ant-design/icons';
-import { Tabs, Button, Progress, Tag, Avatar, Card, Empty, List, Row, Col, Typography, Space, Divider, Modal, Form, Input, Select, DatePicker, message, Popconfirm, Tooltip, Badge } from 'antd';
+import { Tabs, Button, Progress, Tag, Avatar, Card, Empty, List, Row, Col, Typography, Space, Divider, Modal, Form, Input, Select, DatePicker, message, Popconfirm, Tooltip, Badge, Slider, InputNumber } from 'antd';
 import dayjs from 'dayjs';
-import { apiService } from '../services/api'; // Still needed for some updates? Or move to hooks? 
-// Ideally move updates to hooks too.
 import { usePermissions } from '../hooks/usePermissions';
 import { useTranslation } from 'react-i18next';
 import './ProjectDetail.css';
 import { VcmActionGroup } from '../components/VcmActionGroup';
 
 // React Query Hooks
-import { useProjectItems, useProjectMembers, useProjectMutations } from '../hooks/useProjects';
+import { useProjectItems, useProjectMembers, useProjectMutations, useProjectMemberMutations } from '../hooks/useProjects';
 import { useContracts } from '../hooks/useContracts';
 import { useAppConfig } from '../hooks/useAppConfig';
 import { useUsers } from '../hooks/useUsers';
 import { useTasks, useTaskMutations } from '../hooks/useTasks';
 
+// Shared utils
+import { normalizeId } from '../utils/projectUtils';
+import ProjectLogTab from './ProjectLogTab';
+
 const { Title, Text } = Typography;
 const { TextArea } = Input;
 
 // --- UTILS ---
-const normalizeId = (id: any): string => {
-    if (id === null || id === undefined) return '';
-    let str = String(id).trim();
-    if (str.endsWith('.0')) str = str.slice(0, -2);
-    if (/^\d+$/.test(str)) {
-        const num = parseInt(str, 10);
-        if (!isNaN(num)) return num.toString();
-    }
-    return str;
-};
+// normalizeId được import từ ../utils/projectUtils
+
 
 const StatusBadge = ({ status }: { status: string }) => {
     const { t } = useTranslation();
@@ -190,7 +184,12 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, onBack }) => {
         {
             key: 'team',
             label: t('projects.tabTeam'),
-            children: <TeamTab projectId={project.id} members={projectMembers} users={users} canEdit={canEdit} onRefresh={refetchMembers} />
+            children: <TeamTab projectId={project.id} members={projectMembers} users={users} canEdit={canEdit} />
+        },
+        {
+            key: 'logs',
+            label: t('projects.tabLogs'),
+            children: <ProjectLogTab project={project} members={projectMembers} canEdit={canEdit} />
         }
     ];
 
@@ -501,6 +500,7 @@ function TasksTab({ projectId, phases, tasks, users, members, onRefresh, canEdit
     const [editingTask, setEditingTask] = useState<any>(null);
     const [form] = Form.useForm();
     const [submitting, setSubmitting] = useState(false);
+    const progressValue = Form.useWatch('progress', form) ?? 0;
 
     // Mutations
     const { createTask, updateTask, deleteTask } = useTaskMutations(projectId);
@@ -776,29 +776,50 @@ function TasksTab({ projectId, phases, tasks, users, members, onRefresh, canEdit
                             </Form.Item>
                         </Col>
                         <Col span={8}>
-                            <Form.Item name="progress" label={t('projects.taskProgress')} initialValue={0}>
-                                <Select>
-                                    <Select.Option value={0}>0%</Select.Option>
-                                    <Select.Option value={10}>10%</Select.Option>
-                                    <Select.Option value={20}>20%</Select.Option>
-                                    <Select.Option value={30}>30%</Select.Option>
-                                    <Select.Option value={40}>40%</Select.Option>
-                                    <Select.Option value={50}>50%</Select.Option>
-                                    <Select.Option value={60}>60%</Select.Option>
-                                    <Select.Option value={70}>70%</Select.Option>
-                                    <Select.Option value={80}>80%</Select.Option>
-                                    <Select.Option value={90}>90%</Select.Option>
-                                    <Select.Option value={100}>100%</Select.Option>
-                                </Select>
-                            </Form.Item>
-                        </Col>
-                        <Col span={8}>
                             <Form.Item name="priority" label={t('projects.taskPriority')} initialValue="MEDIUM">
                                 <Select>
                                     <Select.Option value="HIGH">{t('projects.priorityHigh')}</Select.Option>
                                     <Select.Option value="MEDIUM">{t('projects.priorityMedium')}</Select.Option>
                                     <Select.Option value="LOW">{t('projects.priorityLow')}</Select.Option>
                                 </Select>
+                            </Form.Item>
+                        </Col>
+                        <Col span={8}>
+                            <Form.Item
+                                name="progress"
+                                initialValue={0}
+                                label={t('projects.taskProgress')}
+                                style={{ marginBottom: 0 }}
+                            >
+                                <Row align="middle" gutter={8}>
+                                    <Col flex="auto">
+                                        <Slider
+                                            min={0}
+                                            max={100}
+                                            step={5}
+                                            value={progressValue}
+                                            onChange={(v) => form.setFieldValue('progress', v)}
+                                            tooltip={{ formatter: (v) => `${v}%` }}
+                                            styles={{
+                                                track: { backgroundColor: '#E11D2E' },
+                                                handle: { borderColor: '#E11D2E' },
+                                            }}
+                                        />
+                                    </Col>
+                                    <Col style={{ width: 56 }}>
+                                        <InputNumber
+                                            min={0}
+                                            max={100}
+                                            step={5}
+                                            size="small"
+                                            value={progressValue}
+                                            onChange={(v) => form.setFieldValue('progress', v ?? 0)}
+                                            formatter={(v) => `${v}%`}
+                                            parser={(v) => Number(v?.replace('%', '') || 0) as 0}
+                                            style={{ width: '100%' }}
+                                        />
+                                    </Col>
+                                </Row>
                             </Form.Item>
                         </Col>
                     </Row>
@@ -829,54 +850,54 @@ interface TeamTabProps {
     projectId: string;
     members: any[];
     users: any[];
-    onRefresh: () => void;
     canEdit: boolean;
 }
 
-function TeamTab({ projectId, members, users, onRefresh, canEdit }: TeamTabProps) {
+function TeamTab({ projectId, members, users, canEdit }: TeamTabProps) {
     const { t } = useTranslation();
     const [isModalOpen, setIsModalOpen] = useState(false);
-    const [loading, setLoading] = useState(false);
     const [form] = Form.useForm();
+
+    // React Query mutations — tự động invalidate cache sau khi add/remove
+    const { addMember, removeMember } = useProjectMemberMutations(projectId);
 
     const handleAddMember = async () => {
         try {
             const values = await form.validateFields();
-            setLoading(true);
-
-            const res = await apiService.addProjectMember({
-                projectId,
-                userId: values.userId,
-                role: values.role
-            });
-
-            if (res.success) {
-                message.success(t('projects.addMemberSuccess'));
-                setIsModalOpen(false);
-                form.resetFields();
-                onRefresh();
-            } else {
-                message.error(res.error || 'Có lỗi xảy ra');
-            }
+            addMember.mutate(
+                { userId: values.userId, role: values.role },
+                {
+                    onSuccess: (res) => {
+                        if (res.success) {
+                            message.success(t('projects.addMemberSuccess'));
+                            setIsModalOpen(false);
+                            form.resetFields();
+                        } else {
+                            message.error(res.error || 'Có lỗi xảy ra');
+                        }
+                    },
+                    onError: () => message.error('Có lỗi xảy ra'),
+                }
+            );
         } catch (e) {
-            console.error(e);
-        } finally {
-            setLoading(false);
+            // validation failed
         }
     };
 
-    const handleRemoveMember = async (id: string) => {
-        try {
-            const res = await apiService.removeProjectMember({ id });
-            if (res.success) {
-                message.success(t('projects.deleteMemberSuccess'));
-                onRefresh();
-            } else {
-                message.error(res.error || 'Có lỗi xảy ra');
+    const handleRemoveMember = (id: string) => {
+        removeMember.mutate(
+            { id },
+            {
+                onSuccess: (res) => {
+                    if (res.success) {
+                        message.success(t('projects.deleteMemberSuccess'));
+                    } else {
+                        message.error(res.error || 'Có lỗi xảy ra');
+                    }
+                },
+                onError: () => message.error('Có lỗi xảy ra'),
             }
-        } catch (e) {
-            console.error(e);
-        }
+        );
     };
 
     return (
@@ -900,11 +921,12 @@ function TeamTab({ projectId, members, users, onRefresh, canEdit }: TeamTabProps
                             </Avatar>
                             <div className="member-info-col">
                                 <div className="member-info-name">{m.userName || 'Unknown'}</div>
-                                <div className="member-role-time">{m.role || 'Member'} • {dayjs(m.createdAt || new Date()).format('hh:mm A')}</div>
+                                <div className="member-role-time">
+                                    {m.role || 'Member'} • {t('projects.joinedAt', 'Tham gia')} {dayjs(m.createdAt || new Date()).format('MM/YYYY')}
+                                </div>
                             </div>
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-                            <div className="pill-tag">Đã xem</div>
                             {canEdit && (
                                 <VcmActionGroup
                                     onDelete={() => handleRemoveMember(m.id)}
@@ -927,7 +949,7 @@ function TeamTab({ projectId, members, users, onRefresh, canEdit }: TeamTabProps
                 open={isModalOpen}
                 onCancel={() => setIsModalOpen(false)}
                 onOk={handleAddMember}
-                confirmLoading={loading}
+                confirmLoading={addMember.isPending}
                 okText={t('common.add')}
                 cancelText={t('common.cancel')}
                 width={400}

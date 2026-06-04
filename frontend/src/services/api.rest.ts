@@ -443,4 +443,19 @@ export class RestApiService implements IApiService {
     async upsertDailyLog(data: any) {
         return this.request('POST', '/daily-logs', data);
     }
+
+    // ==================== PROJECT LOGS (Nhat ky Thi cong) ====================
+    async getProjectLogs(params: { projectId: string; month?: string }) {
+        const query: Record<string, string> = { projectId: params.projectId };
+        if (params.month) query.month = params.month;
+        return this.request('GET', '/project-logs', undefined, query);
+    }
+
+    async upsertProjectLog(data: any) {
+        return this.request('POST', '/project-logs', data);
+    }
+
+    async deleteProjectLog(id: string) {
+        return this.request('DELETE', `/project-logs/${id}`);
+    }
 }
