@@ -715,7 +715,8 @@ const Dashboard: React.FC = () => {
                     </Card>
                 </Col>
             </Row>
+        </div>
     );
 };
 
-export default Dashboard;`n
+export default Dashboard;
