@@ -140,6 +140,13 @@ export interface IApiService {
     updateCollaborator(data: any): Promise<ApiResponse>;
     deleteCollaborator(params: { id: string }): Promise<ApiResponse>;
 
+    // ==================== PARTNERS ====================
+    getPartners(params?: { type?: string; branchId?: string }): Promise<ApiResponse>;
+    createPartner(data: any): Promise<ApiResponse>;
+    updatePartner(data: any): Promise<ApiResponse>;
+    deletePartner(params: { id: string }): Promise<ApiResponse>;
+
+
     // ==================== WEEKLY PLANS ====================
     getWeeklyPlans(params?: any): Promise<ApiResponse>;
     createWeeklyPlan(data: any): Promise<ApiResponse>;

@@ -353,6 +353,24 @@ export class RestApiService implements IApiService {
         return this.request('DELETE', `/collaborators/${params.id}`);
     }
 
+    // ==================== PARTNERS ====================
+    async getPartners(params?: { type?: string; branchId?: string }) {
+        return this.request('GET', '/partners', undefined, params);
+    }
+
+    async createPartner(data: any) {
+        return this.request('POST', '/partners', data);
+    }
+
+    async updatePartner(data: any) {
+        return this.request('PUT', `/partners/${data.id}`, data);
+    }
+
+    async deletePartner(params: { id: string }) {
+        return this.request('DELETE', `/partners/${params.id}`);
+    }
+
+
     // ==================== WEEKLY PLANS ====================
     async getWeeklyPlans(params?: any) {
         const query = params ? '?' + new URLSearchParams(params).toString() : '';

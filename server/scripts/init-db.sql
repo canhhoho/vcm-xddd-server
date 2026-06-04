@@ -317,3 +317,22 @@ CREATE TABLE IF NOT EXISTS collaborators (
   created_at  TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- ============================================================
+-- 18. partners (Nhân công / Vật tư / Thiết bị)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS partners (
+  id          VARCHAR(50)  PRIMARY KEY,
+  name        VARCHAR(255) NOT NULL,          -- Tên công ty / cá nhân
+  type        VARCHAR(50)  NOT NULL,          -- 'LABOR' | 'MATERIAL' | 'EQUIPMENT'
+  contact     VARCHAR(255) DEFAULT '',        -- Tên người liên hệ
+  phone       VARCHAR(50)  DEFAULT '',
+  email       VARCHAR(255) DEFAULT '',
+  address     TEXT         DEFAULT '',
+  tax_code    VARCHAR(50)  DEFAULT '',        -- Mã số thuế
+  speciality  VARCHAR(255) DEFAULT '',        -- Chuyên môn / mặt hàng cung cấp
+  branch_id   VARCHAR(50)  DEFAULT '',        -- Chi nhánh phụ trách (soft FK)
+  note        TEXT         DEFAULT '',
+  created_at  TIMESTAMPTZ  DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_partners_type   ON partners(type);
+CREATE INDEX IF NOT EXISTS idx_partners_branch ON partners(branch_id);

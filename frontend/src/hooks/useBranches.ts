@@ -153,3 +153,57 @@ export const useStaffMutations = () => {
 
     return { createStaff, updateStaff, deleteStaff };
 };
+
+// ==================== PARTNERS ====================
+
+export const PARTNER_KEYS = {
+    all: ['partners'] as const,
+    list: () => [...PARTNER_KEYS.all, 'list'] as const,
+};
+
+export const usePartners = (enabled: boolean = true) => {
+    return useQuery({
+        queryKey: PARTNER_KEYS.list(),
+        queryFn: async () => {
+            const response = await apiService.getPartners();
+            if (!response.success) {
+                throw new Error(response.error || 'Failed to fetch partners');
+            }
+            return response.data;
+        },
+        enabled,
+        staleTime: 60 * 60 * 1000, // 1 hour
+        gcTime: 24 * 60 * 60 * 1000,
+        refetchOnMount: false,
+        refetchOnWindowFocus: false,
+        refetchOnReconnect: false,
+    });
+};
+
+export const usePartnerMutations = () => {
+    const queryClient = useQueryClient();
+
+    const createPartner = useMutation({
+        mutationFn: (data: any) => apiService.createPartner(data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: PARTNER_KEYS.all });
+        },
+    });
+
+    const updatePartner = useMutation({
+        mutationFn: (data: any) => apiService.updatePartner(data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: PARTNER_KEYS.all });
+        },
+    });
+
+    const deletePartner = useMutation({
+        mutationFn: (data: { id: string }) => apiService.deletePartner(data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: PARTNER_KEYS.all });
+        },
+    });
+
+    return { createPartner, updatePartner, deletePartner };
+};
+

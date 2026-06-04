@@ -4,7 +4,8 @@ import { useTranslation } from 'react-i18next';
 import {
     PlusOutlined, EditOutlined, DeleteOutlined, UserOutlined, BankOutlined,
     PhoneOutlined, MailOutlined, SearchOutlined, FilterOutlined,
-    TeamOutlined, SafetyCertificateOutlined, SolutionOutlined, EyeOutlined
+    TeamOutlined, SafetyCertificateOutlined, SolutionOutlined, EyeOutlined,
+    ShopOutlined, ToolOutlined, ShoppingOutlined
 } from '@ant-design/icons';
 import { apiService } from '../services/api';
 import type { ColumnsType } from 'antd/es/table';
@@ -13,7 +14,7 @@ import './Branches.css';
 import { usePermissions } from '../hooks/usePermissions';
 import { VcmFilterBar } from '../components/VcmFilterBar';
 import { VcmActionGroup } from '../components/VcmActionGroup';
-import { useBranches, useStaff, useBranchMutations, useStaffMutations, useCollaborators, useCollaboratorMutations } from '../hooks/useBranches';
+import { useBranches, useStaff, useBranchMutations, useStaffMutations, useCollaborators, useCollaboratorMutations, usePartners, usePartnerMutations } from '../hooks/useBranches';
 import { useAppConfig } from '../hooks/useAppConfig';
 import { FilterChips } from '../components/FilterChips';
 import { useFilterSync } from '../hooks/useFilterSync';
@@ -52,6 +53,20 @@ interface Collaborator {
     branchId: string;
 }
 
+interface Partner {
+    id: string;
+    name: string;
+    type: string;
+    contact: string;
+    phone: string;
+    email: string;
+    address: string;
+    taxCode: string;
+    speciality: string;
+    branchId: string;
+    note: string;
+}
+
 interface BranchStaff {
     id: string;
     branchId: string;
@@ -71,16 +86,19 @@ const Branches: React.FC = () => {
     // Lazy load staff and collaborators only when their tab is active
     const { data: staff = [], isLoading: staffLoading } = useStaff(activeTab === 'staff');
     const { data: collaborators = [], isLoading: collaboratorsLoading } = useCollaborators(activeTab === 'collaborators');
+    const { data: partners = [], isLoading: partnersLoading } = usePartners(activeTab === 'partners');
     const { data: appConfig } = useAppConfig();
 
     // Mutations
     const { createBranch, updateBranch, deleteBranch } = useBranchMutations();
     const { createStaff, updateStaff, deleteStaff } = useStaffMutations();
     const { createCollaborator, updateCollaborator, deleteCollaborator } = useCollaboratorMutations();
+    const { createPartner, updatePartner, deletePartner } = usePartnerMutations();
 
     // Show loading only for the active tab's data
     const loading = activeTab === 'branches' ? branchesLoading
         : activeTab === 'staff' ? staffLoading
+        : activeTab === 'partners' ? partnersLoading
         : collaboratorsLoading;
 
     // UI State
@@ -90,9 +108,12 @@ const Branches: React.FC = () => {
     const [editingStaff, setEditingStaff] = useState<BranchStaff | null>(null);
     const [collaboratorModalVisible, setCollaboratorModalVisible] = useState(false);
     const [editingCollaborator, setEditingCollaborator] = useState<Collaborator | null>(null);
+    const [partnerModalVisible, setPartnerModalVisible] = useState(false);
+    const [editingPartner, setEditingPartner] = useState<Partner | null>(null);
     const [form] = Form.useForm();
     const [staffForm] = Form.useForm();
     const [collaboratorForm] = Form.useForm();
+    const [partnerForm] = Form.useForm();
 
     // Permissions
     const { permissions, isAdmin } = usePermissions();
@@ -105,6 +126,11 @@ const Branches: React.FC = () => {
 
     const [collabSearchText, setCollabSearchText] = useFilterSync('cq', '');
     const [collabBranchFilter, setCollabBranchFilter] = useFilterSync<string | undefined>('cbranch', undefined);
+
+    // Filters for Partners tab
+    const [partnerSearchText, setPartnerSearchText] = useFilterSync('pq', '');
+    const [partnerTypeFilter, setPartnerTypeFilter] = useFilterSync<string | undefined>('ptype', undefined);
+    const [partnerBranchFilter, setPartnerBranchFilter] = useFilterSync<string | undefined>('pbranch', undefined);
 
     if (permissions.branches === 'NO_ACCESS' && !isAdmin) {
         return (
@@ -233,11 +259,78 @@ const Branches: React.FC = () => {
         });
     }, [collaborators, collabBranchFilter, collabSearchText]);
 
+    // Filtered partners based on filters
+    const filteredPartners = useMemo(() => {
+        return partners.filter((p: Partner) => {
+            const matchType = !partnerTypeFilter || partnerTypeFilter === 'ALL' || p.type === partnerTypeFilter;
+            const matchBranch = !partnerBranchFilter || partnerBranchFilter === 'ALL' || p.branchId === partnerBranchFilter;
+            const matchSearch = !partnerSearchText ||
+                p.name.toLowerCase().includes(partnerSearchText.toLowerCase()) ||
+                (p.contact && p.contact.toLowerCase().includes(partnerSearchText.toLowerCase())) ||
+                (p.phone && p.phone.includes(partnerSearchText)) ||
+                (p.speciality && p.speciality.toLowerCase().includes(partnerSearchText.toLowerCase()));
+            return matchType && matchBranch && matchSearch;
+        });
+    }, [partners, partnerTypeFilter, partnerBranchFilter, partnerSearchText]);
+
     // Collaborator handlers
     const handleCreateCollaborator = () => {
         setEditingCollaborator(null);
         collaboratorForm.resetFields();
         setCollaboratorModalVisible(true);
+    };
+
+    // Partner handlers
+    const handleCreatePartner = () => {
+        setEditingPartner(null);
+        partnerForm.resetFields();
+        setPartnerModalVisible(true);
+    };
+
+    const handleEditPartner = (record: Partner) => {
+        setEditingPartner(record);
+        partnerForm.setFieldsValue({ ...record });
+        setPartnerModalVisible(true);
+    };
+
+    const handleDeletePartner = (record: Partner) => {
+        Modal.confirm({
+            title: t('common.confirm'),
+            content: t('branches.deletePartnerConfirm', { name: record.name }),
+            okText: t('common.delete'),
+            okType: 'danger',
+            cancelText: t('common.cancel'),
+            onOk: () => {
+                deletePartner.mutate({ id: record.id }, {
+                    onSuccess: (res: any) => {
+                        if (res.success) {
+                            message.success(t('branches.deletePartnerSuccess'));
+                        } else {
+                            message.error(res.error);
+                        }
+                    },
+                    onError: () => { message.error(t('common.error')); }
+                });
+            },
+        });
+    };
+
+    const handlePartnerSubmit = async (values: any) => {
+        const onSuccess = (res: any) => {
+            if (res.success) {
+                message.success(editingPartner ? t('branches.updatePartnerSuccess') : t('branches.createPartnerSuccess'));
+                setPartnerModalVisible(false);
+                partnerForm.resetFields();
+            } else {
+                message.error(res.error);
+            }
+        };
+        const onError = () => { message.error(t('branches.savePartnerError')); };
+        if (editingPartner) {
+            updatePartner.mutate({ id: editingPartner.id, ...values }, { onSuccess, onError });
+        } else {
+            createPartner.mutate(values, { onSuccess, onError });
+        }
     };
 
     const handleEditCollaborator = (record: Collaborator) => {
@@ -407,7 +500,7 @@ const Branches: React.FC = () => {
     // Branch columns
     const branchColumns: ColumnsType<Branch> = [
         { title: t('branches.colIndex') || 'STT', key: 'index', width: 60, align: 'center', render: (_, __, index) => index + 1 },
-        { title: t('branches.colCode'), dataIndex: 'code', key: 'code', width: 80, align: 'center', render: (text: string) => <Text strong style={{ color: '#E11D2E' }}>{text}</Text> },
+        { title: t('branches.colCode'), dataIndex: 'code', key: 'code', width: 110, align: 'center', render: (text: string) => <Text strong style={{ color: '#E11D2E', whiteSpace: 'nowrap' }}>{text}</Text> },
         { title: t('branches.colName'), dataIndex: 'name', key: 'name', width: 200 },
         { title: t('branches.colAddress'), dataIndex: 'address', key: 'address', ellipsis: true, render: (text: string) => <Text type="secondary">{text || '-'}</Text> },
         {
@@ -416,6 +509,45 @@ const Branches: React.FC = () => {
                 <VcmActionGroup
                     onEdit={() => handleEditBranch(record)}
                     canEdit={canEdit}
+                />
+            ),
+        },
+    ];
+
+    // Partner type config
+    const PARTNER_TYPES = [
+        { value: 'LABOR',     label: t('branches.partnerTypeLABOR'),     color: '#fa8c16', icon: <TeamOutlined /> },
+        { value: 'MATERIAL',  label: t('branches.partnerTypeMATERIAL'),  color: '#52c41a', icon: <ShoppingOutlined /> },
+        { value: 'EQUIPMENT', label: t('branches.partnerTypeEQUIPMENT'), color: '#1890ff', icon: <ToolOutlined /> },
+    ];
+    const getPartnerTypeInfo = (type: string) =>
+        PARTNER_TYPES.find(p => p.value === type) || { label: type, color: '#666', icon: null };
+
+    // Partner columns
+    const partnerColumns: ColumnsType<Partner> = [
+        { title: t('branches.colIndex') || 'STT', key: 'index', width: 60, align: 'center', render: (_, __, index) => index + 1 },
+        {
+            title: t('branches.filterBranch'), dataIndex: 'branchId', key: 'branchId', width: 90, align: 'center',
+            render: (id: string) => { const b = branches.find((br: Branch) => br.id === id); return b ? <Text strong style={{ color: '#E11D2E', whiteSpace: 'nowrap' }}>{b.code}</Text> : <Text type="secondary">-</Text>; }
+        },
+        { title: t('branches.colPartnerName'), dataIndex: 'name', key: 'name', width: 180, render: (text: string) => <Text strong>{text}</Text> },
+        {
+            title: t('branches.colPartnerType'), dataIndex: 'type', key: 'type', width: 110,
+            render: (type: string) => { const info = getPartnerTypeInfo(type); return <Tag color={info.color} style={{ margin: 0 }}>{info.label}</Tag>; }
+        },
+        { title: t('branches.colPartnerContact'), dataIndex: 'contact', key: 'contact', width: 140, render: (text: string) => text || '-' },
+        { title: t('branches.colPhone'), dataIndex: 'phone', key: 'phone', width: 130, render: (text: string) => text ? <Space><PhoneOutlined style={{ color: '#52c41a' }} />{text}</Space> : '-' },
+        { title: t('branches.colPartnerTaxCode'), dataIndex: 'taxCode', key: 'taxCode', width: 110, render: (text: string) => text || '-' },
+        { title: t('branches.colPartnerSpeciality'), dataIndex: 'speciality', key: 'speciality', width: 160, ellipsis: true, render: (text: string) => text || '-' },
+        { title: t('branches.colCollabNote'), dataIndex: 'note', key: 'note', width: 150, ellipsis: true, render: (text: string) => <Text type="secondary">{text || '-'}</Text> },
+        {
+            title: t('common.actions'), key: 'action', width: 100, align: 'center', fixed: 'right' as const,
+            render: (_, record) => (
+                <VcmActionGroup
+                    onEdit={() => handleEditPartner(record)}
+                    onDelete={() => handleDeletePartner(record)}
+                    canEdit={canEdit}
+                    canDelete={canEdit}
                 />
             ),
         },
@@ -561,6 +693,50 @@ const Branches: React.FC = () => {
         </VcmFilterBar>
     );
 
+    const renderPartnerFilters = () => (
+        <VcmFilterBar>
+            <Col xs={24} sm={12} md={8}>
+                <Input
+                    placeholder={t('branches.partnerSearchPlaceholder')}
+                    prefix={<SearchOutlined />}
+                    value={partnerSearchText}
+                    onChange={(e) => setPartnerSearchText(e.target.value)}
+                    allowClear
+                />
+            </Col>
+            <Col xs={24} sm={12} md={8}>
+                <Select
+                    placeholder={t('branches.filterPartnerType')}
+                    value={partnerTypeFilter === 'ALL' ? undefined : partnerTypeFilter}
+                    onChange={setPartnerTypeFilter}
+                    allowClear
+                    style={{ width: '100%' }}
+                    suffixIcon={<FilterOutlined />}
+                >
+                    <Select.Option value="ALL">{t('common.all')}</Select.Option>
+                    <Select.Option value="LABOR"><Tag color="#fa8c16">{t('branches.partnerTypeLABOR')}</Tag></Select.Option>
+                    <Select.Option value="MATERIAL"><Tag color="#52c41a">{t('branches.partnerTypeMATERIAL')}</Tag></Select.Option>
+                    <Select.Option value="EQUIPMENT"><Tag color="#1890ff">{t('branches.partnerTypeEQUIPMENT')}</Tag></Select.Option>
+                </Select>
+            </Col>
+            <Col xs={24} sm={12} md={8}>
+                <Select
+                    placeholder={t('branches.filterBranch')}
+                    value={partnerBranchFilter === 'ALL' ? undefined : partnerBranchFilter}
+                    onChange={setPartnerBranchFilter}
+                    allowClear
+                    style={{ width: '100%' }}
+                    suffixIcon={<FilterOutlined />}
+                >
+                    <Select.Option value="ALL">{t('common.all')}</Select.Option>
+                    {branches.map((b: Branch) => (
+                        <Select.Option key={b.id} value={b.id}>{b.code}</Select.Option>
+                    ))}
+                </Select>
+            </Col>
+        </VcmFilterBar>
+    );
+
     const tabItems = [
         {
             key: 'collaborators',
@@ -584,6 +760,30 @@ const Branches: React.FC = () => {
                         size="small"
                         bordered
                         scroll={{ x: 1200 }}
+                        className="branches-table"
+                    />
+                </>
+            )
+        },
+        {
+            key: 'partners',
+            label: <span><ShopOutlined /> {t('branches.tabPartners')}</span>,
+            children: (
+                <>
+                    {renderPartnerFilters()}
+                    <Table
+                        columns={partnerColumns}
+                        dataSource={filteredPartners}
+                        rowKey="id"
+                        loading={loading}
+                        pagination={{
+                            pageSize: 10,
+                            showSizeChanger: true,
+                            showTotal: (total) => t('branches.totalPartners', { total }),
+                        }}
+                        size="small"
+                        bordered
+                        scroll={{ x: 1100 }}
                         className="branches-table"
                     />
                 </>
@@ -641,10 +841,18 @@ const Branches: React.FC = () => {
                         <Button
                             type="primary"
                             icon={<PlusOutlined />}
-                            onClick={activeTab === 'branches' ? handleCreateBranch : activeTab === 'staff' ? handleCreateStaff : handleCreateCollaborator}
+                            onClick={
+                                activeTab === 'branches' ? handleCreateBranch
+                                : activeTab === 'staff' ? handleCreateStaff
+                                : activeTab === 'partners' ? handleCreatePartner
+                                : handleCreateCollaborator
+                            }
                             className="vcm-btn-premium"
                         >
-                            {activeTab === 'branches' ? t('branches.addBranch') : activeTab === 'staff' ? t('branches.addStaff') : t('branches.addCollaborator')}
+                            {activeTab === 'branches' ? t('branches.addBranch')
+                                : activeTab === 'staff' ? t('branches.addStaff')
+                                : activeTab === 'partners' ? t('branches.addPartner')
+                                : t('branches.addCollaborator')}
                         </Button>
                     )}
                 </div>
@@ -778,7 +986,82 @@ const Branches: React.FC = () => {
                     </Form.Item>
                 </Form>
             </Modal>
+            {/* Partner Modal */}
+            <Modal
+                title={editingPartner ? t('branches.modalEditPartner') : t('branches.modalAddPartner')}
+                open={partnerModalVisible}
+                onCancel={() => { setPartnerModalVisible(false); partnerForm.resetFields(); }}
+                onOk={() => partnerForm.submit()}
+                okText={editingPartner ? t('common.update') : t('common.add')}
+                cancelText={t('common.cancel')}
+                destroyOnClose
+                width={640}
+            >
+                <Form form={partnerForm} layout="vertical" onFinish={handlePartnerSubmit}>
+                    <Row gutter={16}>
+                        <Col span={16}>
+                            <Form.Item name="name" label={t('branches.formPartnerName')} rules={[{ required: true, message: t('branches.formPartnerNameReq') }]}>
+                                <Input placeholder={t('branches.formPartnerName')} />
+                            </Form.Item>
+                        </Col>
+                        <Col span={8}>
+                            <Form.Item name="type" label={t('branches.formPartnerType')} rules={[{ required: true, message: t('branches.formPartnerTypeReq') }]}>
+                                <Select placeholder={t('branches.formPartnerType')}>
+                                    <Select.Option value="LABOR"><Tag color="#fa8c16">{t('branches.partnerTypeLABOR')}</Tag></Select.Option>
+                                    <Select.Option value="MATERIAL"><Tag color="#52c41a">{t('branches.partnerTypeMATERIAL')}</Tag></Select.Option>
+                                    <Select.Option value="EQUIPMENT"><Tag color="#1890ff">{t('branches.partnerTypeEQUIPMENT')}</Tag></Select.Option>
+                                </Select>
+                            </Form.Item>
+                        </Col>
+                    </Row>
+                    <Row gutter={16}>
+                        <Col span={12}>
+                            <Form.Item name="contact" label={t('branches.formPartnerContact')}>
+                                <Input placeholder={t('branches.formPartnerContact')} />
+                            </Form.Item>
+                        </Col>
+                        <Col span={12}>
+                            <Form.Item name="branchId" label={t('branches.filterBranch')}>
+                                <Select placeholder={t('branches.filterBranch')} allowClear>
+                                    {branches.map((b: Branch) => <Select.Option key={b.id} value={b.id}>{b.code}</Select.Option>)}
+                                </Select>
+                            </Form.Item>
+                        </Col>
+                    </Row>
+                    <Row gutter={16}>
+                        <Col span={12}>
+                            <Form.Item name="phone" label={t('branches.formPhone')}>
+                                <Input placeholder="VD: 0901234567" />
+                            </Form.Item>
+                        </Col>
+                        <Col span={12}>
+                            <Form.Item name="email" label={t('branches.formEmail')} rules={[{ type: 'email', message: t('branches.formEmailInvalid') }]}>
+                                <Input placeholder="VD: doitac@email.com" />
+                            </Form.Item>
+                        </Col>
+                    </Row>
+                    <Row gutter={16}>
+                        <Col span={12}>
+                            <Form.Item name="taxCode" label={t('branches.formPartnerTaxCode')}>
+                                <Input placeholder="VD: 0123456789" />
+                            </Form.Item>
+                        </Col>
+                        <Col span={12}>
+                            <Form.Item name="speciality" label={t('branches.formPartnerSpeciality')}>
+                                <Input placeholder={t('branches.formPartnerSpeciality')} />
+                            </Form.Item>
+                        </Col>
+                    </Row>
+                    <Form.Item name="address" label={t('branches.formAddress')}>
+                        <Input placeholder={t('branches.formAddress')} />
+                    </Form.Item>
+                    <Form.Item name="note" label={t('branches.formCollabNote')}>
+                        <Input.TextArea rows={2} placeholder={t('branches.formCollabNote')} />
+                    </Form.Item>
+                </Form>
+            </Modal>
         </div >
+
     );
 };
 

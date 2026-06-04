@@ -168,9 +168,26 @@ const Targets: React.FC = () => {
     };
 
     const handleDelete = (record: any) => {
+        // Check if this DOANH_THU has a linked NGUON_VIEC to also delete (GENERAL or BRANCH)
+        const isLinkedDT = record.type === 'DOANH_THU';
+        const linkedNV = isLinkedDT
+            ? targets.find((t: Target) =>
+                t.type === 'NGUON_VIEC' &&
+                t.periodType === record.periodType &&
+                t.period === record.period &&
+                // Match scope: GENERAL = same unitType, BRANCH = same branch
+                (
+                    (record.unitType === 'GENERAL' && (t.unitType === 'GENERAL' || !t.unitType)) ||
+                    (record.unitType === 'BRANCH' && t.unitType === 'BRANCH' && t.unitId === record.unitId)
+                )
+              )
+            : null;
+
         Modal.confirm({
             title: t('targets.confirmDeleteTitle'),
-            content: t('targets.confirmDeleteContent', { name: record.name }),
+            content: linkedNV
+                ? `${t('targets.confirmDeleteContent', { name: record.name })} Chỉ tiêu Nguồn việc liên kết (${new Intl.NumberFormat('vi-VN').format(linkedNV.targetValue)}) cũng sẽ bị xóa.`
+                : t('targets.confirmDeleteContent', { name: record.name }),
             okText: t('common.delete'),
             okType: 'danger',
             cancelText: t('common.cancel'),
@@ -178,6 +195,10 @@ const Targets: React.FC = () => {
                 deleteTarget.mutate(record.id, {
                     onSuccess: (res) => {
                         if (res.success) {
+                            // Auto-delete linked NGUON_VIEC
+                            if (linkedNV) {
+                                deleteTarget.mutate(linkedNV.id);
+                            }
                             message.success(t('targets.deleteSuccess'));
                         } else {
                             message.error(t('targets.deleteFailed') + (res.error || ''));
@@ -202,27 +223,58 @@ const Targets: React.FC = () => {
                 unitName: branch?.name || (values.unitType === 'GENERAL' ? t('targets.company') : undefined)
             };
 
-            const onSuccess = (res: any) => {
-                if (res.success) {
-                    message.success(editingTarget ? t('targets.updateSuccess') : t('targets.createSuccess'));
-                    setIsModalVisible(false);
-                } else {
-                    message.error(t('targets.saveFailed') + (res.error || ''));
-                }
-                setSubmitting(false);
-            };
+            // Save primary record
+            const primaryRes = await (editingTarget
+                ? updateTarget.mutateAsync(payload)
+                : createTarget.mutateAsync(payload));
 
-            const onError = () => {
-                message.error(t('targets.saveFailed'));
+            if (!primaryRes.success) {
+                message.error(t('targets.saveFailed') + (primaryRes.error || ''));
                 setSubmitting(false);
-            };
-
-            if (editingTarget) {
-                updateTarget.mutate(payload, { onSuccess, onError });
-            } else {
-                createTarget.mutate(payload, { onSuccess, onError });
+                return;
             }
+
+            // ===== AUTO-LINK: Khi lưu DOANH_THU → tự tạo/cập nhật NGUON_VIEC (cả GENERAL lẫn BRANCH) =====
+            if (values.type === 'DOANH_THU') {
+                const linkedValue = Math.round(values.targetValue * 1.2);
+
+                // Tìm record NV hiện tại cùng scope/branch/period
+                const existingNV = targets.find((t: Target) =>
+                    t.type === 'NGUON_VIEC' &&
+                    t.periodType === values.periodType &&
+                    t.period === values.period &&
+                    (
+                        values.unitType === 'GENERAL'
+                            ? (t.unitType === 'GENERAL' || !t.unitType)
+                            : (t.unitType === 'BRANCH' && t.unitId === values.unitId)
+                    )
+                );
+
+                const linkedPayload = {
+                    type: 'NGUON_VIEC',
+                    unitType: values.unitType,
+                    periodType: values.periodType,
+                    period: values.period,
+                    targetValue: linkedValue,
+                    id: existingNV?.id,
+                    unitId: values.unitType === 'BRANCH' ? values.unitId : undefined,
+                    unitName: values.unitType === 'BRANCH'
+                        ? (branches.find((b: any) => b.id === values.unitId)?.name)
+                        : t('targets.company')
+                };
+
+                // Create or update the linked NGUON_VIEC record
+                await (existingNV
+                    ? updateTarget.mutateAsync(linkedPayload)
+                    : createTarget.mutateAsync(linkedPayload));
+            }
+            // ===== END AUTO-LINK =====
+
+            message.success(editingTarget ? t('targets.updateSuccess') : t('targets.createSuccess'));
+            setIsModalVisible(false);
+            setSubmitting(false);
         } catch (error) {
+            message.error(t('targets.saveFailed'));
             setSubmitting(false);
         }
     };
@@ -255,25 +307,7 @@ const Targets: React.FC = () => {
 
         const rows: any[] = [];
 
-        // Year row - always show
-        const yearTarget = filtered.find((t: Target) => t.periodType === 'YEAR' && t.period === generalYear);
-        const yearActual = getGeneralActual(targetType, 'YEAR', generalYear, yearTarget?.actualValue || 0);
-        rows.push({
-            key: `year-${generalYear}-${targetType}`,
-            id: yearTarget?.id,
-            rowType: 'year',
-            label: `${t('targets.year')} ${generalYear}`,
-            periodType: 'YEAR',
-            period: generalYear,
-            targetValue: yearTarget?.targetValue || 0,
-            actualValue: yearActual,
-            hasData: !!yearTarget,
-            type: targetType,
-            unitType: 'GENERAL',
-            ...(yearTarget || {})
-        });
-
-        // Quarters with their months grouped
+        // Quarters with their months
         const quarterMonths: { [key: number]: number[] } = {
             1: [1, 2, 3],
             2: [4, 5, 6],
@@ -281,10 +315,50 @@ const Targets: React.FC = () => {
             4: [10, 11, 12]
         };
 
+        // ── Step 1: Pre-compute monthly targetValues ──────────────────────────
+        const monthTargetValue: { [month: number]: number } = {};
+        for (let m = 1; m <= 12; m++) {
+            const monthPeriod = `${generalYear}-${String(m).padStart(2, '0')}`;
+            const rec = filtered.find((t: Target) => t.periodType === 'MONTH' && t.period === monthPeriod);
+            monthTargetValue[m] = rec?.targetValue || 0;
+        }
+
+        // ── Step 2: Quarter sums from months ────────────────────────────────
+        const quarterSum: { [q: number]: number } = {};
+        [1, 2, 3, 4].forEach(q => {
+            quarterSum[q] = quarterMonths[q].reduce((sum, m) => sum + monthTargetValue[m], 0);
+        });
+
+        // ── Step 3: Year sum from quarters ──────────────────────────────────
+        const yearSum = [1, 2, 3, 4].reduce((sum, q) => sum + quarterSum[q], 0);
+
+        // ── Year row ─────────────────────────────────────────────────────────
+        const yearTarget = filtered.find((t: Target) => t.periodType === 'YEAR' && t.period === generalYear);
+        const yearActual = getGeneralActual(targetType, 'YEAR', generalYear, yearTarget?.actualValue || 0);
+        // Use month-derived sum; fallback to DB record only if no monthly data at all
+        const yearDisplayValue = yearSum > 0 ? yearSum : (yearTarget?.targetValue || 0);
+        rows.push({
+            key: `year-${generalYear}-${targetType}`,
+            id: yearTarget?.id,
+            rowType: 'year',
+            label: `${t('targets.year')} ${generalYear}`,
+            periodType: 'YEAR',
+            period: generalYear,
+            targetValue: yearDisplayValue,
+            actualValue: yearActual,
+            hasData: !!yearTarget,
+            type: targetType,
+            unitType: 'GENERAL',
+            ...(yearTarget || {})
+        });
+
+        // ── Quarter + Month rows ─────────────────────────────────────────────
         [1, 2, 3, 4].forEach(q => {
             const quarterPeriod = `${generalYear}-Q${q}`;
             const quarterTarget = filtered.find((t: Target) => t.periodType === 'QUARTER' && t.period === quarterPeriod);
             const quarterActual = getGeneralActual(targetType, 'QUARTER', quarterPeriod, quarterTarget?.actualValue || 0);
+            // Quarter target = sum of 3 months; fallback to DB record if no monthly data
+            const quarterDisplayValue = quarterSum[q] > 0 ? quarterSum[q] : (quarterTarget?.targetValue || 0);
             rows.push({
                 key: `quarter-${q}-${targetType}`,
                 id: quarterTarget?.id,
@@ -292,7 +366,7 @@ const Targets: React.FC = () => {
                 label: `${t('targets.quarter')} ${q}`,
                 periodType: 'QUARTER',
                 period: quarterPeriod,
-                targetValue: quarterTarget?.targetValue || 0,
+                targetValue: quarterDisplayValue,
                 actualValue: quarterActual,
                 hasData: !!quarterTarget,
                 type: targetType,
@@ -311,7 +385,7 @@ const Targets: React.FC = () => {
                     label: `${t('targets.month')} ${m}`,
                     periodType: 'MONTH',
                     period: monthPeriod,
-                    targetValue: monthTarget?.targetValue || 0,
+                    targetValue: monthTargetValue[m],
                     actualValue: monthActual,
                     hasData: !!monthTarget,
                     type: targetType,
@@ -323,6 +397,7 @@ const Targets: React.FC = () => {
 
         return rows;
     };
+
 
     // ========== BRANCH TARGETS DATA ==========
     const getBranchMetric = useCallback((branchId: string, type: 'NGUON_VIEC' | 'DOANH_THU') => {
@@ -955,23 +1030,56 @@ const Targets: React.FC = () => {
                         />
                     </Form.Item>
 
-                    <Form.Item noStyle shouldUpdate={(prev, curr) => prev.targetValue !== curr.targetValue || prev.type !== curr.type}>
+                    <Form.Item noStyle shouldUpdate={(prev, curr) => prev.targetValue !== curr.targetValue || prev.type !== curr.type || prev.unitType !== curr.unitType}>
                         {({ getFieldValue }) => {
                             const val = getFieldValue('targetValue');
                             const type = getFieldValue('type');
+                            const unitType = getFieldValue('unitType');
                             if (!val) return null;
 
+                            // Show auto-link banner when entering DOANH_THU (both GENERAL and BRANCH)
                             if (type === 'DOANH_THU') {
+                                const nvValue = Math.round(val * 1.2);
                                 return (
-                                    <div style={{ marginTop: -20, marginBottom: 16, fontSize: '12px', color: '#1890ff', fontStyle: 'italic', paddingLeft: 4 }}>
-                                        💡 {t('targets.hintSourceWork')}: <strong>{formatNumber(val * 1.2)}</strong>
+                                    <div style={{
+                                        marginTop: -16,
+                                        marginBottom: 16,
+                                        padding: '8px 12px',
+                                        background: 'linear-gradient(135deg, #e6f4ff 0%, #f0f9eb 100%)',
+                                        border: '1px solid #91caff',
+                                        borderRadius: 8,
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: 8
+                                    }}>
+                                        <span style={{ fontSize: 16 }}>🔗</span>
+                                        <div style={{ flex: 1 }}>
+                                            <div style={{ fontSize: '12px', color: '#1677ff', fontWeight: 600 }}>
+                                                Tự động lưu Nguồn việc liên kết
+                                            </div>
+                                            <div style={{ fontSize: '13px', color: '#333' }}>
+                                                Nguồn việc = <strong style={{ color: '#1677ff' }}>{new Intl.NumberFormat('vi-VN').format(nvValue)}</strong>
+                                                <span style={{ color: '#888', marginLeft: 6, fontSize: 11 }}>(Doanh thu × 1.2)</span>
+                                            </div>
+                                        </div>
+                                        <span style={{
+                                            background: '#52c41a',
+                                            color: '#fff',
+                                            fontSize: 10,
+                                            padding: '2px 6px',
+                                            borderRadius: 10,
+                                            fontWeight: 600,
+                                            whiteSpace: 'nowrap'
+                                        }}>AUTO</span>
                                     </div>
                                 );
                             }
+
+                            // NGUON_VIEC: simple hint only (no auto-link in reverse)
                             if (type === 'NGUON_VIEC') {
                                 return (
                                     <div style={{ marginTop: -20, marginBottom: 16, fontSize: '12px', color: '#1890ff', fontStyle: 'italic', paddingLeft: 4 }}>
-                                        💡 {t('targets.hintRevenue')}: <strong>{formatNumber(val / 1.2)}</strong>
+                                        💡 {t('targets.hintRevenue')}: <strong>{new Intl.NumberFormat('vi-VN').format(val / 1.2)}</strong>
                                     </div>
                                 );
                             }
