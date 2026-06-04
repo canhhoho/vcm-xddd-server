@@ -527,77 +527,7 @@ const Dashboard: React.FC = () => {
                 </Col>
             </Row>
 
-            {/* ==================== ROW 4: Structure & Execution ==================== */}
-            <Row gutter={[20, 20]} className="dash-row">
-                {/* Donut: Business Structure */}
-                <Col xs={24} lg={14}>
-                    <Card className="dash-chart-card" title={t('dashboard.businessStructure')}>
-                        <Row gutter={[16, 16]}>
-                            <Col xs={24} md={8}>
-                                {renderMiniDonut('Nguồn Việc', sourceWorkData, '#1D4ED8', '#60A5FA')}
-                            </Col>
-                            <Col xs={24} md={8}>
-                                {renderMiniDonut('Doanh Thu', revenueData, '#C2410C', '#FB923C')}
-                            </Col>
-                            <Col xs={24} md={8}>
-                                {renderMiniDonut('Thu Tiền', paymentData, '#15803D', '#4ADE80')}
-                            </Col>
-                        </Row>
-                    </Card>
-                </Col>
-
-                {/* Right: Project Execution */}
-                <Col xs={24} lg={10}>
-                    <Card className="dash-chart-card" title={t('dashboard.projectExecution')}>
-                        {/* Stacked progress bar */}
-                        <div className="dash-exec-progress">
-                            <div className="dash-exec-bar-wrap">
-                                <Tooltip title={`${t('dashboard.done')}: ${projectExecution.done}`}>
-                                    <div className="dash-exec-seg done" style={{ width: `${execDonePct}%` }} />
-                                </Tooltip>
-                                <Tooltip title={`${t('dashboard.inProgress')}: ${projectExecution.inProgress}`}>
-                                    <div className="dash-exec-seg in-progress" style={{ width: `${execInProgressPct}%` }} />
-                                </Tooltip>
-                                <Tooltip title={`${t('dashboard.waiting')}: ${projectExecution.waiting}`}>
-                                    <div className="dash-exec-seg waiting" style={{ width: `${execWaitingPct}%` }} />
-                                </Tooltip>
-                            </div>
-                            <div className="dash-exec-legend">
-                                <span><span className="dash-dot dot-success" />{t('dashboard.done')} ({execDonePct}%)</span>
-                                <span><span className="dash-dot dot-warning" />{t('dashboard.inProgress')} ({execInProgressPct}%)</span>
-                                <span><span className="dash-dot dot-muted" />{t('dashboard.waiting')} ({execWaitingPct}%)</span>
-                            </div>
-                        </div>
-
-                        {/* 3 KPI blocks */}
-                        <Row gutter={[16, 16]} style={{ marginTop: 24 }}>
-                            <Col xs={8}>
-                                <div className="dash-exec-kpi">
-                                    <CheckCircleOutlined className="dash-exec-icon" style={{ color: '#10B981' }} />
-                                    <div className="dash-exec-num">{projectExecution.done}</div>
-                                    <div className="dash-exec-label">{t('dashboard.done')}</div>
-                                </div>
-                            </Col>
-                            <Col xs={8}>
-                                <div className="dash-exec-kpi">
-                                    <ClockCircleOutlined className="dash-exec-icon" style={{ color: '#F59E0B' }} />
-                                    <div className="dash-exec-num">{projectExecution.inProgress}</div>
-                                    <div className="dash-exec-label">{t('dashboard.inProgress')}</div>
-                                </div>
-                            </Col>
-                            <Col xs={8}>
-                                <div className="dash-exec-kpi">
-                                    <ExclamationCircleOutlined className="dash-exec-icon" style={{ color: '#9CA3AF' }} />
-                                    <div className="dash-exec-num">{projectExecution.waiting}</div>
-                                    <div className="dash-exec-label">{t('dashboard.waiting')}</div>
-                                </div>
-                            </Col>
-                        </Row>
-                    </Card>
-                </Col>
-            </Row>
-
-            {/* ==================== ROW 5: Activity Log & Sales Pipeline ==================== */}
+            {/* ==================== ROW 4: Activity Log & Sales Pipeline ==================== */}
             <Row gutter={[20, 20]} className="dash-row">
                 {/* Left: Sales Pipeline B2B (50% width) */}
                 <Col xs={24} lg={12}>
@@ -715,8 +645,77 @@ const Dashboard: React.FC = () => {
                     </Card>
                 </Col>
             </Row>
-        </div>
+
+            {/* ==================== ROW 5: Structure & Execution ==================== */}
+            <Row gutter={[20, 20]} className="dash-row">
+                {/* Donut: Business Structure */}
+                <Col xs={24} lg={14}>
+                    <Card className="dash-chart-card" title={t('dashboard.businessStructure')}>
+                        <Row gutter={[16, 16]}>
+                            <Col xs={24} md={8}>
+                                {renderMiniDonut('Nguồn Việc', sourceWorkData, '#1D4ED8', '#60A5FA')}
+                            </Col>
+                            <Col xs={24} md={8}>
+                                {renderMiniDonut('Doanh Thu', revenueData, '#C2410C', '#FB923C')}
+                            </Col>
+                            <Col xs={24} md={8}>
+                                {renderMiniDonut('Thu Tiền', paymentData, '#15803D', '#4ADE80')}
+                            </Col>
+                        </Row>
+                    </Card>
+                </Col>
+
+                {/* Right: Project Execution */}
+                <Col xs={24} lg={10}>
+                    <Card className="dash-chart-card" title={t('dashboard.projectExecution')}>
+                        {/* Stacked progress bar */}
+                        <div className="dash-exec-progress">
+                            <div className="dash-exec-bar-wrap">
+                                <Tooltip title={`${t('dashboard.done')}: ${projectExecution.done}`}>
+                                    <div className="dash-exec-seg done" style={{ width: `${execDonePct}%` }} />
+                                </Tooltip>
+                                <Tooltip title={`${t('dashboard.inProgress')}: ${projectExecution.inProgress}`}>
+                                    <div className="dash-exec-seg in-progress" style={{ width: `${execInProgressPct}%` }} />
+                                </Tooltip>
+                                <Tooltip title={`${t('dashboard.waiting')}: ${projectExecution.waiting}`}>
+                                    <div className="dash-exec-seg waiting" style={{ width: `${execWaitingPct}%` }} />
+                                </Tooltip>
+                            </div>
+                            <div className="dash-exec-legend">
+                                <span><span className="dash-dot dot-success" />{t('dashboard.done')} ({execDonePct}%)</span>
+                                <span><span className="dash-dot dot-warning" />{t('dashboard.inProgress')} ({execInProgressPct}%)</span>
+                                <span><span className="dash-dot dot-muted" />{t('dashboard.waiting')} ({execWaitingPct}%)</span>
+                            </div>
+                        </div>
+
+                        {/* 3 KPI blocks */}
+                        <Row gutter={[16, 16]} style={{ marginTop: 24 }}>
+                            <Col xs={8}>
+                                <div className="dash-exec-kpi">
+                                    <CheckCircleOutlined className="dash-exec-icon" style={{ color: '#10B981' }} />
+                                    <div className="dash-exec-num">{projectExecution.done}</div>
+                                    <div className="dash-exec-label">{t('dashboard.done')}</div>
+                                </div>
+                            </Col>
+                            <Col xs={8}>
+                                <div className="dash-exec-kpi">
+                                    <ClockCircleOutlined className="dash-exec-icon" style={{ color: '#F59E0B' }} />
+                                    <div className="dash-exec-num">{projectExecution.inProgress}</div>
+                                    <div className="dash-exec-label">{t('dashboard.inProgress')}</div>
+                                </div>
+                            </Col>
+                            <Col xs={8}>
+                                <div className="dash-exec-kpi">
+                                    <ExclamationCircleOutlined className="dash-exec-icon" style={{ color: '#9CA3AF' }} />
+                                    <div className="dash-exec-num">{projectExecution.waiting}</div>
+                                    <div className="dash-exec-label">{t('dashboard.waiting')}</div>
+                                </div>
+                            </Col>
+                        </Row>
+                    </Card>
+                </Col>
+            </Row>
     );
 };
 
-export default Dashboard;
+export default Dashboard;`n
