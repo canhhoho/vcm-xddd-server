@@ -80,28 +80,28 @@ const ProjectLogTab: React.FC<ProjectLogTabProps> = ({ project, members, canEdit
 
     // Kiểm tra đã có log hôm nay chưa
     const today = dayjs().format('YYYY-MM-DD');
-    const todayLog = useMemo(() => logs.find(l => l.logDate === today), [logs, today]);
+    const todayLog = useMemo(() => logs.find((l: ProjectLog) => l.logDate === today), [logs, today]);
 
     // ── Thống kê tháng ──────────────────────────────────────────────────────
     const stats = useMemo(() => {
         const workDays = logs.length;
-        const totalWorkers = logs.reduce((s, l) => s + (l.workersCount || 0), 0);
+        const totalWorkers = logs.reduce((s: number, l: ProjectLog) => s + (l.workersCount || 0), 0);
         const avgProgress = workDays > 0
-            ? Math.round(logs.reduce((s, l) => s + (l.progressPct || 0), 0) / workDays)
+            ? Math.round(logs.reduce((s: number, l: ProjectLog) => s + (l.progressPct || 0), 0) / workDays)
             : 0;
-        const incidentDays = logs.filter(l => l.issues && l.issues.trim()).length;
+        const incidentDays = logs.filter((l: ProjectLog) => l.issues && l.issues.trim()).length;
         return { workDays, totalWorkers, avgProgress, incidentDays };
     }, [logs]);
 
     // ── Tổng hợp vật tư + thiết bị trong tháng ──────────────────────────────
     const monthSummaryText = useMemo(() => {
         const mats = logs
-            .filter(l => l.materials?.trim())
-            .map(l => `[${dayjs(l.logDate).format('DD/MM')}] ${l.materials}`)
+            .filter((l: ProjectLog) => l.materials?.trim())
+            .map((l: ProjectLog) => `[${dayjs(l.logDate).format('DD/MM')}] ${l.materials}`)
             .join('\n');
         const equip = logs
-            .filter(l => l.equipment?.trim())
-            .map(l => `[${dayjs(l.logDate).format('DD/MM')}] ${l.equipment}`)
+            .filter((l: ProjectLog) => l.equipment?.trim())
+            .map((l: ProjectLog) => `[${dayjs(l.logDate).format('DD/MM')}] ${l.equipment}`)
             .join('\n');
         return { mats, equip };
     }, [logs]);
@@ -125,7 +125,7 @@ const ProjectLogTab: React.FC<ProjectLogTabProps> = ({ project, members, canEdit
             ['STT', 'Ngày thi công', 'Thời tiết', 'Nhân sự (người)', 'Tiến độ lũy kế (%)', 'Công việc đã thực hiện', 'Vướng mắc / Sự cố', 'Vật tư sử dụng', 'Thiết bị thi công', 'Ghi chú', 'Người ghi']
         ];
 
-        logs.forEach((log, index) => {
+        logs.forEach((log: ProjectLog, index: number) => {
             const weatherText = log.weather ? WEATHER_MAP[log.weather]?.label || log.weather : '';
             sheetData.push([
                 index + 1,
@@ -343,7 +343,7 @@ const ProjectLogTab: React.FC<ProjectLogTabProps> = ({ project, members, canEdit
                 <tbody>
         `;
 
-        logs.forEach((log, index) => {
+        logs.forEach((log: ProjectLog, index: number) => {
             const weatherText = log.weather ? WEATHER_MAP[log.weather]?.label || log.weather : '--';
             const workers = log.workersCount || 0;
             const progress = `${log.progressPct || 0}%`;
@@ -660,7 +660,7 @@ const ProjectLogTab: React.FC<ProjectLogTabProps> = ({ project, members, canEdit
                 />
             ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                    {logs.map(log => {
+                    {logs.map((log: ProjectLog) => {
                         const weather = log.weather ? WEATHER_MAP[log.weather] : null;
                         const isToday = log.logDate === today;
                         const pct = log.progressPct || 0;

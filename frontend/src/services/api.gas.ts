@@ -723,4 +723,30 @@ export class GasApiService implements IApiService {
     async upsertDailyLog(data: any) {
         return this.runGasFunction('upsertDailyLog', data);
     }
+
+    // ==================== PROJECT LOGS (Nhat ky Thi cong) ====================
+    async getProjectLogs(params: { projectId: string; month?: string }) {
+        return this.runGasFunction('getProjectLogs', params);
+    }
+
+    async upsertProjectLog(data: {
+        projectId: string;
+        logDate: string;
+        weather?: string;
+        workersCount?: number;
+        progressPct?: number;
+        activities?: string;
+        issues?: string;
+        materials?: string;
+        equipment?: string;
+        note?: string;
+    }) {
+        const userId = localStorage.getItem('userId');
+        return this.runGasFunction('upsertProjectLog', { ...data, userId });
+    }
+
+    async deleteProjectLog(id: string) {
+        const userId = localStorage.getItem('userId');
+        return this.runGasFunction('deleteProjectLog', { id, userId });
+    }
 }
