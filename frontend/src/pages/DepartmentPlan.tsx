@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Card, Table, Button, Select, Modal, Form, Input, Tag, message, DatePicker, Empty, Tooltip, Progress, Space, Typography } from 'antd';
+import { Card, Table, Button, Select, Modal, Form, Input, Tag, message, DatePicker, Empty, Tooltip, Progress, Space, Typography, Row, Col } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { PlusOutlined, SyncOutlined, CalendarOutlined, EditOutlined, QuestionCircleOutlined, SearchOutlined, FileExcelOutlined, CheckCircleOutlined } from '@ant-design/icons';
 import PlanGuideModal from '../components/PlanGuideModal';
@@ -452,18 +452,22 @@ const DepartmentPlan: React.FC<DepartmentPlanProps> = ({ department, selectedMon
                 destroyOnClose
             >
                 <Form form={form} layout="vertical" onFinish={handleSubmitItem}>
-                    <div style={{ display: 'flex', gap: 16 }}>
-                        <Form.Item name="sortOrder" label="#" rules={[{ required: true }]} style={{ width: 80 }}>
-                            <Select>{[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15].map(n => <Option key={n} value={n}>{n}</Option>)}</Select>
-                        </Form.Item>
-                        <Form.Item name="monthlyItemId" label={t('plans.monthly.sectionTitle')} style={{ flex: 1 }}>
-                            <Select allowClear placeholder={t('plans.monthly.addItem')}>
-                                {monthlyPlanItems.map((mi: MonthlyPlanItem) => (
-                                    <Option key={mi.id} value={mi.id}>{mi.title}</Option>
-                                ))}
-                            </Select>
-                        </Form.Item>
-                    </div>
+                    <Row gutter={16}>
+                        <Col xs={24} sm={6}>
+                            <Form.Item name="sortOrder" label="#" rules={[{ required: true }]}>
+                                <Select>{[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15].map(n => <Option key={n} value={n}>{n}</Option>)}</Select>
+                            </Form.Item>
+                        </Col>
+                        <Col xs={24} sm={18}>
+                            <Form.Item name="monthlyItemId" label={t('plans.monthly.sectionTitle')}>
+                                <Select allowClear placeholder={t('plans.monthly.addItem')}>
+                                    {monthlyPlanItems.map((mi: MonthlyPlanItem) => (
+                                        <Option key={mi.id} value={mi.id}>{mi.title}</Option>
+                                    ))}
+                                </Select>
+                            </Form.Item>
+                        </Col>
+                    </Row>
                     <Form.Item name="title" label={t('business.weeklyPlan.what')} rules={[{ required: true }]}>
                         <Input placeholder={t('business.weeklyPlan.whatPlaceholder')} />
                     </Form.Item>
@@ -479,38 +483,50 @@ const DepartmentPlan: React.FC<DepartmentPlanProps> = ({ department, selectedMon
                             {users.map((u: any) => <Option key={u.id} value={u.id}>{u.name}</Option>)}
                         </Select>
                     </Form.Item>
-                    <div style={{ display: 'flex', gap: 16 }}>
-                        <Form.Item name="startDate" label={t('business.weeklyPlan.whenStart')} style={{ flex: 1 }}>
-                            <DatePicker style={{ width: '100%' }} format="DD/MM/YYYY" />
-                        </Form.Item>
-                        <Form.Item name="endDate" label={t('business.weeklyPlan.whenEnd')} style={{ flex: 1 }}>
-                            <DatePicker style={{ width: '100%' }} format="DD/MM/YYYY" />
-                        </Form.Item>
-                    </div>
-                    <div style={{ display: 'flex', gap: 16 }}>
-                        <Form.Item name="location" label={t('business.weeklyPlan.where')} style={{ flex: 1 }}>
-                            <Input placeholder={t('business.weeklyPlan.wherePlaceholder')} />
-                        </Form.Item>
-                        <Form.Item name="method" label={t('business.weeklyPlan.how')} style={{ flex: 1 }}>
-                            <Input placeholder={t('business.weeklyPlan.howPlaceholder')} />
-                        </Form.Item>
-                    </div>
-                    <div style={{ display: 'flex', gap: 16 }}>
-                        <Form.Item name="status" label={t('business.weeklyPlan.status')} initialValue="TODO" style={{ flex: 1 }}>
-                            <Select>
-                                <Option value="TODO">{t('business.weeklyPlan.statusTodo')}</Option>
-                                <Option value="IN_PROGRESS">{t('business.weeklyPlan.statusInProgress')}</Option>
-                                <Option value="DONE">{t('business.weeklyPlan.statusDone')}</Option>
-                            </Select>
-                        </Form.Item>
-                        <Form.Item name="progressPct" label={t('plans.daily.progress')} initialValue={0} style={{ flex: 1 }}>
-                            <Select>
-                                {[0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100].map(v => (
-                                    <Option key={v} value={v}>{v}%</Option>
-                                ))}
-                            </Select>
-                        </Form.Item>
-                    </div>
+                    <Row gutter={16}>
+                        <Col xs={24} sm={12}>
+                            <Form.Item name="startDate" label={t('business.weeklyPlan.whenStart')}>
+                                <DatePicker style={{ width: '100%' }} format="DD/MM/YYYY" />
+                            </Form.Item>
+                        </Col>
+                        <Col xs={24} sm={12}>
+                            <Form.Item name="endDate" label={t('business.weeklyPlan.whenEnd')}>
+                                <DatePicker style={{ width: '100%' }} format="DD/MM/YYYY" />
+                            </Form.Item>
+                        </Col>
+                    </Row>
+                    <Row gutter={16}>
+                        <Col xs={24} sm={12}>
+                            <Form.Item name="location" label={t('business.weeklyPlan.where')}>
+                                <Input placeholder={t('business.weeklyPlan.wherePlaceholder')} />
+                            </Form.Item>
+                        </Col>
+                        <Col xs={24} sm={12}>
+                            <Form.Item name="method" label={t('business.weeklyPlan.how')}>
+                                <Input placeholder={t('business.weeklyPlan.howPlaceholder')} />
+                            </Form.Item>
+                        </Col>
+                    </Row>
+                    <Row gutter={16}>
+                        <Col xs={24} sm={12}>
+                            <Form.Item name="status" label={t('business.weeklyPlan.status')} initialValue="TODO">
+                                <Select>
+                                    <Option value="TODO">{t('business.weeklyPlan.statusTodo')}</Option>
+                                    <Option value="IN_PROGRESS">{t('business.weeklyPlan.statusInProgress')}</Option>
+                                    <Option value="DONE">{t('business.weeklyPlan.statusDone')}</Option>
+                                </Select>
+                            </Form.Item>
+                        </Col>
+                        <Col xs={24} sm={12}>
+                            <Form.Item name="progressPct" label={t('plans.daily.progress')} initialValue={0}>
+                                <Select>
+                                    {[0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100].map(v => (
+                                        <Option key={v} value={v}>{v}%</Option>
+                                    ))}
+                                </Select>
+                            </Form.Item>
+                        </Col>
+                    </Row>
                     <Form.Item name="result" label={t('business.weeklyPlan.result')}>
                         <TextArea rows={2} placeholder={t('business.weeklyPlan.resultPlaceholder')} />
                     </Form.Item>

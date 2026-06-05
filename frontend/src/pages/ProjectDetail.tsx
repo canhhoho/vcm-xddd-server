@@ -264,24 +264,24 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, onBack }) => {
             >
                 <Form form={updateForm} layout="vertical" size="small" style={{ marginTop: 16 }}>
                     <Row gutter={16}>
-                        <Col span={12}>
+                        <Col xs={24} sm={12}>
                             <Form.Item name="code" label={t('projects.formCode')} rules={[{ required: true, message: t('projects.formCodeReq') }]}>
                                 <Input />
                             </Form.Item>
                         </Col>
-                        <Col span={12}>
+                        <Col xs={24} sm={12}>
                             <Form.Item name="name" label={t('projects.formName')} rules={[{ required: true, message: t('projects.formNameReq') }]}>
                                 <Input />
                             </Form.Item>
                         </Col>
                     </Row>
                     <Row gutter={16}>
-                        <Col span={12}>
+                        <Col xs={24} sm={12}>
                             <Form.Item name="investor" label={t('projects.formInvestor')}>
                                 <Input />
                             </Form.Item>
                         </Col>
-                        <Col span={12}>
+                        <Col xs={24} sm={12}>
                             <Form.Item name="location" label={t('projects.formBranch')}>
                                 <Select showSearch optionFilterProp="children" placeholder={t('projects.branchPlaceholder')} allowClear>
                                     {branches.map((b: any) => (
@@ -292,7 +292,7 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, onBack }) => {
                         </Col>
                     </Row>
                     <Row gutter={16}>
-                        <Col span={12}>
+                        <Col xs={24} sm={12}>
                             <Form.Item name="contractId" label={t('projects.formContract')}>
                                 <Select showSearch optionFilterProp="children" allowClear placeholder={t('projects.formContract')}>
                                     {contracts.map((c: any) => (
@@ -301,7 +301,7 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, onBack }) => {
                                 </Select>
                             </Form.Item>
                         </Col>
-                        <Col span={12}>
+                        <Col xs={24} sm={12}>
                             <Form.Item name="status" label={t('projects.formStatus')}>
                                 <Select placeholder={t('projects.statusPlaceholder')}>
                                     <Select.Option value="TODO">{t('projects.statusTodo')}</Select.Option>
@@ -312,12 +312,12 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, onBack }) => {
                         </Col>
                     </Row>
                     <Row gutter={16}>
-                        <Col span={12}>
+                        <Col xs={24} sm={12}>
                             <Form.Item name="startDate" label={t('projects.formStart')}>
                                 <DatePicker style={{ width: '100%' }} format="DD/MM/YYYY" placeholder={t('common.selectDate')} />
                             </Form.Item>
                         </Col>
-                        <Col span={12}>
+                        <Col xs={24} sm={12}>
                             <Form.Item name="endDate" label={t('projects.formEnd')}>
                                 <DatePicker style={{ width: '100%' }} format="DD/MM/YYYY" placeholder={t('common.selectDate')} />
                             </Form.Item>
@@ -738,7 +738,7 @@ function TasksTab({ projectId, phases, tasks, users, members, onRefresh, canEdit
                     </Form.Item>
 
                     <Row gutter={16}>
-                        <Col span={12}>
+                        <Col xs={24} sm={12}>
                             <Form.Item name="itemType" label={t('projects.taskCategory')}>
                                 <Select placeholder={t('projects.taskCategoryPlaceholder')} allowClear>
                                     <Select.Option value="THI_CONG">{t('projects.catConstruction')}</Select.Option>
@@ -748,7 +748,7 @@ function TasksTab({ projectId, phases, tasks, users, members, onRefresh, canEdit
                                 </Select>
                             </Form.Item>
                         </Col>
-                        <Col span={12}>
+                        <Col xs={24} sm={12}>
                             <Form.Item name="assigneeId" label={t('projects.taskAssignee')}>
                                 <Select placeholder={t('projects.taskAssigneePlaceholder')} allowClear>
                                     {members && members.length > 0 ? (
@@ -766,7 +766,7 @@ function TasksTab({ projectId, phases, tasks, users, members, onRefresh, canEdit
                     </Row>
 
                     <Row gutter={16}>
-                        <Col span={8}>
+                        <Col xs={24} sm={8}>
                             <Form.Item name="status" label={t('projects.taskStatus')} initialValue="TODO">
                                 <Select>
                                     <Select.Option value="TODO">{t('projects.statusTodo')}</Select.Option>
@@ -775,7 +775,7 @@ function TasksTab({ projectId, phases, tasks, users, members, onRefresh, canEdit
                                 </Select>
                             </Form.Item>
                         </Col>
-                        <Col span={8}>
+                        <Col xs={24} sm={8}>
                             <Form.Item name="priority" label={t('projects.taskPriority')} initialValue="MEDIUM">
                                 <Select>
                                     <Select.Option value="HIGH">{t('projects.priorityHigh')}</Select.Option>
@@ -784,7 +784,7 @@ function TasksTab({ projectId, phases, tasks, users, members, onRefresh, canEdit
                                 </Select>
                             </Form.Item>
                         </Col>
-                        <Col span={8}>
+                        <Col xs={24} sm={8}>
                             <Form.Item
                                 name="progress"
                                 initialValue={0}
@@ -825,12 +825,12 @@ function TasksTab({ projectId, phases, tasks, users, members, onRefresh, canEdit
                     </Row>
 
                     <Row gutter={16}>
-                        <Col span={12}>
+                        <Col xs={24} sm={12}>
                             <Form.Item name="startDate" label={t('projects.taskStartDate')}>
                                 <DatePicker style={{ width: '100%' }} format="DD/MM/YYYY" placeholder={t('common.selectDate')} />
                             </Form.Item>
                         </Col>
-                        <Col span={12}>
+                        <Col xs={24} sm={12}>
                             <Form.Item name="endDate" label={t('projects.taskEndDate')}>
                                 <DatePicker style={{ width: '100%' }} format="DD/MM/YYYY" placeholder={t('common.selectDate')} />
                             </Form.Item>
