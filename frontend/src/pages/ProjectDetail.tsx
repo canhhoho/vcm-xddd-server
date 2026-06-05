@@ -197,7 +197,7 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, onBack }) => {
         <div className="project-detail-container">
             {/* APPLE iOS STYLE HEADER */}
             <div className="project-header-ios">
-                <div style={{ maxWidth: 1200, margin: '0 auto', width: '100%', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <div className="header-wrapper-ios">
                     
                     <div className="header-top-row">
                         <div style={{ display: 'flex', alignItems: 'flex-start', gap: '16px', flex: 1 }}>

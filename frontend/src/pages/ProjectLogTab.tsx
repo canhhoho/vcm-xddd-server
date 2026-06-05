@@ -36,11 +36,11 @@ import type { ProjectLog, ProjectLogPayload } from '../types';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
-const WEATHER_MAP: Record<string, { icon: string; label: string; color: string }> = {
-    SUNNY:  { icon: '☀️',  label: 'Nắng',    color: '#FA8C16' },
-    CLOUDY: { icon: '⛅',  label: 'Mây',     color: '#597EF7' },
-    RAINY:  { icon: '🌧️', label: 'Mưa',     color: '#1890FF' },
-    STORMY: { icon: '⛈️', label: 'Bão/Gió', color: '#FF4D4F' },
+const WEATHER_ICONS: Record<string, { icon: string; color: string }> = {
+    SUNNY:  { icon: '☀️',  color: '#FA8C16' },
+    CLOUDY: { icon: '⛅',  color: '#597EF7' },
+    RAINY:  { icon: '🌧️', color: '#1890FF' },
+    STORMY: { icon: '⛈️', color: '#FF4D4F' },
 };
 
 // Lấy currentUser từ localStorage
@@ -106,27 +106,42 @@ const ProjectLogTab: React.FC<ProjectLogTabProps> = ({ project, members, canEdit
         return { mats, equip };
     }, [logs]);
 
+    // ── Helpers (i18n-aware) ──────────────────────────────────────────────────
+    const getWeatherLabel = (key: string) => t(`projectLog.weather.${key}`, key);
+
     // ── Handlers ─────────────────────────────────────────────────────────────
     const exportToExcel = () => {
         if (logs.length === 0) {
-            message.warning('Không có dữ liệu nhật ký trong tháng này để xuất');
+            message.warning(t('projectLog.noDataWarning'));
             return;
         }
 
         const sheetData = [
-            ['BÁO CÁO NHẬT KÝ THI CÔNG DỰ ÁN'],
-            ['Tên dự án:', project?.name || 'N/A'],
-            ['Mã dự án:', project?.code || 'N/A'],
-            ['Chủ đầu tư:', project?.investor || 'N/A'],
-            ['Địa điểm:', project?.location || 'N/A'],
-            ['Tháng báo cáo:', dayjs(currentMonth).format('MM/YYYY')],
-            ['Tiến độ TB tháng:', `${stats.avgProgress}%`],
+            [t('projectLog.export.reportTitle')],
+            [t('projectLog.export.projectName'), project?.name || 'N/A'],
+            [t('projectLog.export.projectCode'), project?.code || 'N/A'],
+            [t('projectLog.export.investor'), project?.investor || 'N/A'],
+            [t('projectLog.export.location'), project?.location || 'N/A'],
+            [t('projectLog.export.reportMonth'), dayjs(currentMonth).format('MM/YYYY')],
+            [t('projectLog.export.avgProgressLabel'), `${stats.avgProgress}%`],
             [],
-            ['STT', 'Ngày thi công', 'Thời tiết', 'Nhân sự (người)', 'Tiến độ lũy kế (%)', 'Công việc đã thực hiện', 'Vướng mắc / Sự cố', 'Vật tư sử dụng', 'Thiết bị thi công', 'Ghi chú', 'Người ghi']
+            [
+                t('projectLog.export.colNo'),
+                t('projectLog.export.colDate'),
+                t('projectLog.export.colWeather'),
+                t('projectLog.export.colWorkers'),
+                t('projectLog.export.colProgress'),
+                t('projectLog.export.colActivities'),
+                t('projectLog.export.colIssues'),
+                t('projectLog.export.colMaterials'),
+                t('projectLog.export.colEquipment'),
+                t('projectLog.export.colNote'),
+                t('projectLog.export.colRecorder'),
+            ]
         ];
 
         logs.forEach((log: ProjectLog, index: number) => {
-            const weatherText = log.weather ? WEATHER_MAP[log.weather]?.label || log.weather : '';
+            const weatherText = log.weather ? getWeatherLabel(log.weather) : '';
             sheetData.push([
                 index + 1,
                 dayjs(log.logDate).format('DD/MM/YYYY'),
@@ -149,16 +164,16 @@ const ProjectLogTab: React.FC<ProjectLogTabProps> = ({ project, members, canEdit
         ];
 
         const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, 'NhatKyThiCong');
+        XLSX.utils.book_append_sheet(wb, ws, t('projectLog.export.sheetName'));
 
-        const fileName = `NhatKyThiCong_${project?.code || 'Project'}_${currentMonth}.xlsx`;
+        const fileName = `${t('projectLog.export.fileName')}_${project?.code || 'Project'}_${currentMonth}.xlsx`;
         XLSX.writeFile(wb, fileName);
-        message.success('Đã xuất file Excel thành công!');
+        message.success(t('projectLog.excelSuccess'));
     };
 
     const exportToWord = () => {
         if (logs.length === 0) {
-            message.warning('Không có dữ liệu nhật ký trong tháng này để xuất');
+            message.warning(t('projectLog.noDataWarning'));
             return;
         }
 
@@ -167,6 +182,7 @@ const ProjectLogTab: React.FC<ProjectLogTabProps> = ({ project, members, canEdit
         const investor = project?.investor || 'N/A';
         const location = project?.location || 'N/A';
         const monthStr = dayjs(currentMonth).format('MM/YYYY');
+        const reportTitle = t('projectLog.export.reportTitle');
 
         let htmlString = `
         <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
@@ -281,88 +297,88 @@ const ProjectLogTab: React.FC<ProjectLogTabProps> = ({ project, members, canEdit
             <table class="header-table">
                 <tr>
                     <td class="header-left">
-                        CÔNG TY CỔ PHẦN CÔNG TRÌNH VIETTEL<br>
-                        <strong>CHI NHÁNH CÔNG TRÌNH MẪU DỰ ÁN</strong>
+                        ${t('projectLog.export.companyName')}<br>
+                        <strong>${t('projectLog.export.branchName')}</strong>
                     </td>
                     <td class="header-right">
-                        CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM<br>
-                        Độc lập - Tự do - Hạnh phúc<br>
+                        ${t('projectLog.export.nationalTitle')}<br>
+                        ${t('projectLog.export.nationalSubtitle')}<br>
                         ---------------------
                     </td>
                 </tr>
             </table>
 
-            <div class="title">BÁO CÁO NHẬT KÝ THI CÔNG</div>
-            <div class="subtitle">Tháng ${monthStr}</div>
+            <div class="title">${reportTitle}</div>
+            <div class="subtitle">${t('projectLog.export.reportMonth')} ${monthStr}</div>
 
-            <div class="section-title">I. THÔNG TIN CHUNG DỰ ÁN</div>
+            <div class="section-title">I. ${t('projectLog.export.reportTitle')}</div>
             <table class="info-table">
                 <tr>
-                    <td class="info-label">Tên dự án:</td>
+                    <td class="info-label">${t('projectLog.export.projectName')}</td>
                     <td>${projectName}</td>
                 </tr>
                 <tr>
-                    <td class="info-label">Mã dự án:</td>
+                    <td class="info-label">${t('projectLog.export.projectCode')}</td>
                     <td>${projectCode}</td>
                 </tr>
                 <tr>
-                    <td class="info-label">Chủ đầu tư:</td>
+                    <td class="info-label">${t('projectLog.export.investor')}</td>
                     <td>${investor}</td>
                 </tr>
                 <tr>
-                    <td class="info-label">Địa điểm thi công:</td>
+                    <td class="info-label">${t('projectLog.export.location')}</td>
                     <td>${location}</td>
                 </tr>
             </table>
 
-            <div class="section-title">II. TỔNG HỢP HIỆU SUẤT TRONG THÁNG</div>
+            <div class="section-title">II. ${t("projectLog.export.sectionSummary")}</div>
             <table class="info-table">
                 <tr>
-                    <td style="width: 50%;"><strong>Số ngày thi công thực tế:</strong> ${stats.workDays} ngày</td>
-                    <td style="width: 50%;"><strong>Tổng lượt lao động huy động:</strong> ${stats.totalWorkers} lượt người</td>
+                    <td style="width: 50%;"><strong>${t("projectLog.export.actualWorkDays")}</strong> ${stats.workDays} ${t("projectLog.workDaysUnit")}</td>
+                    <td style="width: 50%;"><strong>${t("projectLog.export.totalWorkersMobilized")}</strong> ${stats.totalWorkers} ${t("projectLog.totalWorkersUnit")}</td>
                 </tr>
                 <tr>
-                    <td style="width: 50%;"><strong>Tiến độ hoàn thành trung bình:</strong> ${stats.avgProgress}%</td>
-                    <td style="width: 50%;"><strong>Số ngày phát sinh sự cố:</strong> ${stats.incidentDays} ngày</td>
+                    <td style="width: 50%;"><strong>${t("projectLog.export.avgProgressCompleted")}</strong> ${stats.avgProgress}%</td>
+                    <td style="width: 50%;"><strong>${t("projectLog.export.incidentDaysOccurred")}</strong> ${stats.incidentDays} ${t("projectLog.workDaysUnit")}</td>
                 </tr>
             </table>
 
-            <div class="section-title">III. CHI TIẾT NHẬT KÝ THI CÔNG HÀNG NGÀY</div>
+            <div class="section-title">III. ${t("projectLog.export.sectionDetail")}</div>
             <table class="data-table">
                 <thead>
                     <tr>
-                        <th style="width: 5%;">STT</th>
-                        <th style="width: 10%;">Ngày</th>
-                        <th style="width: 10%;">Thời tiết</th>
-                        <th style="width: 8%;">Nhân sự (người)</th>
-                        <th style="width: 10%;">Tiến độ lũy kế</th>
-                        <th style="width: 37%;">Công việc thực hiện</th>
-                        <th style="width: 20%;">Vật tư & Thiết bị</th>
+                        <th style="width: 5%;">${t('projectLog.export.colNo')}</th>
+                        <th style="width: 10%;">${t('projectLog.export.colDate')}</th>
+                        <th style="width: 10%;">${t('projectLog.export.colWeather')}</th>
+                        <th style="width: 8%;">${t('projectLog.export.colWorkers')}</th>
+                        <th style="width: 10%;">${t('projectLog.export.colProgress')}</th>
+                        <th style="width: 37%;">${t('projectLog.export.colActivities')}</th>
+                        <th style="width: 20%;">${t('projectLog.export.colMaterials')} & ${t('projectLog.export.colEquipment')}</th>
                     </tr>
                 </thead>
                 <tbody>
         `;
 
         logs.forEach((log: ProjectLog, index: number) => {
-            const weatherText = log.weather ? WEATHER_MAP[log.weather]?.label || log.weather : '--';
+            const weatherText = log.weather ? getWeatherLabel(log.weather) : '--';
             const workers = log.workersCount || 0;
             const progress = `${log.progressPct || 0}%`;
 
-            let activitiesText = log.activities || 'Không ghi nhận công việc cụ thể.';
+            let activitiesText = log.activities || t('projectLog.export.noActivities');
             if (log.issues) {
-                activitiesText += `<br><strong style="color: #FF0000;">[Sự cố/Vướng mắc]:</strong> ${log.issues}`;
+                activitiesText += `<br><strong style=\"color: #FF0000;\">${t('projectLog.export.incidentIssuesLabel')}</strong> ${log.issues}`;
             }
             if (log.note) {
-                activitiesText += `<br><span style="color: #666666; font-style: italic;">(Ghi chú: ${log.note})</span>`;
+                activitiesText += `<br><span style=\"color: #666666; font-style: italic;\">${t('projectLog.export.noteLabel', { note: log.note })}</span>`;
             }
 
             let resourcesText = '';
             if (log.materials) {
-                resourcesText += `<strong>Vật tư:</strong> ${log.materials}`;
+                resourcesText += `<strong>${t('projectLog.export.materialLabel')}</strong> ${log.materials}`;
             }
             if (log.equipment) {
                 if (resourcesText) resourcesText += '<br>';
-                resourcesText += `<strong>Thiết bị:</strong> ${log.equipment}`;
+                resourcesText += `<strong>${t('projectLog.export.equipmentLabel')}</strong> ${log.equipment}`;
             }
             if (!resourcesText) resourcesText = '--';
 
@@ -386,12 +402,12 @@ const ProjectLogTab: React.FC<ProjectLogTabProps> = ({ project, members, canEdit
             <table class="sign-table">
                 <tr>
                     <td class="sign-title" style="width: 50%;">
-                        ĐẠI DIỆN BAN CHỈ HUY CÔNG TRÌNH<br>
-                        (Ký, ghi rõ họ tên)
+                        ${t('projectLog.export.repManagement')}<br>
+                        ${t('projectLog.export.signText')}
                     </td>
                     <td class="sign-title" style="width: 50%;">
-                        NGƯỜI LẬP BÁO CÁO<br>
-                        (Ký, ghi rõ họ tên)
+                        ${t('projectLog.export.repPreparedBy')}<br>
+                        ${t('projectLog.export.signText')}
                     </td>
                 </tr>
             </table>
@@ -406,12 +422,12 @@ const ProjectLogTab: React.FC<ProjectLogTabProps> = ({ project, members, canEdit
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `BaoCaoThiCong_${projectCode || 'Project'}_${currentMonth}.doc`;
+        a.download = `${t('projectLog.export.fileName')}_${projectCode || 'Project'}_${currentMonth}.doc`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
-        message.success('Đã xuất báo cáo Word thành công!');
+        message.success(t('projectLog.wordSuccess'));
     };
 
     const openNew = () => {
@@ -428,23 +444,23 @@ const ProjectLogTab: React.FC<ProjectLogTabProps> = ({ project, members, canEdit
         upsertLog.mutate(payload, {
             onSuccess: res => {
                 if (res.success) {
-                    message.success(editingLog ? 'Đã cập nhật nhật ký' : 'Đã ghi nhật ký thành công');
+                    message.success(editingLog ? t('projectLog.updateSuccess') : t('projectLog.saveSuccess'));
                     setFormOpen(false);
                 } else {
-                    message.error(res.error || 'Có lỗi xảy ra');
+                    message.error(res.error || t('common.error'));
                 }
             },
-            onError: () => message.error('Không thể lưu nhật ký'),
+            onError: () => message.error(t('projectLog.saveError')),
         });
     };
 
     const handleDelete = (id: string) => {
         deleteLog.mutate(id, {
             onSuccess: res => {
-                if (res.success) message.success('Đã xóa nhật ký');
-                else message.error(res.error || 'Có lỗi xảy ra');
+                if (res.success) message.success(t('projectLog.deleteSuccess'));
+                else message.error(res.error || t('common.error'));
             },
-            onError: () => message.error('Không thể xóa nhật ký'),
+            onError: () => message.error(t('projectLog.deleteError')),
         });
     };
 
@@ -455,188 +471,173 @@ const ProjectLogTab: React.FC<ProjectLogTabProps> = ({ project, members, canEdit
 
     // ── Render ────────────────────────────────────────────────────────────────
     return (
-        <div style={{ maxWidth: 900, margin: '0 auto' }}>
+        <div className="log-tab-container">
 
-            {/* ── Header ── */}
-            <div style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                marginBottom: 20,
-                flexWrap: 'wrap',
-                gap: 12,
-            }}>
-                {/* Month picker */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            {/* ── Toolbar ── */}
+            <div className="log-toolbar">
+                {/* Month navigator */}
+                <div className="month-navigator">
                     <Button
-                        icon={<LeftOutlined />}
+                        type="text"
+                        icon={<LeftOutlined style={{ fontSize: 11 }} />}
                         size="small"
                         onClick={prevMonth}
-                        style={{ borderRadius: 6 }}
+                        style={{ borderRadius: 6, color: '#6B7280', width: 28, height: 28, minWidth: 28, padding: 0 }}
                     />
-                    <div style={{
-                        fontWeight: 700,
-                        fontSize: 16,
-                        color: '#1F2937',
-                        minWidth: 120,
-                        textAlign: 'center',
-                    }}>
-                        {dayjs(currentMonth).format('MM/YYYY')}
+                    <div className="month-display">
+                        {dayjs(currentMonth).format('MM / YYYY')}
                     </div>
                     <Button
-                        icon={<RightOutlined />}
+                        type="text"
+                        icon={<RightOutlined style={{ fontSize: 11 }} />}
                         size="small"
                         onClick={nextMonth}
                         disabled={isCurrentMonth}
-                        style={{ borderRadius: 6 }}
+                        style={{ borderRadius: 6, color: isCurrentMonth ? '#D1D5DB' : '#6B7280', width: 28, height: 28, minWidth: 28, padding: 0 }}
                     />
                 </div>
 
                 {/* Action buttons */}
-                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
                     <Button
                         icon={<FileExcelOutlined />}
+                        size="small"
                         onClick={exportToExcel}
                         disabled={logs.length === 0}
-                        style={{ borderColor: '#10B981', color: '#10B981', borderRadius: 8 }}
+                        style={{
+                            borderColor: '#10B981', color: '#10B981', borderRadius: 7,
+                            fontWeight: 600, fontSize: 12, height: 32,
+                            opacity: logs.length === 0 ? 0.45 : 1,
+                        }}
                     >
-                        Xuất Excel
+                        {t('projectLog.exportExcel')}
                     </Button>
                     <Button
                         icon={<FileWordOutlined />}
+                        size="small"
                         onClick={exportToWord}
                         disabled={logs.length === 0}
-                        style={{ borderColor: '#3B82F6', color: '#3B82F6', borderRadius: 8 }}
+                        style={{
+                            borderColor: '#3B82F6', color: '#3B82F6', borderRadius: 7,
+                            fontWeight: 600, fontSize: 12, height: 32,
+                            opacity: logs.length === 0 ? 0.45 : 1,
+                        }}
                     >
-                        Xuất Word
+                        {t('projectLog.exportWord')}
                     </Button>
                     {canWriteLog && (
                         <Button
                             type="primary"
-                            icon={<PlusOutlined />}
+                            icon={todayLog && isCurrentMonth ? <EditOutlined /> : <PlusOutlined />}
+                            size="small"
                             onClick={openNew}
-                            style={{ background: '#E11D2E', borderColor: '#E11D2E', borderRadius: 8 }}
+                            style={{
+                                background: '#E11D2E', borderColor: '#E11D2E', borderRadius: 7,
+                                fontWeight: 600, fontSize: 12, height: 32,
+                            }}
                         >
-                            {todayLog && isCurrentMonth ? '✏️ Chỉnh sửa nhật ký hôm nay' : '+ Ghi nhật ký hôm nay'}
+                            {todayLog && isCurrentMonth ? t('projectLog.editToday') : t('projectLog.writeToday')}
                         </Button>
                     )}
                 </div>
             </div>
 
-            {/* ── Thống kê tháng ── */}
-            <div style={{
-                background: 'linear-gradient(135deg, #1F2937 0%, #374151 100%)',
-                borderRadius: 16,
-                padding: '20px 24px',
-                marginBottom: 24,
-                color: '#fff',
-            }}>
-                <div style={{ fontSize: 12, color: '#9CA3AF', marginBottom: 16, fontWeight: 600, letterSpacing: 1 }}>
-                    THỐNG KÊ THÁNG {dayjs(currentMonth).format('MM/YYYY')}
-                </div>
-                <Row gutter={[24, 16]}>
-                    <Col xs={12} sm={6}>
-                        <Statistic
-                            title={<span style={{ color: '#9CA3AF', fontSize: 12 }}>Ngày làm việc</span>}
-                            value={stats.workDays}
-                            suffix="ngày"
-                            valueStyle={{ color: '#fff', fontSize: 22 }}
-                        />
-                    </Col>
-                    <Col xs={12} sm={6}>
-                        <Statistic
-                            title={<span style={{ color: '#9CA3AF', fontSize: 12 }}>Tổng lao động</span>}
-                            value={stats.totalWorkers}
-                            suffix="lượt"
-                            prefix={<UserOutlined style={{ fontSize: 14 }} />}
-                            valueStyle={{ color: '#60A5FA', fontSize: 22 }}
-                        />
-                    </Col>
-                    <Col xs={12} sm={6}>
-                        <Statistic
-                            title={<span style={{ color: '#9CA3AF', fontSize: 12 }}>Tiến độ TB</span>}
-                            value={stats.avgProgress}
-                            suffix="%"
-                            valueStyle={{ color: stats.avgProgress >= 70 ? '#34D399' : stats.avgProgress >= 40 ? '#FCD34D' : '#F87171', fontSize: 22 }}
-                        />
-                    </Col>
-                    <Col xs={12} sm={6}>
-                        <Statistic
-                            title={<span style={{ color: '#9CA3AF', fontSize: 12 }}>Ngày có sự cố</span>}
-                            value={stats.incidentDays}
-                            suffix="ngày"
-                            prefix={<WarningOutlined style={{ fontSize: 14 }} />}
-                            valueStyle={{ color: stats.incidentDays > 0 ? '#FBBF24' : '#9CA3AF', fontSize: 22 }}
-                        />
-                    </Col>
-                </Row>
-            </div>
-
-            {/* ── Tổng hợp vật tư & thiết bị (nếu có) ── */}
-            {(monthSummaryText.mats || monthSummaryText.equip) && (
-                <div style={{
-                    display: 'grid',
-                    gridTemplateColumns: monthSummaryText.mats && monthSummaryText.equip ? '1fr 1fr' : '1fr',
-                    gap: 16,
-                    marginBottom: 24,
-                }}>
-                    {monthSummaryText.mats && (
-                        <div style={{
-                            background: '#FFFBEB',
-                            border: '1px solid #FDE68A',
-                            borderRadius: 12,
-                            padding: 16,
-                        }}>
-                            <div style={{ fontWeight: 700, color: '#D97706', marginBottom: 8, fontSize: 13 }}>
-                                📦 Vật tư sử dụng trong tháng
+            {/* ── Stats row ── */}
+            <Row gutter={[16, 16]} className="log-stats-row">
+                {[
+                    {
+                        label: t('projectLog.workDays'),
+                        value: stats.workDays,
+                        suffix: t('projectLog.workDaysUnit'),
+                        icon: '📅',
+                        color: '#6366F1',
+                        bg: '#EEF2FF',
+                    },
+                    {
+                        label: t('projectLog.totalWorkers'),
+                        value: stats.totalWorkers,
+                        suffix: t('projectLog.totalWorkersUnit'),
+                        icon: '👷',
+                        color: '#0EA5E9',
+                        bg: '#E0F2FE',
+                    },
+                    {
+                        label: t('projectLog.avgProgress'),
+                        value: `${stats.avgProgress}%`,
+                        suffix: '',
+                        icon: '📈',
+                        color: stats.avgProgress >= 70 ? '#10B981' : stats.avgProgress >= 40 ? '#F59E0B' : '#EF4444',
+                        bg: stats.avgProgress >= 70 ? '#ECFDF5' : stats.avgProgress >= 40 ? '#FFFBEB' : '#FEF2F2',
+                    },
+                    {
+                        label: t('projectLog.incidentDays'),
+                        value: stats.incidentDays,
+                        suffix: t('projectLog.workDaysUnit'),
+                        icon: '⚠️',
+                        color: stats.incidentDays > 0 ? '#F59E0B' : '#9CA3AF',
+                        bg: stats.incidentDays > 0 ? '#FFFBEB' : '#F9FAFB',
+                    },
+                ].map((s, i) => (
+                    <Col xs={12} sm={12} md={6} key={i}>
+                        <div className="log-stats-card">
+                            <div className="log-stats-icon" style={{ backgroundColor: s.bg }}>
+                                {s.icon}
                             </div>
-                            <pre style={{
-                                fontSize: 12,
-                                color: '#78350F',
-                                whiteSpace: 'pre-wrap',
-                                fontFamily: 'inherit',
-                                margin: 0,
-                                maxHeight: 150,
-                                overflowY: 'auto',
-                            }}>
-                                {monthSummaryText.mats}
-                            </pre>
+                            <div className="log-stats-info">
+                                <div className="log-stats-label">
+                                    {s.label}
+                                </div>
+                                <div className="log-stats-value" style={{ color: s.color }}>
+                                    {s.value}
+                                    {s.suffix && <span className="log-stats-suffix">{s.suffix}</span>}
+                                </div>
+                            </div>
                         </div>
+                    </Col>
+                ))}
+            </Row>
+
+            {/* ── Monthly summary (Materials & Equipment) ── */}
+            {(monthSummaryText.mats || monthSummaryText.equip) && (
+                <Row gutter={[16, 16]} className="log-stats-row">
+                    {monthSummaryText.mats && (
+                        <Col xs={24} md={monthSummaryText.equip ? 12 : 24}>
+                            <div className="summary-panel-materials">
+                                <div className="summary-panel-title" style={{ color: '#D97706' }}>
+                                    📦 {t('projectLog.materialsTitle')}
+                                </div>
+                                <pre className="summary-panel-content" style={{ color: '#78350F' }}>
+                                    {monthSummaryText.mats}
+                                </pre>
+                            </div>
+                        </Col>
                     )}
                     {monthSummaryText.equip && (
-                        <div style={{
-                            background: '#F5F3FF',
-                            border: '1px solid #DDD6FE',
-                            borderRadius: 12,
-                            padding: 16,
-                        }}>
-                            <div style={{ fontWeight: 700, color: '#7C3AED', marginBottom: 8, fontSize: 13 }}>
-                                <ToolOutlined style={{ marginRight: 4 }} />
-                                Thiết bị thi công trong tháng
+                        <Col xs={24} md={monthSummaryText.mats ? 12 : 24}>
+                            <div className="summary-panel-equipment">
+                                <div className="summary-panel-title" style={{ color: '#7C3AED' }}>
+                                    <ToolOutlined style={{ marginRight: 4 }} />
+                                    {t('projectLog.equipmentTitle')}
+                                </div>
+                                <pre className="summary-panel-content" style={{ color: '#4C1D95' }}>
+                                    {monthSummaryText.equip}
+                                </pre>
                             </div>
-                            <pre style={{
-                                fontSize: 12,
-                                color: '#4C1D95',
-                                whiteSpace: 'pre-wrap',
-                                fontFamily: 'inherit',
-                                margin: 0,
-                                maxHeight: 150,
-                                overflowY: 'auto',
-                            }}>
-                                {monthSummaryText.equip}
-                            </pre>
-                        </div>
+                        </Col>
                     )}
-                </div>
+                </Row>
             )}
 
-            {/* ── Timeline ── */}
-            <Divider style={{ margin: '0 0 20px' }}>
-                <span style={{ fontSize: 12, color: '#9CA3AF' }}>
-                    {logs.length > 0 ? `${logs.length} nhật ký` : 'Nhật ký thi công'}
+            {/* ── Log divider ── */}
+            <div className="log-timeline-divider">
+                <div className="log-timeline-line" />
+                <span className="log-timeline-text">
+                    {logs.length > 0 ? t('projectLog.logsCount', { count: logs.length }) : t('projects.tabLogs')}
                 </span>
-            </Divider>
+                <div className="log-timeline-line" />
+            </div>
 
+            {/* ── Log list ── */}
             {isLoading ? (
                 <div style={{ textAlign: 'center', padding: 48 }}>
                     <Spin size="large" />
@@ -647,21 +648,20 @@ const ProjectLogTab: React.FC<ProjectLogTabProps> = ({ project, members, canEdit
                     description={
                         <div>
                             <div style={{ fontWeight: 600, color: '#374151', marginBottom: 4 }}>
-                                Chưa có nhật ký trong tháng {dayjs(currentMonth).format('MM/YYYY')}
+                                {t('projectLog.noLogsTitle')} {dayjs(currentMonth).format('MM/YYYY')}
                             </div>
                             <div style={{ fontSize: 13, color: '#9CA3AF' }}>
-                                {canWriteLog
-                                    ? 'Nhấn "+ Ghi nhật ký hôm nay" để bắt đầu'
-                                    : 'Chưa có dữ liệu nhật ký thi công'}
+                                {canWriteLog ? t('projectLog.noLogsHint') : t('projectLog.noLogsReadOnly')}
                             </div>
                         </div>
                     }
-                    style={{ padding: '40px 0' }}
+                    style={{ padding: '32px 0' }}
                 />
             ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                     {logs.map((log: ProjectLog) => {
-                        const weather = log.weather ? WEATHER_MAP[log.weather] : null;
+                        const weather = log.weather ? WEATHER_ICONS[log.weather] : null;
+                        const weatherLabel = log.weather ? getWeatherLabel(log.weather) : '';
                         const isToday = log.logDate === today;
                         const pct = log.progressPct || 0;
                         const progressColor = pct >= 80 ? '#10B981' : pct >= 50 ? '#3B82F6' : pct >= 30 ? '#F59E0B' : '#94A3B8';
@@ -670,87 +670,58 @@ const ProjectLogTab: React.FC<ProjectLogTabProps> = ({ project, members, canEdit
                         return (
                             <div
                                 key={log.id}
-                                style={{
-                                    background: '#fff',
-                                    borderRadius: 14,
-                                    border: `1.5px solid ${isToday ? '#E11D2E' : '#E5E7EB'}`,
-                                    overflow: 'hidden',
-                                    boxShadow: isToday ? '0 0 0 3px rgba(225,29,46,0.08)' : '0 1px 4px rgba(0,0,0,0.05)',
-                                    transition: 'all 0.2s ease',
-                                }}
+                                className={`log-item-card ${isToday ? 'today-active' : ''}`}
+                                style={{ borderLeft: `4px solid ${isToday ? '#E11D2E' : progressColor}` }}
                             >
-                                {/* Log header */}
-                                <div style={{
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'space-between',
-                                    padding: '14px 18px',
-                                    background: isToday ? '#FFF5F5' : '#F9FAFB',
-                                    borderBottom: '1px solid #E5E7EB',
-                                }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                                        {/* Date */}
-                                        <div style={{
-                                            fontWeight: 800,
-                                            fontSize: 15,
-                                            color: isToday ? '#E11D2E' : '#1F2937',
-                                        }}>
-                                            {dayjs(log.logDate).format('DD/MM/YYYY')}
-                                            {isToday && (
-                                                <Tag color="red" style={{ marginLeft: 8, fontSize: 10, fontWeight: 700 }}>
-                                                    HÔM NAY
-                                                </Tag>
-                                            )}
-                                        </div>
-
-                                        {/* Weather */}
+                                {/* Header row */}
+                                <div className={`log-item-header ${isToday ? 'today-bg' : 'normal-bg'}`}>
+                                    {/* Left: date + weather + workers */}
+                                    <div className="log-item-meta">
+                                        <span className={`log-item-date ${isToday ? 'today-text' : 'normal-text'}`}>{dayjs(log.logDate).format('ddd, DD/MM/YYYY')}</span>
+                                        {isToday && (
+                                            <Tag color="red" style={{ fontSize: 10, fontWeight: 700, margin: 0, lineHeight: '18px' }}>
+                                                {t('projectLog.today')}
+                                            </Tag>
+                                        )}
                                         {weather && (
-                                            <Tooltip title={weather.label}>
-                                                <span style={{ fontSize: 20 }}>{weather.icon}</span>
+                                            <Tooltip title={weatherLabel}>
+                                                <span style={{ fontSize: 16, cursor: 'default' }}>{weather.icon}</span>
                                             </Tooltip>
                                         )}
-
-                                        {/* Workers */}
                                         {(log.workersCount ?? 0) > 0 && (
-                                            <Tag icon={<UserOutlined />} color="blue" style={{ fontSize: 12 }}>
-                                                {log.workersCount} người
-                                            </Tag>
+                                            <span style={{ fontSize: 12, color: '#6B7280', display: 'flex', alignItems: 'center', gap: 3 }}>
+                                                <UserOutlined style={{ fontSize: 11 }} />
+                                                {log.workersCount} {t('projectLog.workers')}
+                                            </span>
                                         )}
                                     </div>
 
-                                    {/* Actions */}
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                        {/* Progress badge */}
-                                        <div style={{
-                                            fontWeight: 700,
-                                            fontSize: 14,
-                                            color: progressColor,
-                                            minWidth: 40,
-                                            textAlign: 'right',
-                                        }}>
+                                    <div className="log-item-actions">
+                                        <div className="log-item-progress-badge" style={{ background: `${progressColor}18`, color: progressColor }}>
                                             {pct}%
                                         </div>
                                         {canEditThisLog && (
                                             <>
                                                 <Button
+                                                    type="text"
                                                     size="small"
                                                     icon={<EditOutlined />}
                                                     onClick={() => openEdit(log)}
-                                                    style={{ borderRadius: 6 }}
+                                                    style={{ color: '#6B7280', borderRadius: 6, width: 28, height: 28, padding: 0 }}
                                                 />
                                                 <Popconfirm
-                                                    title="Xóa nhật ký này?"
-                                                    description="Hành động này không thể hoàn tác."
+                                                    title={t('projectLog.deleteConfirm')}
+                                                    description={t('projectLog.deleteConfirmDesc')}
                                                     onConfirm={() => handleDelete(log.id)}
-                                                    okText="Xóa"
-                                                    cancelText="Hủy"
+                                                    okText={t('projectLog.deleteOk')}
+                                                    cancelText={t('projectLog.deleteCancel')}
                                                     okButtonProps={{ danger: true }}
                                                 >
                                                     <Button
+                                                        type="text"
                                                         size="small"
                                                         icon={<DeleteOutlined />}
-                                                        danger
-                                                        style={{ borderRadius: 6 }}
+                                                        style={{ color: '#EF4444', borderRadius: 6, width: 28, height: 28, padding: 0 }}
                                                     />
                                                 </Popconfirm>
                                             </>
@@ -764,19 +735,19 @@ const ProjectLogTab: React.FC<ProjectLogTabProps> = ({ project, members, canEdit
                                     showInfo={false}
                                     strokeColor={progressColor}
                                     trailColor="#F3F4F6"
-                                    strokeWidth={4}
-                                    style={{ margin: 0, padding: 0 }}
+                                    strokeWidth={3}
+                                    style={{ margin: 0, padding: 0, display: 'block' }}
                                 />
 
-                                {/* Log body */}
-                                <div style={{ padding: '14px 18px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+                                {/* Body */}
+                                <div className="log-item-body">
                                     {/* Activities */}
                                     {log.activities && (
                                         <div>
-                                            <div style={{ fontSize: 11, color: '#6B7280', fontWeight: 600, marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>
-                                                📋 Công việc đã thực hiện
+                                            <div className="log-item-section-title">
+                                                {t('projectLog.activitiesLabel')}
                                             </div>
-                                            <div style={{ fontSize: 13, color: '#374151', whiteSpace: 'pre-wrap', lineHeight: 1.6 }}>
+                                            <div className="log-item-activities">
                                                 {log.activities}
                                             </div>
                                         </div>
@@ -784,61 +755,56 @@ const ProjectLogTab: React.FC<ProjectLogTabProps> = ({ project, members, canEdit
 
                                     {/* Issues */}
                                     {log.issues && (
-                                        <div style={{
-                                            background: '#FFFBEB',
-                                            border: '1px solid #FDE68A',
-                                            borderRadius: 8,
-                                            padding: '8px 12px',
-                                        }}>
-                                            <div style={{ fontSize: 11, color: '#D97706', fontWeight: 600, marginBottom: 2 }}>
-                                                ⚠️ Vướng mắc / Sự cố
+                                        <div className="log-item-issues-box">
+                                            <div className="log-item-issues-title">
+                                                {t('projectLog.issuesLabel')}
                                             </div>
-                                            <div style={{ fontSize: 13, color: '#78350F', whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>
+                                            <div className="log-item-issues-text">
                                                 {log.issues}
                                             </div>
                                         </div>
                                     )}
 
-                                    {/* Materials + Equipment */}
+                                    {/* Materials + Equipment in 2 columns */}
                                     {(log.materials || log.equipment) && (
-                                        <div style={{ display: 'flex', gap: 12 }}>
+                                        <Row gutter={[12, 8]}>
                                             {log.materials && (
-                                                <div style={{ flex: 1 }}>
-                                                    <div style={{ fontSize: 11, color: '#6B7280', fontWeight: 600, marginBottom: 2 }}>
-                                                        📦 Vật tư
+                                                <Col xs={24} sm={12} className="log-item-resource-col">
+                                                    <div className="log-item-section-title">
+                                                        {t('projectLog.materialsLabel')}
                                                     </div>
-                                                    <div style={{ fontSize: 12, color: '#4B5563', whiteSpace: 'pre-wrap' }}>
+                                                    <div className="log-item-resource-text">
                                                         {log.materials}
                                                     </div>
-                                                </div>
+                                                </Col>
                                             )}
                                             {log.equipment && (
-                                                <div style={{ flex: 1 }}>
-                                                    <div style={{ fontSize: 11, color: '#6B7280', fontWeight: 600, marginBottom: 2 }}>
-                                                        <ToolOutlined style={{ marginRight: 2 }} />Thiết bị
+                                                <Col xs={24} sm={12} className="log-item-resource-col">
+                                                    <div className="log-item-section-title">
+                                                        <ToolOutlined style={{ marginRight: 3 }} />{t('projectLog.equipmentLabel')}
                                                     </div>
-                                                    <div style={{ fontSize: 12, color: '#4B5563', whiteSpace: 'pre-wrap' }}>
+                                                    <div className="log-item-resource-text">
                                                         {log.equipment}
                                                     </div>
-                                                </div>
+                                                </Col>
                                             )}
-                                        </div>
+                                        </Row>
                                     )}
 
                                     {/* Note */}
                                     {log.note && (
-                                        <div style={{ fontSize: 12, color: '#9CA3AF', fontStyle: 'italic' }}>
+                                        <div className="log-item-note">
                                             💬 {log.note}
                                         </div>
                                     )}
 
-                                    {/* Footer: người ghi */}
-                                    <div style={{ fontSize: 11, color: '#D1D5DB', marginTop: 4, paddingTop: 8, borderTop: '1px solid #F3F4F6' }}>
-                                        Ghi bởi: <strong style={{ color: '#9CA3AF' }}>{log.createdByName || 'N/A'}</strong>
+                                    {/* Footer */}
+                                    <div className="log-item-footer">
+                                        <span>
+                                            {t('projectLog.createdBy')} <strong style={{ color: '#9CA3AF' }}>{log.createdByName || 'N/A'}</strong>
+                                        </span>
                                         {log.updatedAt && (
-                                            <span style={{ marginLeft: 8 }}>
-                                                · Cập nhật lúc {dayjs(log.updatedAt).format('HH:mm DD/MM')}
-                                            </span>
+                                            <span>{t('projectLog.updatedAt')} {dayjs(log.updatedAt).format('HH:mm DD/MM')}</span>
                                         )}
                                     </div>
                                 </div>

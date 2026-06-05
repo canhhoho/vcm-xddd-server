@@ -22,6 +22,8 @@
 - [x] Fix i18n dashboard (chart labels, duplicate keys)
 - [x] Deploy changes (contract dedup, invoice export i18n, dashboard i18n)
 - [x] Deploy Google Apps Script Web App lên Ubuntu Server
+- [x] Project Daily Logs: UI Optimization & Bilingual Export Support
+- [x] Project Detail UI Redesign: Spacing optimization, Apple style, responsive tasks & grid info strip
 - [ ] _Thêm task mới tại đây..._
 
 ### 🟢 Revit Add-in (HVC Tools)

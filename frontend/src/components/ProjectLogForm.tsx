@@ -33,9 +33,10 @@ const WEATHER_OPTIONS: { value: WeatherType; icon: string; label: string; bg: st
 interface WeatherSelectorProps {
     value?: WeatherType;
     onChange?: (v: WeatherType) => void;
+    t: (key: string) => string;
 }
 
-const WeatherSelector: React.FC<WeatherSelectorProps> = ({ value, onChange }) => (
+const WeatherSelector: React.FC<WeatherSelectorProps> = ({ value, onChange, t }) => (
     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
         {WEATHER_OPTIONS.map(opt => {
             const selected = value === opt.value;
@@ -61,7 +62,7 @@ const WeatherSelector: React.FC<WeatherSelectorProps> = ({ value, onChange }) =>
                     }}
                 >
                     <span style={{ fontSize: 18 }}>{opt.icon}</span>
-                    {opt.label}
+                    {t(`projectLog.weather.${opt.value}`)}
                 </button>
             );
         })}
@@ -121,12 +122,14 @@ const ProjectLogForm: React.FC<ProjectLogFormProps> = ({
             };
             onSave(payload);
         } catch {
-            message.warning('Vui lòng kiểm tra lại form');
+            message.warning(t('projectLog.form.logDateReq'));
         }
     };
 
     const isEditing = !!editingLog;
-    const title = isEditing ? '✏️ Chỉnh sửa nhật ký' : '📋 Ghi nhật ký thi công';
+    const title = isEditing
+        ? `✏️ ${t('projectLog.form.titleEdit')}`
+        : `📋 ${t('projectLog.form.titleAdd')}`;
 
     return (
         <Drawer
@@ -135,7 +138,7 @@ const ProjectLogForm: React.FC<ProjectLogFormProps> = ({
                     <div style={{ fontWeight: 700, fontSize: 15, color: '#1F2937' }}>{title}</div>
                     {isEditing && (
                         <div style={{ fontSize: 12, color: '#6B7280', marginTop: 2 }}>
-                            Ngày {dayjs(editingLog?.logDate).format('DD/MM/YYYY')}
+                            {dayjs(editingLog?.logDate).format('DD/MM/YYYY')}
                         </div>
                     )}
                 </div>
@@ -165,13 +168,13 @@ const ProjectLogForm: React.FC<ProjectLogFormProps> = ({
                 {/* Ngày */}
                 <Form.Item
                     name="logDate"
-                    label={<span style={{ fontWeight: 600 }}>📅 Ngày</span>}
-                    rules={[{ required: true, message: 'Chọn ngày' }]}
+                    label={<span style={{ fontWeight: 600 }}>📅 {t('projectLog.form.logDate')}</span>}
+                    rules={[{ required: true, message: t('projectLog.form.logDateReq') }]}
                 >
                     <DatePicker
                         format="DD/MM/YYYY"
                         style={{ width: '100%' }}
-                        placeholder="Chọn ngày"
+                        placeholder={t('common.selectDate')}
                         disabledDate={d => d && d.isAfter(dayjs(), 'day')}
                     />
                 </Form.Item>
@@ -179,9 +182,9 @@ const ProjectLogForm: React.FC<ProjectLogFormProps> = ({
                 {/* Thời tiết */}
                 <Form.Item
                     name="weather"
-                    label={<span style={{ fontWeight: 600 }}>🌤️ Thời tiết</span>}
+                    label={<span style={{ fontWeight: 600 }}>🌤️ {t('projectLog.form.weather')}</span>}
                 >
-                    <WeatherSelector />
+                    <WeatherSelector t={t} />
                 </Form.Item>
 
                 {/* Nhân sự + Tiến độ */}
@@ -192,7 +195,7 @@ const ProjectLogForm: React.FC<ProjectLogFormProps> = ({
                             label={
                                 <span style={{ fontWeight: 600 }}>
                                     <UserOutlined style={{ marginRight: 4, color: '#3B82F6' }} />
-                                    Số lao động
+                                    {t('projectLog.form.workers')}
                                 </span>
                             }
                         >
@@ -200,7 +203,7 @@ const ProjectLogForm: React.FC<ProjectLogFormProps> = ({
                                 min={0}
                                 max={9999}
                                 style={{ width: '100%' }}
-                                addonAfter="người"
+                                addonAfter={t('projectLog.workers')}
                                 placeholder="0"
                             />
                         </Form.Item>
@@ -209,7 +212,7 @@ const ProjectLogForm: React.FC<ProjectLogFormProps> = ({
                         <Form.Item
                             name="progressPct"
                             initialValue={0}
-                            label={<span style={{ fontWeight: 600 }}>📈 Tiến độ</span>}
+                            label={<span style={{ fontWeight: 600 }}>📈 {t('projectLog.form.progress')}</span>}
                         >
                             <Row align="middle" gutter={8}>
                                 <Col flex="auto">
@@ -245,13 +248,13 @@ const ProjectLogForm: React.FC<ProjectLogFormProps> = ({
                     label={
                         <span style={{ fontWeight: 600 }}>
                             <FormOutlined style={{ marginRight: 4, color: '#10B981' }} />
-                            Công việc đã thực hiện
+                            {t('projectLog.form.activities')}
                         </span>
                     }
                 >
                     <TextArea
                         rows={4}
-                        placeholder="Mô tả các hạng mục đã thi công trong ngày..."
+                        placeholder={t('projectLog.form.activitiesPlaceholder')}
                         showCount
                         maxLength={2000}
                     />
@@ -263,14 +266,14 @@ const ProjectLogForm: React.FC<ProjectLogFormProps> = ({
                     label={
                         <span style={{ fontWeight: 600 }}>
                             <WarningOutlined style={{ marginRight: 4, color: '#F59E0B' }} />
-                            Vướng mắc / Sự cố
-                            <span style={{ fontWeight: 400, color: '#9CA3AF', marginLeft: 6, fontSize: 12 }}>(nếu có)</span>
+                            {t('projectLog.form.issues')}
+                            <span style={{ fontWeight: 400, color: '#9CA3AF', marginLeft: 6, fontSize: 12 }}>{t('common.optional')}</span>
                         </span>
                     }
                 >
                     <TextArea
                         rows={3}
-                        placeholder="Ghi chú vướng mắc hoặc sự cố phát sinh..."
+                        placeholder={t('projectLog.form.issuesPlaceholder')}
                         showCount
                         maxLength={1000}
                     />
@@ -283,14 +286,14 @@ const ProjectLogForm: React.FC<ProjectLogFormProps> = ({
                             name="materials"
                             label={
                                 <span style={{ fontWeight: 600 }}>
-                                    📦 Vật tư sử dụng
-                                    <span style={{ fontWeight: 400, color: '#9CA3AF', marginLeft: 6, fontSize: 12 }}>(nếu có)</span>
+                                    📦 {t('projectLog.form.materials')}
+                                    <span style={{ fontWeight: 400, color: '#9CA3AF', marginLeft: 6, fontSize: 12 }}>{t('common.optional')}</span>
                                 </span>
                             }
                         >
                             <TextArea
                                 rows={3}
-                                placeholder="VD: 50 bao xi măng, 5m³ cát..."
+                                placeholder={t('projectLog.form.materialsPlaceholder')}
                                 maxLength={500}
                             />
                         </Form.Item>
@@ -301,14 +304,14 @@ const ProjectLogForm: React.FC<ProjectLogFormProps> = ({
                             label={
                                 <span style={{ fontWeight: 600 }}>
                                     <ToolOutlined style={{ marginRight: 4, color: '#8B5CF6' }} />
-                                    Thiết bị thi công
-                                    <span style={{ fontWeight: 400, color: '#9CA3AF', marginLeft: 6, fontSize: 12 }}>(nếu có)</span>
+                                    {t('projectLog.form.equipment')}
+                                    <span style={{ fontWeight: 400, color: '#9CA3AF', marginLeft: 6, fontSize: 12 }}>{t('common.optional')}</span>
                                 </span>
                             }
                         >
                             <TextArea
                                 rows={3}
-                                placeholder="VD: 2 máy đầm, 1 cẩu tháp..."
+                                placeholder={t('projectLog.form.equipmentPlaceholder')}
                                 maxLength={500}
                             />
                         </Form.Item>
@@ -318,11 +321,11 @@ const ProjectLogForm: React.FC<ProjectLogFormProps> = ({
                 {/* Ghi chú */}
                 <Form.Item
                     name="note"
-                    label={<span style={{ fontWeight: 600 }}>💬 Ghi chú thêm</span>}
+                    label={<span style={{ fontWeight: 600 }}>💬 {t('projectLog.form.note')}</span>}
                 >
                     <TextArea
                         rows={2}
-                        placeholder="Ghi chú khác..."
+                        placeholder={t('projectLog.form.notePlaceholder')}
                         maxLength={500}
                     />
                 </Form.Item>

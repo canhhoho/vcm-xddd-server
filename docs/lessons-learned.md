@@ -55,3 +55,37 @@
 ---
 
 > _Các phiên tiếp theo sẽ được append bên dưới bởi skill `session-end`._
+
+---
+
+## 📅 2026-06-05 | Phiên: Fix TypeScript Build Errors (ProjectLogTab + GasApiService)
+
+### 🐛 Bugs đã sửa
+
+- **Bug**: 15 lỗi `TS7006: Parameter implicitly has an 'any' type` trong `ProjectLogTab.tsx`
+  - **Nguyên nhân gốc**: TypeScript strict mode không thể infer type cho arrow function params khi context là `any[]` (ví dụ: `.forEach((log, index) => sheetData.push([...]))`). `sheetData` là `any[][]` nên TypeScript mất khả năng infer ngược.
+  - **Fix**: Annotate explicit `: ProjectLog` và `: number` cho tất cả callback params
+  - **Bài học**: Khi export function, callback trong context `any[]` → **luôn annotate type tường minh**
+
+- **Bug**: Lỗi `TS2420: Class 'GasApiService' incorrectly implements interface 'IApiService'`
+  - **Nguyên nhân gốc**: Thêm 3 methods vào `IApiService` và `RestApiService` cho feature `ProjectLog`, nhưng **quên cập nhật `GasApiService`**
+  - **Fix**: Thêm `getProjectLogs`, `upsertProjectLog`, `deleteProjectLog` vào `api.gas.ts`
+  - **Bài học**: Interface contract bắt buộc cả hai implementation. Xem quy trình trong `frontend-patterns.md`
+
+### ⚠️ Gotchas
+
+- **Bẫy `any[]` context**: Khi `sheetData: any[][]` và dùng `.forEach((log, index) => sheetData.push([index, log.date]))`, TypeScript strict mode sẽ lỗi vì không infer được type của `log` và `index`.
+  - **Workaround**: Annotate explicit `(log: ProjectLog, index: number)` — không cần refactor logic
+
+- **Bẫy dual-implementation**: `IApiService` có 2 class implement: `RestApiService` (REST) và `GasApiService` (Google Apps Script / mock). Khi thêm method mới vào interface, **cả hai đều phải implement** — TypeScript không báo lỗi cho REST nếu GAS thiếu cho đến khi build.
+
+### 📐 Patterns hữu ích
+
+- **Pattern tsc --noEmit**: Chạy `npx tsc --noEmit` trước khi `npm run build` để kiểm tra TypeScript nhanh (không mất thời gian bundle). Giúp detect lỗi type trong vài giây thay vì chờ 60 giây build Vite.
+
+- **Pattern checklist khi thêm API method mới**:
+  1. `api.interface.ts` → khai báo contract
+  2. `api.rest.ts` → REST implementation  
+  3. `api.gas.ts` → GAS/mock implementation  
+  4. `tsc --noEmit` → verify không lỗi
+
