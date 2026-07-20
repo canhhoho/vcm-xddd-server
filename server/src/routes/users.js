@@ -40,7 +40,7 @@ router.get('/', async (req, res) => {
           COALESCE(p.code, u.position_code) as position_code,
           CASE
             WHEN p.name IS NOT NULL AND p.name != '' AND p.name !~ '^[0-9a-f]{8}-[0-9a-f]{4}-' THEN p.name
-            WHEN u.position_name IS NOT NULL AND u.position_name != '' THEN u.position_name
+            WHEN u.position_name IS NOT NULL AND u.position_name != '' AND u.position_name !~ '^[0-9a-f]{8}-[0-9a-f]{4}-' THEN u.position_name
             ELSE COALESCE(p.name, '')
           END as position_name,
           COALESCE(NULLIF(p.category, ''), u.category) as category,

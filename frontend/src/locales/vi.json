@@ -366,7 +366,7 @@
         "priorityMedium": "Trung bình",
         "priorityLow": "Thấp",
         "noAssignee": "Chưa có nhân sự",
-        "statusTodo": "Chưa bắt đầu",
+        "statusTodo": "Chưa thực hiện",
         "statusInProcess": "Đang thực hiện",
         "statusDone": "Hoàn thành",
         "deleteTaskConfirm": "Xóa công việc này?",

@@ -90,7 +90,9 @@ const Projects: React.FC = () => {
             key: 'status',
             label: t('common.status'),
             value: statusFilter,
-            displayValue: appConfig?.STATUS ? appConfig.STATUS[statusFilter || ''] : statusFilter,
+            displayValue: statusFilter
+                ? t(statusFilter === 'INPROCESS' ? 'projects.statusInProcess' : statusFilter === 'DONE' ? 'projects.statusDone' : 'projects.statusTodo')
+                : statusFilter,
             onRemove: () => setStatusFilter(undefined)
         },
         {
@@ -302,20 +304,9 @@ const Projects: React.FC = () => {
                         allowClear
                         style={{ width: '100%' }}
                     >
-                        {appConfig?.STATUS && (
-                            <>
-                                <Option value="TODO">{appConfig.STATUS.TODO}</Option>
-                                <Option value="INPROCESS">{appConfig.STATUS.IN_PROGRESS}</Option>
-                                <Option value="DONE">{appConfig.STATUS.DONE}</Option>
-                            </>
-                        )}
-                        {!appConfig?.STATUS && (
-                            <>
-                                <Option value="TODO">{t('projects.statusTodo')}</Option>
-                                <Option value="INPROCESS">{t('projects.statusInProcess')}</Option>
-                                <Option value="DONE">{t('projects.statusDone')}</Option>
-                            </>
-                        )}
+                        <Option value="TODO">{t('projects.statusTodo')}</Option>
+                        <Option value="INPROCESS">{t('projects.statusInProcess')}</Option>
+                        <Option value="DONE">{t('projects.statusDone')}</Option>
                     </Select>
                 </Col>
                 <Col xs={24} sm={12} md={8}>
@@ -479,20 +470,9 @@ const Projects: React.FC = () => {
                         <Col span={12}>
                             <Form.Item name="status" label={t('projects.formStatus')}>
                                 <Select placeholder={t('projects.statusPlaceholder')}>
-                                    {appConfig?.STATUS && (
-                                        <>
-                                            <Option value="TODO">{appConfig.STATUS.TODO}</Option>
-                                            <Option value="INPROCESS">{appConfig.STATUS.IN_PROGRESS}</Option>
-                                            <Option value="DONE">{appConfig.STATUS.DONE}</Option>
-                                        </>
-                                    )}
-                                    {!appConfig?.STATUS && (
-                                        <>
-                                            <Option value="TODO">{t('projects.statusTodo')}</Option>
-                                            <Option value="INPROCESS">{t('projects.statusInProcess')}</Option>
-                                            <Option value="DONE">{t('projects.statusDone')}</Option>
-                                        </>
-                                    )}
+                                    <Option value="TODO">{t('projects.statusTodo')}</Option>
+                                    <Option value="INPROCESS">{t('projects.statusInProcess')}</Option>
+                                    <Option value="DONE">{t('projects.statusDone')}</Option>
                                 </Select>
                             </Form.Item>
                         </Col>

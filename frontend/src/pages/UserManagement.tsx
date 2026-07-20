@@ -577,7 +577,8 @@ const UserManagement: React.FC = () => {
             width: 140,
             render: (text: string, record: User) => {
                 const pos = positions.find((p: Position) => p.id === record.positionId);
-                const label = pos ? (t(`users.positions.${pos.code}`, pos.name) as string) : text;
+                const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-/i.test(text || '');
+                const label = pos ? (t(`users.positions.${pos.code}`, pos.name) as string) : (isUuid ? '' : text);
                 return label ? <Text strong style={{ color: '#1890ff' }}>{label}</Text> : <Text type="secondary">-</Text>;
             }
         },

@@ -172,6 +172,8 @@ function toNum(val) {
   return parseFloat(str) || 0;
 }
 function toStr(val) { return val ? String(val) : ''; }
+// Sheets sometimes carry a raw UUID in name columns (mis-mapped ID) — treat it as missing
+function nonUuid(val) { const s = toStr(val); return /^[0-9a-f]{8}-[0-9a-f]{4}-/i.test(s) ? '' : s; }
 
 async function migrate() {
   console.log('🚀 VCM XDDD — Auto Data Migration');
@@ -248,7 +250,7 @@ async function migrate() {
             `INSERT INTO users (id, email, password, name, role, position_id, position_code, position_name, category, description, branches, contracts, projects, targets, business, created_at) 
              VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16) ON CONFLICT (id) DO NOTHING`,
             [toStr(g(u,'id')), toStr(g(u,'email')), toStr(g(u,'password')), toStr(g(u,'name')), toStr(g(u,'role')||'VIEW'),
-             toStr(g(u,'positionid','position_id')), toStr(g(u,'positioncode','position_code')), toStr(g(u,'positionname','position_name')), toStr(g(u,'category')),
+             toStr(g(u,'positionid','position_id')), toStr(g(u,'positioncode','position_code')), nonUuid(g(u,'positionname','position_name')), toStr(g(u,'category')),
              toStr(g(u,'description')), toStr(g(u,'branches')), toStr(g(u,'contracts')), toStr(g(u,'projects')),
              toStr(g(u,'targets')), toStr(g(u,'business')), toDate(g(u,'createdat','createdAt')) || new Date().toISOString()]
           );

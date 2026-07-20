@@ -762,19 +762,9 @@ const Contracts: React.FC = () => {
                                 rules={[{ required: true, message: t('contracts.formStatusRequired') }]}
                             >
                                 <Select placeholder={t('contracts.formStatusPlaceholder')}>
-                                    {appConfig?.STATUS ? (
-                                        Object.entries(appConfig.STATUS).map(([key, label]) => (
-                                            <Option key={key} value={key === 'IN_PROGRESS' ? 'INPROCESS' : key}>
-                                                {label as string}
-                                            </Option>
-                                        ))
-                                    ) : (
-                                        <>
-                                            <Option value="TODO">{t('contracts.statusTodo')}</Option>
-                                            <Option value="INPROCESS">{t('contracts.statusInProgress')}</Option>
-                                            <Option value="DONE">{t('contracts.statusDone')}</Option>
-                                        </>
-                                    )}
+                                    <Option value="TODO">{t('contracts.statusTodo')}</Option>
+                                    <Option value="INPROCESS">{t('contracts.statusInProgress')}</Option>
+                                    <Option value="DONE">{t('contracts.statusDone')}</Option>
                                 </Select>
                             </Form.Item>
                         </Col>
