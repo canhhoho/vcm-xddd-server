@@ -336,3 +336,27 @@ CREATE TABLE IF NOT EXISTS partners (
 );
 CREATE INDEX IF NOT EXISTS idx_partners_type   ON partners(type);
 CREATE INDEX IF NOT EXISTS idx_partners_branch ON partners(branch_id);
+
+-- ============================================================
+-- 19. project_logs (Nhật ký thi công hàng ngày — 1 record/ngày/project)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS project_logs (
+  id              VARCHAR(50) PRIMARY KEY,
+  project_id      VARCHAR(50) NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  log_date        DATE NOT NULL,
+  weather         VARCHAR(20),        -- 'SUNNY' | 'CLOUDY' | 'RAINY' | 'STORMY'
+  workers_count   INTEGER DEFAULT 0,  -- Số lao động trong ngày
+  progress_pct    INTEGER DEFAULT 0 CHECK (progress_pct BETWEEN 0 AND 100),
+  activities      TEXT,               -- Công việc đã thực hiện trong ngày
+  issues          TEXT,               -- Vướng mắc / sự cố
+  materials       TEXT,               -- Vật tư sử dụng
+  equipment       TEXT,               -- Thiết bị thi công
+  note            TEXT,               -- Ghi chú thêm
+  created_by      VARCHAR(50) REFERENCES users(id) ON DELETE SET NULL,
+  created_by_name VARCHAR(100),       -- Cache tên người tạo
+  updated_by      VARCHAR(50) REFERENCES users(id) ON DELETE SET NULL,
+  updated_at      TIMESTAMPTZ DEFAULT NOW(),
+  created_at      TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(project_id, log_date)
+);
+CREATE INDEX IF NOT EXISTS idx_project_logs_project_date ON project_logs(project_id, log_date DESC);

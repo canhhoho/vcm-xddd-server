@@ -46,6 +46,13 @@
 !server/scripts/seed-data.sql
 !server/scripts/auto-migrate.js
 
+# Migration scripts (quy trình update trên server cần các file này)
+!server/scripts/run-migration.js
+!server/scripts/migrate-add-project-logs.sql
+!server/scripts/migrate-monthly-daily-plans.sql
+!server/scripts/migrate-add-plans-permission.sql
+!server/scripts/fix-position-uuid.sql
+
 # Upload folder structure
 !server/uploads/
 !server/uploads/.gitkeep
