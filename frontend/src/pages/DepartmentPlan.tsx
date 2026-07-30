@@ -24,6 +24,9 @@ const STATUS_COLORS: Record<string, string> = {
     TODO: 'default', IN_PROGRESS: 'processing', DONE: 'success', CARRIED_OVER: 'warning',
 };
 
+/* Cột văn bản dài: xuống hàng đầy đủ (CSS trong pages/Business.css) */
+const WRAP = 'vcm-cell-wrap';
+
 const getWeekStart = (date: Dayjs) => date.isoWeekday(1).startOf('day');
 const getWeekEnd = (date: Dayjs) => date.isoWeekday(7).startOf('day');
 
@@ -195,7 +198,7 @@ const DepartmentPlan: React.FC<DepartmentPlanProps> = ({ department, selectedMon
     const getColumns = (planId: string): ColumnsType<WeeklyPlanItem> => [
         { title: '#', dataIndex: 'sortOrder', key: 'sortOrder', width: 40, align: 'center' },
         {
-            title: t('business.weeklyPlan.what'), dataIndex: 'title', key: 'title', width: 220,
+            title: t('business.weeklyPlan.what'), dataIndex: 'title', key: 'title', width: 220, className: WRAP,
             render: (val: string, record: WeeklyPlanItem) => {
                 const isOverdue = record.endDate && dayjs(record.endDate).isBefore(dayjs(), 'day') && record.status !== 'DONE';
                 return (
@@ -211,7 +214,7 @@ const DepartmentPlan: React.FC<DepartmentPlanProps> = ({ department, selectedMon
                 );
             },
         },
-        { title: t('business.weeklyPlan.why'), dataIndex: 'why', key: 'why', width: 130, ellipsis: true, responsive: ['lg'] },
+        { title: t('business.weeklyPlan.why'), dataIndex: 'why', key: 'why', width: 130, className: WRAP },
         {
             title: t('business.weeklyPlan.who'), key: 'assignee', width: 110,
             render: (_: any, r: WeeklyPlanItem) => r.assigneeName || users.find((u: any) => u.id === r.assigneeId)?.name || '',
@@ -224,8 +227,8 @@ const DepartmentPlan: React.FC<DepartmentPlanProps> = ({ department, selectedMon
                 return s && e ? `${s} - ${e}` : s || e || '-';
             },
         },
-        { title: t('business.weeklyPlan.where'), dataIndex: 'location', key: 'location', width: 110, responsive: ['xl'], render: (val: string) => <span style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{val || '-'}</span> },
-        { title: t('business.weeklyPlan.how'), dataIndex: 'method', key: 'method', width: 120, responsive: ['xxl'], render: (val: string) => <span style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{val || '-'}</span> },
+        { title: t('business.weeklyPlan.where'), dataIndex: 'location', key: 'location', width: 110, className: WRAP, render: (val: string) => val || '-' },
+        { title: t('business.weeklyPlan.how'), dataIndex: 'method', key: 'method', width: 120, className: WRAP, render: (val: string) => val || '-' },
         {
             title: t('business.weeklyPlan.status'), dataIndex: 'status', key: 'status', width: 120, align: 'center',
             render: (val: string) => {
@@ -242,7 +245,7 @@ const DepartmentPlan: React.FC<DepartmentPlanProps> = ({ department, selectedMon
                 return <Progress percent={pct} size="small" status={status as any} style={{ margin: 0 }} strokeColor={isOverdue ? '#ff4d4f' : undefined} />;
             },
         },
-        { title: t('business.weeklyPlan.result'), dataIndex: 'result', key: 'result', width: 120, render: (val: string) => <span style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{val || '-'}</span> },
+        { title: t('business.weeklyPlan.result'), dataIndex: 'result', key: 'result', width: 120, className: WRAP, render: (val: string) => val || '-' },
         {
             title: t('common.actions'), key: 'action', width: 110, align: 'center', fixed: 'right',
             render: (_: any, record: WeeklyPlanItem) => (
@@ -410,7 +413,8 @@ const DepartmentPlan: React.FC<DepartmentPlanProps> = ({ department, selectedMon
                                 loading={isLoading}
                                 size="small"
                                 pagination={false}
-                                scroll={{ x: 1200 }}
+                                scroll={{ x: 1400 }}
+                                className="vcm-plan-table"
                                 rowSelection={canEdit ? {
                                     selectedRowKeys,
                                     onChange: (keys: React.Key[]) => setSelectedRowKeys(keys),
@@ -472,7 +476,7 @@ const DepartmentPlan: React.FC<DepartmentPlanProps> = ({ department, selectedMon
                         <Input placeholder={t('business.weeklyPlan.whatPlaceholder')} />
                     </Form.Item>
                     <Form.Item name="why" label={t('business.weeklyPlan.why')}>
-                        <Input placeholder={t('business.weeklyPlan.whyPlaceholder')} />
+                        <TextArea autoSize={{ minRows: 2, maxRows: 6 }} placeholder={t('business.weeklyPlan.whyPlaceholder')} />
                     </Form.Item>
                     <Form.Item name="assigneeId" label={t('business.weeklyPlan.who')}>
                         <Select allowClear showSearch placeholder={t('business.weeklyPlan.whoPlaceholder')}
@@ -498,12 +502,12 @@ const DepartmentPlan: React.FC<DepartmentPlanProps> = ({ department, selectedMon
                     <Row gutter={16}>
                         <Col xs={24} sm={12}>
                             <Form.Item name="location" label={t('business.weeklyPlan.where')}>
-                                <Input placeholder={t('business.weeklyPlan.wherePlaceholder')} />
+                                <TextArea autoSize={{ minRows: 2, maxRows: 6 }} placeholder={t('business.weeklyPlan.wherePlaceholder')} />
                             </Form.Item>
                         </Col>
                         <Col xs={24} sm={12}>
                             <Form.Item name="method" label={t('business.weeklyPlan.how')}>
-                                <Input placeholder={t('business.weeklyPlan.howPlaceholder')} />
+                                <TextArea autoSize={{ minRows: 2, maxRows: 6 }} placeholder={t('business.weeklyPlan.howPlaceholder')} />
                             </Form.Item>
                         </Col>
                     </Row>

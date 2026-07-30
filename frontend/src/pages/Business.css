@@ -22,3 +22,20 @@
 
 .mt-4 { margin-top: 16px; }
 .mt-6 { margin-top: 24px; }
+
+/* ===== Plan tables: hiển thị đầy đủ nội dung, tự xuống hàng ===== */
+.vcm-plan-table .ant-table-tbody > tr > td {
+    vertical-align: top;
+}
+
+/* Ô văn bản dài: xuống hàng, giữ ký tự newline đã lưu, ngắt từ dài */
+.vcm-plan-table td.vcm-cell-wrap {
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+/* Tiêu đề cột dài cũng được xuống hàng thay vì tràn */
+.vcm-plan-table .ant-table-thead > tr > th {
+    white-space: normal;
+    word-break: break-word;
+}

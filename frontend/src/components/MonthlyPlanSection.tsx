@@ -19,6 +19,9 @@ const STATUS_COLORS: Record<string, string> = {
     TODO: 'default', IN_PROGRESS: 'processing', DONE: 'success',
 };
 
+/* Cột văn bản dài: xuống hàng đầy đủ (CSS trong pages/Business.css) */
+const WRAP = 'vcm-cell-wrap';
+
 interface Props {
     department: string;
     selectedMonth: Dayjs;
@@ -147,16 +150,16 @@ const MonthlyPlanSection: React.FC<Props> = ({ department, selectedMonth, canEdi
     const columns: ColumnsType<MonthlyPlanItem> = [
         { title: '#', dataIndex: 'sortOrder', key: 'sortOrder', width: 45, align: 'center' },
         {
-            title: t('business.weeklyPlan.what'), dataIndex: 'title', key: 'title', width: 220,
+            title: t('business.weeklyPlan.what'), dataIndex: 'title', key: 'title', width: 220, className: WRAP,
             render: (val: string) => <Text strong>{val}</Text>,
         },
-        { title: t('plans.monthly.target'), dataIndex: 'target', key: 'target', width: 180, ellipsis: true },
-        { title: t('business.weeklyPlan.why'), dataIndex: 'why', key: 'why', width: 150, ellipsis: true, responsive: ['lg'] },
+        { title: t('plans.monthly.target'), dataIndex: 'target', key: 'target', width: 180, className: WRAP },
+        { title: t('business.weeklyPlan.why'), dataIndex: 'why', key: 'why', width: 150, className: WRAP },
         {
             title: t('business.weeklyPlan.who'), key: 'who', width: 130,
             render: (_: any, r: MonthlyPlanItem) => r.assigneeName || users.find((u: any) => u.id === r.assigneeId)?.name || '-',
         },
-        { title: t('business.weeklyPlan.how'), dataIndex: 'method', key: 'method', width: 150, responsive: ['xl'], render: (val: string) => <span style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{val || '-'}</span> },
+        { title: t('business.weeklyPlan.how'), dataIndex: 'method', key: 'method', width: 150, className: WRAP, render: (val: string) => val || '-' },
         {
             title: t('business.weeklyPlan.status'), dataIndex: 'status', key: 'status', width: 130, align: 'center',
             render: (val: string) => {
@@ -164,7 +167,7 @@ const MonthlyPlanSection: React.FC<Props> = ({ department, selectedMonth, canEdi
                 return <Tag color={STATUS_COLORS[val]}>{t(`business.weeklyPlan.${labelKey}`)}</Tag>;
             },
         },
-        { title: t('business.weeklyPlan.result'), dataIndex: 'result', key: 'result', width: 120, render: (val: string) => <span style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{val || '-'}</span> },
+        { title: t('business.weeklyPlan.result'), dataIndex: 'result', key: 'result', width: 120, className: WRAP, render: (val: string) => val || '-' },
         {
             title: t('common.actions'), key: 'action', width: 90, align: 'center', fixed: 'right',
             render: (_: any, record: MonthlyPlanItem) => (
@@ -273,7 +276,8 @@ const MonthlyPlanSection: React.FC<Props> = ({ department, selectedMonth, canEdi
                     loading={loading}
                     size="small"
                     pagination={false}
-                    scroll={{ x: 1100 }}
+                    scroll={{ x: 1215 }}
+                    className="vcm-plan-table"
                     style={{ background: '#fffbfb' }}
                 />
             )}
@@ -305,10 +309,10 @@ const MonthlyPlanSection: React.FC<Props> = ({ department, selectedMonth, canEdi
                         <Input placeholder={t('business.weeklyPlan.whatPlaceholder')} />
                     </Form.Item>
                     <Form.Item name="target" label={t('plans.monthly.target')}>
-                        <Input placeholder={t('plans.monthly.targetPlaceholder')} />
+                        <TextArea autoSize={{ minRows: 2, maxRows: 6 }} placeholder={t('plans.monthly.targetPlaceholder')} />
                     </Form.Item>
                     <Form.Item name="why" label={t('business.weeklyPlan.why')}>
-                        <Input placeholder={t('business.weeklyPlan.whyPlaceholder')} />
+                        <TextArea autoSize={{ minRows: 2, maxRows: 6 }} placeholder={t('business.weeklyPlan.whyPlaceholder')} />
                     </Form.Item>
                     <Form.Item name="assigneeId" label={t('business.weeklyPlan.who')}>
                         <Select allowClear showSearch placeholder={t('business.weeklyPlan.whoPlaceholder')}
@@ -320,7 +324,7 @@ const MonthlyPlanSection: React.FC<Props> = ({ department, selectedMonth, canEdi
                         </Select>
                     </Form.Item>
                     <Form.Item name="method" label={t('business.weeklyPlan.how')}>
-                        <Input placeholder={t('business.weeklyPlan.howPlaceholder')} />
+                        <TextArea autoSize={{ minRows: 2, maxRows: 6 }} placeholder={t('business.weeklyPlan.howPlaceholder')} />
                     </Form.Item>
                     <Form.Item name="status" label={t('business.weeklyPlan.status')} initialValue="TODO">
                         <Select>
