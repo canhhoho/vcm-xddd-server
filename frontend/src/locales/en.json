@@ -512,12 +512,61 @@
         "nextMonth": "Next Month",
         "today": "Today",
         "guideBtn": "Guide",
+        "selectedCount": "selected",
+        "permissionChanged": "Your access has changed. Please sign in again.",
+        "loadError": "Could not load data",
+        "departments": {
+            "BD": "Business Dev Plan",
+            "MKT": "Marketing Plan",
+            "QS": "QS Plan",
+            "DES": "Design Plan",
+            "PM": "Project Plan"
+        },
+        "fields": {
+            "what": "Task (What)",
+            "why": "Purpose (Why)",
+            "who": "Assignee (Who)",
+            "when": "Time (When)",
+            "whenStart": "From",
+            "whenEnd": "To",
+            "where": "Location (Where)",
+            "how": "Method (How)",
+            "status": "Status",
+            "result": "Result",
+            "statusTodo": "To Do",
+            "statusInProgress": "In Progress",
+            "statusDone": "Done",
+            "statusCarriedOver": "Carried Over",
+            "dateRangeError": "End date must be on or after the start date",
+            "whatPlaceholder": "What needs to be done",
+            "whyPlaceholder": "Purpose",
+            "whoPlaceholder": "Person in charge",
+            "wherePlaceholder": "Location",
+            "howPlaceholder": "Method",
+            "resultPlaceholder": "Evaluation result"
+        },
         "guide": {
             "title": "5W1H Planning Guide",
             "intro": "Each task must answer the following 6 questions. The more specific the plan, the easier it is to execute and evaluate.",
             "smartTitle": "Goals must be SMART",
             "smartExample": "SMART Example:",
             "smartExampleText": "Increase sales from 300m → 500m in April 2025 by calling 10 clients/day + 2 product demos/week",
+            "smartNames": {
+                "S": "Specific",
+                "M": "Measurable",
+                "A": "Achievable",
+                "R": "Relevant",
+                "T": "Time-bound"
+            },
+            "examples": {
+                "WHAT": "Call 10 prospective clients per day",
+                "WHY": "Hit the Q2 sales KPI of 500 million",
+                "WHO": "Nguyen Van A — Sales team lead",
+                "WHEN": "Apr 1 – Apr 30, report every Friday",
+                "WHERE": "Office, Zoom, phone",
+                "HOW": "Telesales script + CRM tracking"
+            },
+            "badExample": "Too vague, not measurable",
             "labels": {
                 "WHAT": "Content (What)",
                 "WHY": "Purpose (Why)",
@@ -551,7 +600,16 @@
             "deleteConfirm": "Delete this monthly plan and all its goals?"
         },
         "weekly": {
-            "sectionTitle": "Weekly Plans"
+            "sectionTitle": "Weekly Plans",
+            "createPlan": "Create Plan",
+            "addItem": "Add Task",
+            "editItem": "Edit Task",
+            "noPlan": "No plan for this week",
+            "carryOver": "Carry over incomplete tasks",
+            "carriedTag": "Carried from last week",
+            "currentWeek": "Current Week",
+            "items": "tasks",
+            "deleteConfirm": "Delete this weekly plan and all its tasks?"
         },
         "daily": {
             "updateBtn": "Update",
@@ -572,11 +630,6 @@
         "tabProspects": "Prospects",
         "tabB2B": "B2B Prospects",
         "tabB2C": "B2C Prospects",
-        "tabPlanBD": "Business Dev Plan",
-        "tabPlanMKT": "Marketing Plan",
-        "tabPlanQS": "QS Plan",
-        "tabPlanDES": "Design Plan",
-        "tabPlanPM": "Project Plan",
         "prospects": {
             "name": "Project Name",
             "client": "Client",
@@ -621,40 +674,6 @@
                 "MEDIUM": "Medium",
                 "LOW": "Low"
             }
-        },
-        "weeklyPlan": {
-            "department": "Department",
-            "week": "Week",
-            "createPlan": "Create Plan",
-            "createNewWeek": "Create New Week Plan",
-            "addItem": "Add Task",
-            "editItem": "Edit Task",
-            "what": "Task (What)",
-            "why": "Purpose (Why)",
-            "who": "Assignee (Who)",
-            "when": "Time (When)",
-            "whenStart": "From",
-            "whenEnd": "To",
-            "where": "Location (Where)",
-            "how": "Method (How)",
-            "status": "Status",
-            "result": "Result",
-            "noPlan": "No plan for this week",
-            "maxItems": "Maximum 5 tasks reached",
-            "carryOver": "Carry over incomplete tasks",
-            "carriedTag": "Carried from last week",
-            "statusTodo": "To Do",
-            "statusInProgress": "In Progress",
-            "statusDone": "Done",
-            "statusCarriedOver": "Carried Over",
-            "currentWeek": "Current Week",
-            "items": "tasks",
-            "whatPlaceholder": "What needs to be done",
-            "whyPlaceholder": "Purpose",
-            "whoPlaceholder": "Person in charge",
-            "wherePlaceholder": "Location",
-            "howPlaceholder": "Method",
-            "resultPlaceholder": "Evaluation result"
         }
     },
     "users": {

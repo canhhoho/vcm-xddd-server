@@ -9,7 +9,6 @@ export interface ModulePermission {
     targets: ModuleAccess;
     business: ModuleAccess;
     branches: ModuleAccess;
-    plans: ModuleAccess;
     plans_bd: ModuleAccess;
     plans_mkt: ModuleAccess;
     plans_qs: ModuleAccess;

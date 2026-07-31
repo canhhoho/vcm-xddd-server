@@ -11,6 +11,7 @@ const path = require('path');
 
 const authMiddleware = require('./middleware/auth');
 const errorHandler = require('./middleware/errorHandler');
+const planAccess = require('./middleware/planAccess');
 
 // Route modules
 const authRoutes = require('./routes/auth');
@@ -84,9 +85,10 @@ app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/activities', activityRoutes);
 app.use('/api/provinces', provinceRoutes);
 app.use('/api/prospects', prospectRoutes);
-app.use('/api/weekly-plans', weeklyPlanRoutes);
-app.use('/api/monthly-plans', monthlyPlanRoutes);
-app.use('/api/daily-logs', dailyLogRoutes);
+// Page Plan: phân quyền theo phòng ban (plans_bd/mkt/qs/des/pm), đọc từ DB mỗi request
+app.use('/api/weekly-plans', planAccess('weekly'), weeklyPlanRoutes);
+app.use('/api/monthly-plans', planAccess('monthly'), monthlyPlanRoutes);
+app.use('/api/daily-logs', planAccess('daily'), dailyLogRoutes);
 app.use('/api/project-logs', projectLogRoutes);
 app.use('/api/collaborators', collaboratorRoutes);
 app.use('/api/partners', partnerRoutes);

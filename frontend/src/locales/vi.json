@@ -513,12 +513,61 @@
         "nextMonth": "Tháng sau",
         "today": "Hôm nay",
         "guideBtn": "Hướng dẫn",
+        "selectedCount": "đã chọn",
+        "permissionChanged": "Quyền truy cập đã thay đổi. Vui lòng đăng nhập lại.",
+        "loadError": "Không tải được dữ liệu",
+        "departments": {
+            "BD": "Kế hoạch Kinh doanh",
+            "MKT": "Kế hoạch Marketing",
+            "QS": "Kế hoạch QS",
+            "DES": "Kế hoạch Thiết kế",
+            "PM": "Kế hoạch Dự án"
+        },
+        "fields": {
+            "what": "Nội dung (What)",
+            "why": "Mục đích (Why)",
+            "who": "Phụ trách (Who)",
+            "when": "Thời gian (When)",
+            "whenStart": "Từ ngày",
+            "whenEnd": "Đến ngày",
+            "where": "Địa điểm (Where)",
+            "how": "Phương pháp (How)",
+            "status": "Trạng thái",
+            "result": "Kết quả",
+            "statusTodo": "Chưa bắt đầu",
+            "statusInProgress": "Đang thực hiện",
+            "statusDone": "Hoàn thành",
+            "statusCarriedOver": "Chuyển sang tuần sau",
+            "dateRangeError": "Ngày kết thúc phải sau ngày bắt đầu",
+            "whatPlaceholder": "VD: Gọi 10 khách hàng tiềm năng/ngày",
+            "whyPlaceholder": "VD: Đạt KPI doanh số Q2: 500 triệu",
+            "whoPlaceholder": "Người phụ trách",
+            "wherePlaceholder": "VD: Văn phòng, Zoom, điện thoại",
+            "howPlaceholder": "VD: Script telesale + theo dõi CRM",
+            "resultPlaceholder": "VD: Hoàn thành 90%, còn 2 KH chưa phản hồi"
+        },
         "guide": {
             "title": "Hướng dẫn lập kế hoạch 5W1H",
             "intro": "Mỗi đầu việc phải trả lời đủ 6 câu hỏi sau. Kế hoạch càng cụ thể, càng dễ thực hiện và đánh giá.",
             "smartTitle": "Mục tiêu phải đạt chuẩn SMART",
             "smartExample": "Ví dụ SMART:",
             "smartExampleText": "Tăng doanh số từ 300tr → 500tr trong tháng 04/2025 bằng cách gọi 10 KH/ngày + demo sản phẩm 2 lần/tuần",
+            "smartNames": {
+                "S": "Cụ thể",
+                "M": "Đo lường được",
+                "A": "Khả thi",
+                "R": "Liên quan",
+                "T": "Có thời hạn"
+            },
+            "examples": {
+                "WHAT": "Gọi 10 khách hàng tiềm năng/ngày",
+                "WHY": "Đạt KPI doanh số Q2: 500 triệu",
+                "WHO": "Nguyễn Văn A — Trưởng nhóm kinh doanh",
+                "WHEN": "01/04 – 30/04, báo cáo mỗi thứ Sáu",
+                "WHERE": "Văn phòng, Zoom, điện thoại",
+                "HOW": "Script telesale + theo dõi CRM"
+            },
+            "badExample": "Chưa cụ thể, không đo lường được",
             "labels": {
                 "WHAT": "Nội dung (What)",
                 "WHY": "Mục đích (Why)",
@@ -552,7 +601,16 @@
             "deleteConfirm": "Xóa kế hoạch tháng này và toàn bộ mục tiêu?"
         },
         "weekly": {
-            "sectionTitle": "Kế hoạch tuần"
+            "sectionTitle": "Kế hoạch tuần",
+            "createPlan": "Tạo kế hoạch",
+            "addItem": "Thêm đầu việc",
+            "editItem": "Sửa đầu việc",
+            "noPlan": "Chưa có kế hoạch cho tuần này",
+            "carryOver": "Chuyển việc chưa xong sang tuần mới",
+            "carriedTag": "Chuyển từ tuần trước",
+            "currentWeek": "Tuần hiện tại",
+            "items": "đầu việc",
+            "deleteConfirm": "Xóa kế hoạch tuần này và toàn bộ đầu việc?"
         },
         "daily": {
             "updateBtn": "Cập nhật",
@@ -573,11 +631,6 @@
         "tabProspects": "Dự án tiếp xúc",
         "tabB2B": "Dự án tiếp xúc B2B",
         "tabB2C": "Dự án tiếp xúc B2C",
-        "tabPlanBD": "Kế hoạch Kinh doanh",
-        "tabPlanMKT": "Kế hoạch Marketing",
-        "tabPlanQS": "Kế hoạch QS",
-        "tabPlanDES": "Kế hoạch Thiết kế",
-        "tabPlanPM": "Kế hoạch Dự án",
         "prospects": {
             "name": "Tên dự án",
             "client": "Khách hàng",
@@ -622,40 +675,6 @@
                 "MEDIUM": "Trung bình",
                 "LOW": "Thấp"
             }
-        },
-        "weeklyPlan": {
-            "department": "Bộ phận",
-            "week": "Tuần",
-            "createPlan": "Tạo kế hoạch",
-            "createNewWeek": "Tạo kế hoạch tuần mới",
-            "addItem": "Thêm đầu việc",
-            "editItem": "Sửa đầu việc",
-            "what": "Nội dung (What)",
-            "why": "Mục đích (Why)",
-            "who": "Phụ trách (Who)",
-            "when": "Thời gian (When)",
-            "whenStart": "Từ ngày",
-            "whenEnd": "Đến ngày",
-            "where": "Địa điểm (Where)",
-            "how": "Phương pháp (How)",
-            "status": "Trạng thái",
-            "result": "Kết quả",
-            "noPlan": "Chưa có kế hoạch cho tuần này",
-            "maxItems": "Đã đạt tối đa 5 đầu việc",
-            "carryOver": "Chuyển việc chưa xong sang tuần mới",
-            "carriedTag": "Chuyển từ tuần trước",
-            "statusTodo": "Chưa bắt đầu",
-            "statusInProgress": "Đang thực hiện",
-            "statusDone": "Hoàn thành",
-            "statusCarriedOver": "Chuyển sang tuần sau",
-            "currentWeek": "Tuần hiện tại",
-            "items": "đầu việc",
-            "whatPlaceholder": "VD: Gọi 10 khách hàng tiềm năng/ngày",
-            "whyPlaceholder": "VD: Đạt KPI doanh số Q2: 500 triệu",
-            "whoPlaceholder": "Người phụ trách",
-            "wherePlaceholder": "VD: Văn phòng, Zoom, điện thoại",
-            "howPlaceholder": "VD: Script telesale + theo dõi CRM",
-            "resultPlaceholder": "VD: Hoàn thành 90%, còn 2 KH chưa phản hồi"
         }
     },
     "users": {

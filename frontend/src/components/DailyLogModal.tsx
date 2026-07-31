@@ -4,6 +4,8 @@ import { useTranslation } from 'react-i18next';
 import dayjs from 'dayjs';
 import { apiService } from '../services/api';
 import type { WeeklyPlanItem, DailyLog } from '../types';
+import { BRAND_COLORS } from '../styles/brandIdentity';
+import { DATE_FORMAT, DATE_FORMAT_SHORT } from './plan/planConstants';
 
 const { TextArea } = Input;
 const { Text } = Typography;
@@ -22,28 +24,43 @@ const DailyLogModal: React.FC<Props> = ({ item, open, onClose }) => {
     const [note, setNote] = useState('');
     const [logs, setLogs] = useState<DailyLog[]>([]);
     const [loadingLogs, setLoadingLogs] = useState(false);
+    const [loadError, setLoadError] = useState<string | null>(null);
     const [saving, setSaving] = useState(false);
 
     useEffect(() => {
         if (!open || !item) return;
+        const itemId = item.id;
+        const todayStr = dayjs().format('YYYY-MM-DD');
+
         // Pre-fill with current item progress
         setProgressPct(item.progressPct || 0);
         setNote('');
-        // Load log history
+        setLoadError(null);
         setLoadingLogs(true);
-        apiService.getDailyLogs(item.id).then(res => {
-            if (res.success) {
+
+        apiService.getDailyLogs(itemId)
+            .then(res => {
+                if (!res.success) {
+                    // Trước đây nhánh này bị bỏ qua: danh sách rỗng khiến user
+                    // tưởng "chưa có lịch sử" trong khi thực ra request đã lỗi.
+                    setLoadError(res.error || t('plans.loadError'));
+                    setLogs([]);
+                    return;
+                }
                 const allLogs: DailyLog[] = res.data || [];
                 setLogs(allLogs);
-                // If today's log exists, pre-fill its values
-                const todayLog = allLogs.find(l => dayjs(l.logDate).format('YYYY-MM-DD') === today);
+                const todayLog = allLogs.find(l => dayjs(l.logDate).format('YYYY-MM-DD') === todayStr);
                 if (todayLog) {
                     setProgressPct(todayLog.progressPct);
                     setNote(todayLog.note || '');
                 }
-            }
-        }).finally(() => setLoadingLogs(false));
-    }, [open, item]);
+            })
+            .catch((err: Error) => {
+                setLoadError(err.message || t('plans.loadError'));
+                setLogs([]);
+            })
+            .finally(() => setLoadingLogs(false));
+    }, [open, item, t]);
 
     const handleSave = async () => {
         if (!item) return;
@@ -59,22 +76,32 @@ const DailyLogModal: React.FC<Props> = ({ item, open, onClose }) => {
                 message.success(t('plans.daily.saveSuccess'));
                 onClose(true);
             } else {
-                message.error(t('common.saveError'));
+                message.error(res.error || t('common.saveError'));
             }
-        } catch {
-            message.error(t('common.saveError'));
+        } catch (err) {
+            message.error((err as Error).message || t('common.saveError'));
         }
         setSaving(false);
     };
 
-    const progressColor = progressPct >= 100 ? '#52c41a' : progressPct >= 60 ? '#1677ff' : progressPct >= 30 ? '#fa8c16' : '#94a3b8';
+    const progressColor = progressPct >= 100
+        ? BRAND_COLORS.success
+        : progressPct >= 60
+            ? BRAND_COLORS.info
+            : progressPct >= 30
+                ? BRAND_COLORS.warning
+                : BRAND_COLORS.slate400;
 
     return (
         <Modal
             title={
                 <div>
                     <div style={{ fontWeight: 700, fontSize: 15 }}>{t('plans.daily.modalTitle')}</div>
-                    {item && <div style={{ fontWeight: 400, fontSize: 13, color: '#64748b', marginTop: 2 }}>{item.title}</div>}
+                    {item && (
+                        <div style={{ fontWeight: 400, fontSize: 13, color: BRAND_COLORS.slate500, marginTop: 2 }}>
+                            {item.title}
+                        </div>
+                    )}
                 </div>
             }
             open={open}
@@ -83,11 +110,11 @@ const DailyLogModal: React.FC<Props> = ({ item, open, onClose }) => {
                 <Button key="cancel" onClick={() => onClose(false)}>{t('common.cancel')}</Button>,
                 <Button key="save" type="primary" loading={saving} onClick={handleSave}>{t('common.save')}</Button>,
             ]}
-            width={500}
-            destroyOnClose
+            width="min(500px, 94vw)"
+            destroyOnHidden
         >
-            <div style={{ marginBottom: 8, color: '#64748b', fontSize: 13 }}>
-                {t('plans.daily.logDate')}: <strong>{dayjs().format('DD/MM/YYYY')}</strong>
+            <div style={{ marginBottom: 8, color: BRAND_COLORS.slate500, fontSize: 13 }}>
+                {t('plans.daily.logDate')}: <strong>{dayjs().format(DATE_FORMAT)}</strong>
             </div>
 
             {/* Progress slider */}
@@ -97,11 +124,13 @@ const DailyLogModal: React.FC<Props> = ({ item, open, onClose }) => {
                     <Text strong style={{ fontSize: 18, color: progressColor }}>{progressPct}%</Text>
                 </div>
                 <Slider
-                    min={0} max={100} step={5}
+                    min={0} max={100} step={10}
                     value={progressPct}
                     onChange={setProgressPct}
-                    trackStyle={{ backgroundColor: progressColor }}
-                    handleStyle={{ borderColor: progressColor }}
+                    styles={{
+                        track: { backgroundColor: progressColor },
+                        handle: { borderColor: progressColor },
+                    }}
                     marks={{ 0: '0', 25: '25', 50: '50', 75: '75', 100: '100' }}
                 />
             </div>
@@ -119,14 +148,18 @@ const DailyLogModal: React.FC<Props> = ({ item, open, onClose }) => {
             </div>
 
             {/* Log history */}
-            <Divider titlePlacement="left" style={{ fontSize: 12, color: '#94a3b8' }}>
+            <Divider titlePlacement="left" style={{ fontSize: 12, color: BRAND_COLORS.slate400 }}>
                 {t('plans.daily.history')}
             </Divider>
 
             {loadingLogs ? (
                 <div style={{ textAlign: 'center', padding: 16 }}><Spin size="small" /></div>
+            ) : loadError ? (
+                <div style={{ textAlign: 'center', color: BRAND_COLORS.error, fontSize: 13, padding: '8px 0' }}>
+                    {loadError}
+                </div>
             ) : logs.length === 0 ? (
-                <div style={{ textAlign: 'center', color: '#94a3b8', fontSize: 13, padding: '8px 0' }}>
+                <div style={{ textAlign: 'center', color: BRAND_COLORS.slate400, fontSize: 13, padding: '8px 0' }}>
                     {t('plans.daily.noHistory')}
                 </div>
             ) : (
@@ -140,12 +173,12 @@ const DailyLogModal: React.FC<Props> = ({ item, open, onClose }) => {
                         return (
                             <List.Item style={{ padding: '6px 0' }}>
                                 <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, width: '100%' }}>
-                                    <Text style={{ fontSize: 12, color: '#64748b', minWidth: 70 }}>
-                                        {dayjs(log.logDate).format('DD/MM')}
+                                    <Text style={{ fontSize: 12, color: BRAND_COLORS.slate500, minWidth: 70 }}>
+                                        {dayjs(log.logDate).format(DATE_FORMAT_SHORT)}
                                         {isToday && <Tag color="red" style={{ marginLeft: 4, fontSize: 10 }}>{t('plans.today')}</Tag>}
                                     </Text>
                                     <Tag color={color} style={{ minWidth: 48, textAlign: 'center' }}>{pct}%</Tag>
-                                    <Text style={{ fontSize: 12, color: '#475569', flex: 1 }}>{log.note || '-'}</Text>
+                                    <Text style={{ fontSize: 12, color: BRAND_COLORS.slate600, flex: 1 }}>{log.note || '-'}</Text>
                                 </div>
                             </List.Item>
                         );

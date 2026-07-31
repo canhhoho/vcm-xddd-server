@@ -1,7 +1,13 @@
-import React, { useState, useMemo } from 'react';
-import { Card, Table, Button, Select, Modal, Form, Input, Tag, message, DatePicker, Empty, Tooltip, Progress, Space, Typography, Row, Col } from 'antd';
+import React, { useMemo, useState } from 'react';
+import {
+    Card, Table, Button, Select, Modal, Form, Input, Tag, message, DatePicker, Empty,
+    Tooltip, Progress, Space, Typography, Row, Col, Popconfirm,
+} from 'antd';
 import type { ColumnsType } from 'antd/es/table';
-import { PlusOutlined, SyncOutlined, CalendarOutlined, EditOutlined, QuestionCircleOutlined, SearchOutlined, FileExcelOutlined, CheckCircleOutlined } from '@ant-design/icons';
+import {
+    PlusOutlined, SyncOutlined, CalendarOutlined, EditOutlined,
+    QuestionCircleOutlined, FileExcelOutlined, CheckCircleOutlined, DeleteOutlined,
+} from '@ant-design/icons';
 import PlanGuideModal from '../components/PlanGuideModal';
 import { useTranslation } from 'react-i18next';
 import dayjs from 'dayjs';
@@ -9,32 +15,42 @@ import type { Dayjs } from 'dayjs';
 import isoWeek from 'dayjs/plugin/isoWeek';
 import { VcmActionGroup } from '../components/VcmActionGroup';
 import DailyLogModal from '../components/DailyLogModal';
-import type { WeeklyPlan, WeeklyPlanItem, MonthlyPlanItem } from '../types';
+import type { Department, WeeklyPlan, WeeklyPlanItem, MonthlyPlanItem, User } from '../types';
 import { useWeeklyPlans, useMonthlyPlans, usePlanMutations } from '../hooks/usePlans';
+import type { WeeklyPlanItemInput } from '../services/api.interface';
 import { useUsers } from '../hooks/useUsers';
-import * as XLSX from 'xlsx';
+import { BRAND_COLORS } from '../styles/brandIdentity';
+import PlanFilterBar from '../components/plan/PlanFilterBar';
+import { usePlanFilters } from '../components/plan/usePlanFilters';
+import { exportPlanExcel } from '../components/plan/exportPlanExcel';
+import { DATE_FORMAT, DATE_FORMAT_SHORT, WRAP } from '../components/plan/planConstants';
+import {
+    AssigneeSelect, ProgressSelect, SortOrderSelect, StatusSelect,
+} from '../components/plan/PlanFormFields';
+import {
+    assigneeColumn, indexColumn, methodColumn, resolveAssigneeName,
+    resultColumn, statusColumn, statusLabel, whyColumn,
+} from '../components/plan/planColumns';
 
 dayjs.extend(isoWeek);
 
-const { Option } = Select;
 const { TextArea } = Input;
-const { Text, Title } = Typography;
-
-const STATUS_COLORS: Record<string, string> = {
-    TODO: 'default', IN_PROGRESS: 'processing', DONE: 'success', CARRIED_OVER: 'warning',
-};
-
-/* Cột văn bản dài: xuống hàng đầy đủ (CSS trong pages/Business.css) */
-const WRAP = 'vcm-cell-wrap';
+const { Text } = Typography;
 
 const getWeekStart = (date: Dayjs) => date.isoWeekday(1).startOf('day');
 const getWeekEnd = (date: Dayjs) => date.isoWeekday(7).startOf('day');
 
 interface DepartmentPlanProps {
-    department: string;
+    department: Department;
     selectedMonth: Dayjs;
     canEdit: boolean;
 }
+
+/** Giá trị form đầu việc — DatePicker trả Dayjs, API cần chuỗi YYYY-MM-DD */
+type WeeklyItemFormValues = Omit<WeeklyPlanItemInput, 'startDate' | 'endDate'> & {
+    startDate?: Dayjs | null;
+    endDate?: Dayjs | null;
+};
 
 const DepartmentPlan: React.FC<DepartmentPlanProps> = ({ department, selectedMonth, canEdit }) => {
     const { t } = useTranslation();
@@ -44,79 +60,106 @@ const DepartmentPlan: React.FC<DepartmentPlanProps> = ({ department, selectedMon
     const [activePlanId, setActivePlanId] = useState<string | null>(null);
     const [dailyLogItem, setDailyLogItem] = useState<WeeklyPlanItem | null>(null);
     const [guideVisible, setGuideVisible] = useState(false);
+    // Giá trị khởi tạo được set khi Modal đã mount (destroyOnHidden huỷ Form khi đóng)
+    const [pendingValues, setPendingValues] = useState<Record<string, unknown> | null>(null);
     const [form] = Form.useForm();
 
-    // Filters state
-    const [searchText, setSearchText] = useState('');
-    const [statusFilter, setStatusFilter] = useState<string | undefined>(undefined);
-    const [assigneeFilter, setAssigneeFilter] = useState<string | undefined>(undefined);
-    const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
+    const filters = usePlanFilters();
+    // Mỗi tuần một bảng riêng nên selection phải tách theo plan, nếu không chọn ở
+    // tuần này sẽ ghi đè selection của tuần kia.
+    const [selectionByPlan, setSelectionByPlan] = useState<Record<string, React.Key[]>>({});
 
     const thisWeekStart = getWeekStart(dayjs());
     const monthStart = selectedMonth.format('YYYY-MM-DD');
 
-    // React Query Data
-    const { data: allPlans = [], isLoading, refetch: refetchWeeklyPlans } = useWeeklyPlans({ department });
+    // Chỉ tải các tuần thuộc tháng đang xem — trước đây tải toàn bộ lịch sử rồi lọc ở client
+    const weekRange = useMemo(() => ({
+        weekFrom: selectedMonth.startOf('month').format('YYYY-MM-DD'),
+        weekTo: selectedMonth.endOf('month').format('YYYY-MM-DD'),
+    }), [selectedMonth]);
+
+    const {
+        data: plansRaw = [],
+        isLoading,
+        refetch: refetchWeeklyPlans,
+    } = useWeeklyPlans({ department, ...weekRange });
+
+    // Plan gần nhất (cho chức năng chuyển việc) — query riêng, nhẹ, không kèm cả tháng
+    const { data: recentPlans = [] } = useWeeklyPlans({ department, limit: 1 });
+
     const { data: monthlyPlans = [] } = useMonthlyPlans({ department, monthStart });
     const { data: users = [] } = useUsers();
-    const { 
-        createWeeklyPlan, 
-        createWeeklyPlanItem, 
-        updateWeeklyPlanItem, 
+    const {
+        createWeeklyPlan,
+        deleteWeeklyPlan,
+        createWeeklyPlanItem,
+        updateWeeklyPlanItem,
         deleteWeeklyPlanItem,
-        updateWeeklyPlanItemsStatus
+        updateWeeklyPlanItemsStatus,
     } = usePlanMutations();
 
-    const monthlyPlanItems = monthlyPlans.length > 0 ? monthlyPlans[0].items || [] : [];
+    const userList = users as User[];
+    const monthlyPlanItems: MonthlyPlanItem[] = monthlyPlans.length > 0 ? monthlyPlans[0].items || [] : [];
 
-    // Filter plans to selected month: include if weekStart is in selected month
-    const plans = useMemo(() => {
-        const monthStr = selectedMonth.format('YYYY-MM');
-        return [...allPlans]
-            .filter((p: WeeklyPlan) => dayjs(p.weekStart).format('YYYY-MM') === monthStr)
-            .sort((a: WeeklyPlan, b: WeeklyPlan) => dayjs(b.weekStart).diff(dayjs(a.weekStart)));
-    }, [allPlans, selectedMonth]);
+    const showError = (e: Error) => message.error(e.message || t('common.saveError'));
 
-    const currentWeekPlan = useMemo(() =>
-        allPlans.find((p: WeeklyPlan) => dayjs(p.weekStart).format('YYYY-MM-DD') === thisWeekStart.format('YYYY-MM-DD')),
-    [allPlans, thisWeekStart]);
+    const plans = useMemo(
+        () => [...plansRaw].sort((a, b) => dayjs(b.weekStart).diff(dayjs(a.weekStart))),
+        [plansRaw]
+    );
 
-    const latestPlan = useMemo(() =>
-        [...allPlans].sort((a: WeeklyPlan, b: WeeklyPlan) => dayjs(b.weekStart).diff(dayjs(a.weekStart)))[0] || null,
-    [allPlans]);
+    const currentWeekPlan = useMemo(
+        () => plans.find(p => dayjs(p.weekStart).format('YYYY-MM-DD') === thisWeekStart.format('YYYY-MM-DD')),
+        [plans, thisWeekStart]
+    );
 
-    const handleCreatePlan = async (withCarryOver: boolean) => {
+    const latestPlan: WeeklyPlan | null = recentPlans[0] || null;
+
+    const selectedIds = useMemo(
+        () => Object.values(selectionByPlan).flat() as string[],
+        [selectionByPlan]
+    );
+
+    const handleCreatePlan = (withCarryOver: boolean) => {
         const ws = thisWeekStart;
-        const payload: any = {
+        createWeeklyPlan.mutate({
             weekStart: ws.format('YYYY-MM-DD'),
             weekEnd: getWeekEnd(ws).format('YYYY-MM-DD'),
             department,
-        };
-        if (withCarryOver && latestPlan) payload.carryOverFromPlanId = latestPlan.id;
-        
-        createWeeklyPlan.mutate(payload, {
-            onSuccess: (res: any) => {
-                if (res.success) message.success(t('common.saveSuccess'));
-                else message.error(res.error || t('common.saveError'));
+            ...(withCarryOver && latestPlan ? { carryOverFromPlanId: latestPlan.id } : {}),
+        }, {
+            onSuccess: () => message.success(t('common.saveSuccess')),
+            onError: showError,
+        });
+    };
+
+    const handleDeletePlan = (planId: string) => {
+        deleteWeeklyPlan.mutate(planId, {
+            onSuccess: () => {
+                message.success(t('common.deleteSuccess'));
+                setSelectionByPlan(prev => {
+                    const next = { ...prev };
+                    delete next[planId];
+                    return next;
+                });
             },
-            onError: () => message.error(t('common.saveError'))
+            onError: showError,
         });
     };
 
     const handleAddItem = (planId: string) => {
-        const plan = allPlans.find((p: WeeklyPlan) => p.id === planId);
+        const plan = plans.find(p => p.id === planId);
         const items = plan?.items || [];
         setActivePlanId(planId);
         setEditingItem(null);
-        form.resetFields();
-        form.setFieldsValue({ sortOrder: items.length + 1, status: 'TODO', progressPct: 0 });
+        setPendingValues({ sortOrder: items.length + 1, status: 'TODO', progressPct: 0 });
         setModalVisible(true);
     };
 
     const handleEditItem = (planId: string, record: WeeklyPlanItem) => {
         setActivePlanId(planId);
         setEditingItem(record);
-        form.setFieldsValue({
+        setPendingValues({
             ...record,
             startDate: record.startDate ? dayjs(record.startDate) : null,
             endDate: record.endDate ? dayjs(record.endDate) : null,
@@ -124,89 +167,87 @@ const DepartmentPlan: React.FC<DepartmentPlanProps> = ({ department, selectedMon
         setModalVisible(true);
     };
 
-    const handleSubmitItem = async (values: any) => {
-        const payload = {
+    const closeModal = () => {
+        setModalVisible(false);
+        setPendingValues(null);
+    };
+
+    const handleSubmitItem = (values: WeeklyItemFormValues) => {
+        const payload: WeeklyPlanItemInput = {
             ...values,
             startDate: values.startDate?.format('YYYY-MM-DD') || null,
             endDate: values.endDate?.format('YYYY-MM-DD') || null,
         };
-        
+        const callbacks = {
+            onSuccess: () => {
+                message.success(t('common.saveSuccess'));
+                closeModal();
+            },
+            onError: showError,
+        };
+
         if (editingItem) {
-            updateWeeklyPlanItem.mutate({ ...payload, id: editingItem.id }, {
-                onSuccess: (res: any) => {
-                    if (res.success) {
-                        message.success(t('common.saveSuccess'));
-                        setModalVisible(false);
-                    }
-                },
-                onError: () => message.error(t('common.saveError'))
-            });
+            updateWeeklyPlanItem.mutate({ id: editingItem.id, data: payload }, callbacks);
         } else if (activePlanId) {
-            createWeeklyPlanItem.mutate({ planId: activePlanId, data: payload }, {
-                onSuccess: (res: any) => {
-                    if (res.success) {
-                        message.success(t('common.saveSuccess'));
-                        setModalVisible(false);
-                    }
-                },
-                onError: () => message.error(t('common.saveError'))
-            });
+            createWeeklyPlanItem.mutate({ planId: activePlanId, data: payload }, callbacks);
         }
     };
 
-    const handleDeleteItem = async (planId: string, id: string) => {
+    const handleDeleteItem = (id: string) => {
         deleteWeeklyPlanItem.mutate(id, {
             onSuccess: () => message.success(t('common.deleteSuccess')),
-            onError: () => message.error(t('common.saveError'))
+            onError: showError,
         });
     };
 
-    const handleBatchStatusUpdate = (status: string) => {
-        if (selectedRowKeys.length === 0) return;
-        updateWeeklyPlanItemsStatus.mutate({ ids: selectedRowKeys as string[], status }, {
+    const handleBatchStatusUpdate = (status: 'DONE' | 'IN_PROGRESS') => {
+        if (selectedIds.length === 0) return;
+        updateWeeklyPlanItemsStatus.mutate({ ids: selectedIds, status }, {
             onSuccess: () => {
                 message.success(t('common.saveSuccess'));
-                setSelectedRowKeys([]);
-            }
+                setSelectionByPlan({});
+            },
+            onError: showError,
         });
     };
 
     const handleExportExcel = (planId: string) => {
-        const plan = plans.find((p: WeeklyPlan) => p.id === planId);
+        const plan = plans.find(p => p.id === planId);
         if (!plan) return;
-        const items = plan.items || [];
-        const exportData = items.map((item: WeeklyPlanItem, index: number) => ({
-            [t('common.index') || '#']: index + 1,
-            [t('business.weeklyPlan.what')]: item.title,
-            [t('business.weeklyPlan.why')]: item.why || '',
-            [t('business.weeklyPlan.who')]: item.assigneeName || users.find((u: any) => u.id === item.assigneeId)?.name || '',
-            [t('business.weeklyPlan.when')]: `${item.startDate || ''} - ${item.endDate || ''}`,
-            [t('business.weeklyPlan.where')]: item.location || '',
-            [t('business.weeklyPlan.how')]: item.method || '',
-            [t('business.weeklyPlan.status')]: t(`business.weeklyPlan.status${item.status.charAt(0) + item.status.slice(1).toLowerCase().replace('_', '')}`),
-            [t('plans.daily.progress')]: `${item.progressPct || 0}%`,
-            [t('business.weeklyPlan.result')]: item.result || '',
-        }));
-
-        const ws = XLSX.utils.json_to_sheet(exportData);
-        const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, "WeeklyPlan");
-        XLSX.writeFile(wb, `WeeklyPlan_${department}_${dayjs(plan.weekStart).format('DD_MM_YYYY')}.xlsx`);
+        exportPlanExcel(
+            plan.items || [],
+            [
+                { header: t('common.index'), value: (_, i) => i + 1 },
+                { header: t('plans.fields.what'), value: item => item.title },
+                { header: t('plans.fields.why'), value: item => item.why || '' },
+                { header: t('plans.fields.who'), value: item => resolveAssigneeName(item, userList) },
+                { header: t('plans.fields.when'), value: item => `${item.startDate || ''} - ${item.endDate || ''}` },
+                { header: t('plans.fields.where'), value: item => item.location || '' },
+                { header: t('plans.fields.how'), value: item => item.method || '' },
+                { header: t('plans.fields.status'), value: item => statusLabel(item.status, t) },
+                { header: t('plans.daily.progress'), value: item => `${item.progressPct || 0}%` },
+                { header: t('plans.fields.result'), value: item => item.result || '' },
+            ],
+            'WeeklyPlan',
+            `WeeklyPlan_${department}_${dayjs(plan.weekStart).format('DD_MM_YYYY')}.xlsx`
+        );
         message.success(t('common.exportSuccess'));
     };
 
+    const isSaving = createWeeklyPlanItem.isPending || updateWeeklyPlanItem.isPending;
+
     const getColumns = (planId: string): ColumnsType<WeeklyPlanItem> => [
-        { title: '#', dataIndex: 'sortOrder', key: 'sortOrder', width: 40, align: 'center' },
+        indexColumn<WeeklyPlanItem>(40),
         {
-            title: t('business.weeklyPlan.what'), dataIndex: 'title', key: 'title', width: 220, className: WRAP,
+            title: t('plans.fields.what'), dataIndex: 'title', key: 'title', width: 220, className: WRAP,
             render: (val: string, record: WeeklyPlanItem) => {
                 const isOverdue = record.endDate && dayjs(record.endDate).isBefore(dayjs(), 'day') && record.status !== 'DONE';
                 return (
                     <span>
-                        <Text strong style={{ color: isOverdue ? '#ff4d4f' : 'inherit' }}>{val}</Text>
+                        <Text strong style={{ color: isOverdue ? BRAND_COLORS.dangerText : 'inherit' }}>{val}</Text>
                         {record.carriedFrom && (
                             <Tag color="orange" style={{ marginLeft: 6, fontSize: 10 }}>
-                                <SyncOutlined /> {t('business.weeklyPlan.carriedTag')}
+                                <SyncOutlined /> {t('plans.weekly.carriedTag')}
                             </Tag>
                         )}
                         {isOverdue && <Tag color="error" style={{ marginLeft: 6, fontSize: 10 }}>{t('dashboard.delayed')}</Tag>}
@@ -214,41 +255,41 @@ const DepartmentPlan: React.FC<DepartmentPlanProps> = ({ department, selectedMon
                 );
             },
         },
-        { title: t('business.weeklyPlan.why'), dataIndex: 'why', key: 'why', width: 130, className: WRAP },
+        whyColumn<WeeklyPlanItem>(t, 130),
+        assigneeColumn<WeeklyPlanItem>(t, userList, 110),
         {
-            title: t('business.weeklyPlan.who'), key: 'assignee', width: 110,
-            render: (_: any, r: WeeklyPlanItem) => r.assigneeName || users.find((u: any) => u.id === r.assigneeId)?.name || '',
-        },
-        {
-            title: t('business.weeklyPlan.when'), key: 'when', width: 120, align: 'center',
-            render: (_: any, r: WeeklyPlanItem) => {
-                const s = r.startDate ? dayjs(r.startDate).format('DD/MM') : '';
-                const e = r.endDate ? dayjs(r.endDate).format('DD/MM') : '';
+            title: t('plans.fields.when'), key: 'when', width: 120, align: 'center',
+            render: (_: unknown, r: WeeklyPlanItem) => {
+                const s = r.startDate ? dayjs(r.startDate).format(DATE_FORMAT_SHORT) : '';
+                const e = r.endDate ? dayjs(r.endDate).format(DATE_FORMAT_SHORT) : '';
                 return s && e ? `${s} - ${e}` : s || e || '-';
             },
         },
-        { title: t('business.weeklyPlan.where'), dataIndex: 'location', key: 'location', width: 110, className: WRAP, render: (val: string) => val || '-' },
-        { title: t('business.weeklyPlan.how'), dataIndex: 'method', key: 'method', width: 120, className: WRAP, render: (val: string) => val || '-' },
         {
-            title: t('business.weeklyPlan.status'), dataIndex: 'status', key: 'status', width: 120, align: 'center',
-            render: (val: string) => {
-                const key = val === 'IN_PROGRESS' ? 'statusInProgress' : val === 'CARRIED_OVER' ? 'statusCarriedOver' : val === 'DONE' ? 'statusDone' : 'statusTodo';
-                return <Tag color={STATUS_COLORS[val]}>{t(`business.weeklyPlan.${key}`)}</Tag>;
-            },
+            title: t('plans.fields.where'), dataIndex: 'location', key: 'location',
+            width: 110, className: WRAP, render: (val: string) => val || '-',
         },
+        methodColumn<WeeklyPlanItem>(t, 120),
+        statusColumn<WeeklyPlanItem>(t, 120),
         {
             title: t('plans.daily.progress'), key: 'progress', width: 130, align: 'center',
-            render: (_: any, r: WeeklyPlanItem) => {
+            render: (_: unknown, r: WeeklyPlanItem) => {
                 const pct = r.progressPct || 0;
                 const isOverdue = r.endDate && dayjs(r.endDate).isBefore(dayjs(), 'day') && pct < 100;
                 const status = pct >= 100 ? 'success' : isOverdue ? 'exception' : pct >= 60 ? 'active' : 'normal';
-                return <Progress percent={pct} size="small" status={status as any} style={{ margin: 0 }} strokeColor={isOverdue ? '#ff4d4f' : undefined} />;
+                return (
+                    <Progress
+                        percent={pct} size="small" status={status as never}
+                        style={{ margin: 0 }}
+                        strokeColor={isOverdue ? BRAND_COLORS.dangerText : undefined}
+                    />
+                );
             },
         },
-        { title: t('business.weeklyPlan.result'), dataIndex: 'result', key: 'result', width: 120, className: WRAP, render: (val: string) => val || '-' },
+        resultColumn<WeeklyPlanItem>(t),
         {
             title: t('common.actions'), key: 'action', width: 110, align: 'center', fixed: 'right',
-            render: (_: any, record: WeeklyPlanItem) => (
+            render: (_: unknown, record: WeeklyPlanItem) => (
                 <div style={{ display: 'flex', gap: 4, justifyContent: 'center' }}>
                     {canEdit && (
                         <Tooltip title={t('plans.daily.updateBtn')}>
@@ -261,7 +302,7 @@ const DepartmentPlan: React.FC<DepartmentPlanProps> = ({ department, selectedMon
                     )}
                     <VcmActionGroup
                         onEdit={canEdit ? () => handleEditItem(planId, record) : undefined}
-                        onDelete={canEdit ? () => handleDeleteItem(planId, record.id) : undefined}
+                        onDelete={canEdit ? () => handleDeleteItem(record.id) : undefined}
                         canEdit={canEdit}
                         canDelete={canEdit}
                     />
@@ -278,92 +319,76 @@ const DepartmentPlan: React.FC<DepartmentPlanProps> = ({ department, selectedMon
     return (
         <div>
             {/* Toolbar: Search, Filters, Create Buttons */}
-            <div style={{ padding: '12px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8, borderBottom: '1px solid #f1f5f9', background: '#fff' }}>
+            <div className="vcm-plan-toolbar" style={{
+                padding: '12px 16px', display: 'flex', justifyContent: 'space-between',
+                alignItems: 'center', flexWrap: 'wrap', gap: 8,
+                borderBottom: `1px solid ${BRAND_COLORS.slate100}`, background: BRAND_COLORS.white,
+            }}>
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
                     {isCurrentMonth && canEdit && !currentWeekPlan && (
                         <>
-                            <Button type="primary" icon={<PlusOutlined />} onClick={() => handleCreatePlan(false)}>
-                                {t('business.weeklyPlan.createPlan')}
+                            <Button
+                                type="primary" icon={<PlusOutlined />}
+                                loading={createWeeklyPlan.isPending}
+                                onClick={() => handleCreatePlan(false)}
+                            >
+                                {t('plans.weekly.createPlan')}
                             </Button>
                             {latestPlan && (
-                                <Tooltip title={t('business.weeklyPlan.carryOver')}>
-                                    <Button icon={<SyncOutlined />} onClick={() => handleCreatePlan(true)}>
-                                        {t('business.weeklyPlan.carryOver')}
+                                <Tooltip title={t('plans.weekly.carryOver')}>
+                                    <Button
+                                        icon={<SyncOutlined />}
+                                        loading={createWeeklyPlan.isPending}
+                                        onClick={() => handleCreatePlan(true)}
+                                    >
+                                        {t('plans.weekly.carryOver')}
                                     </Button>
                                 </Tooltip>
                             )}
                         </>
                     )}
-                    {selectedRowKeys.length > 0 && canEdit && (
+                    {selectedIds.length > 0 && canEdit && (
                         <Space wrap>
-                            <Text type="secondary" style={{ fontSize: 13 }}>{selectedRowKeys.length} {t('common.total').toLowerCase()}</Text>
-                            <Button size="small" type="primary" icon={<CheckCircleOutlined />} onClick={() => handleBatchStatusUpdate('DONE')}>
-                                {t('business.weeklyPlan.statusDone')}
+                            <Text type="secondary" style={{ fontSize: 13 }}>
+                                {selectedIds.length} {t('plans.selectedCount')}
+                            </Text>
+                            <Button
+                                size="small" type="primary" icon={<CheckCircleOutlined />}
+                                loading={updateWeeklyPlanItemsStatus.isPending}
+                                onClick={() => handleBatchStatusUpdate('DONE')}
+                            >
+                                {t('plans.fields.statusDone')}
                             </Button>
-                            <Button size="small" icon={<SyncOutlined />} onClick={() => handleBatchStatusUpdate('IN_PROGRESS')}>
-                                {t('business.weeklyPlan.statusInProgress')}
+                            <Button
+                                size="small" icon={<SyncOutlined />}
+                                loading={updateWeeklyPlanItemsStatus.isPending}
+                                onClick={() => handleBatchStatusUpdate('IN_PROGRESS')}
+                            >
+                                {t('plans.fields.statusInProgress')}
                             </Button>
                         </Space>
                     )}
                 </div>
 
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-                    <Input
-                        placeholder={t('common.search') + '...'}
-                        prefix={<SearchOutlined style={{ color: '#bfbfbf' }} />}
-                        size="small"
-                        style={{ width: 140, minWidth: 100 }}
-                        value={searchText}
-                        onChange={e => setSearchText(e.target.value)}
-                        allowClear
-                    />
-                    <Select
-                        size="small"
-                        style={{ width: 110, minWidth: 90 }}
-                        placeholder={t('business.weeklyPlan.status')}
-                        allowClear
-                        value={statusFilter}
-                        onChange={(v: string) => setStatusFilter(v)}
-                    >
-                        <Option value="TODO">{t('business.weeklyPlan.statusTodo')}</Option>
-                        <Option value="IN_PROGRESS">{t('business.weeklyPlan.statusInProgress')}</Option>
-                        <Option value="DONE">{t('business.weeklyPlan.statusDone')}</Option>
-                    </Select>
-                    <Select
-                        size="small"
-                        style={{ width: 130, minWidth: 100 }}
-                        placeholder={t('business.weeklyPlan.who')}
-                        allowClear
-                        showSearch
-                        value={assigneeFilter}
-                        onChange={(v: string) => setAssigneeFilter(v)}
-                        filterOption={(input, option) => ((option?.children as any) || '').toLowerCase().includes(input.toLowerCase())}
-                    >
-                        {users.map((u: any) => <Option key={u.id} value={u.id}>{u.name}</Option>)}
-                    </Select>
+                    <PlanFilterBar filters={filters} users={userList} />
                 </div>
             </div>
 
             {plans.length === 0 ? (
-                <Card style={{ margin: '16px', border: '1px solid #f1f5f9' }}>
-                    <Empty description={t('business.weeklyPlan.noPlan')} style={{ padding: 40 }} />
+                <Card style={{ margin: 16, border: `1px solid ${BRAND_COLORS.slate100}` }}>
+                    <Empty description={t('plans.weekly.noPlan')} style={{ padding: 40 }} />
                 </Card>
             ) : (
                 plans.map((plan: WeeklyPlan) => {
-                    const planItems = (plan.items || []).filter((item: WeeklyPlanItem) => {
-                        const matchesSearch = !searchText || item.title.toLowerCase().includes(searchText.toLowerCase());
-                        const matchesStatus = !statusFilter || item.status === statusFilter;
-                        const matchesAssignee = !assigneeFilter || item.assigneeId === assigneeFilter;
-                        return matchesSearch && matchesStatus && matchesAssignee;
-                    });
-                    
-                    if (planItems.length === 0 && (searchText || statusFilter || assigneeFilter)) return null;
+                    const planItems = filters.applyFilters(plan.items || []);
+                    if (planItems.length === 0 && filters.hasActiveFilter) return null;
 
-                    const weekLabel = `${dayjs(plan.weekStart).format('DD/MM')} – ${dayjs(plan.weekEnd).format('DD/MM/YYYY')}`;
+                    const weekLabel = `${dayjs(plan.weekStart).format(DATE_FORMAT_SHORT)} – ${dayjs(plan.weekEnd).format(DATE_FORMAT)}`;
                     const isCurrent = isCurrentWeek(plan);
-                    const doneCount = planItems.filter((i: WeeklyPlanItem) => i.status === 'DONE').length;
+                    const doneCount = planItems.filter(i => i.status === 'DONE').length;
                     const avgProgress = planItems.length
-                        ? Math.round(planItems.reduce((s: number, i: WeeklyPlanItem) => s + (i.progressPct || 0), 0) / planItems.length)
+                        ? Math.round(planItems.reduce((s, i) => s + (i.progressPct || 0), 0) / planItems.length)
                         : 0;
 
                     return (
@@ -371,38 +396,68 @@ const DepartmentPlan: React.FC<DepartmentPlanProps> = ({ department, selectedMon
                             key={plan.id}
                             className="vcm-plan-card"
                             style={{
-                                margin: '16px',
-                                border: isCurrent ? '2px solid #E11D2E' : '1px solid #f1f5f9',
+                                margin: 16,
+                                border: isCurrent
+                                    ? `2px solid ${BRAND_COLORS.primary}`
+                                    : `1px solid ${BRAND_COLORS.slate100}`,
                                 boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
-                                borderRadius: 12
+                                borderRadius: 12,
                             }}
-                            bodyStyle={{ padding: '0 0 8px' }}
+                            styles={{ body: { padding: '0 0 8px' } }}
                         >
-                            <div style={{
+                            <div className="vcm-plan-card-header" style={{
                                 display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap',
                                 padding: '10px 12px',
-                                borderBottom: '1px solid #f8fafc'
+                                borderBottom: `1px solid ${BRAND_COLORS.slate50}`,
                             }}>
-                                <CalendarOutlined style={{ color: isCurrent ? '#E11D2E' : '#64748b', fontSize: 16 }} />
-                                <span style={{ fontWeight: 700, fontSize: 15, color: isCurrent ? '#E11D2E' : '#1e293b' }}>
+                                <CalendarOutlined style={{
+                                    color: isCurrent ? BRAND_COLORS.primary : BRAND_COLORS.slate500,
+                                    fontSize: 16,
+                                }} />
+                                <span style={{
+                                    fontWeight: 700, fontSize: 15,
+                                    color: isCurrent ? BRAND_COLORS.primary : BRAND_COLORS.slate800,
+                                }}>
                                     {weekLabel}
                                 </span>
-                                {isCurrent && <Tag color="red" style={{ borderRadius: 4 }}>{t('business.weeklyPlan.currentWeek')}</Tag>}
-                                <Tag color="default" style={{ border: 'none', background: '#f1f5f9' }}>{planItems.length} {t('business.weeklyPlan.items')}</Tag>
-                                <Tag color="success" style={{ border: 'none', background: '#f0fdf4', color: '#15803d' }}>{doneCount} {t('business.weeklyPlan.statusDone')}</Tag>
-                                
+                                {isCurrent && <Tag color="red" style={{ borderRadius: 4 }}>{t('plans.weekly.currentWeek')}</Tag>}
+                                <Tag color="default" style={{ border: 'none', background: BRAND_COLORS.slate100 }}>
+                                    {planItems.length} {t('plans.weekly.items')}
+                                </Tag>
+                                <Tag color="success" style={{
+                                    border: 'none',
+                                    background: BRAND_COLORS.successBg,
+                                    color: BRAND_COLORS.successText,
+                                }}>
+                                    {doneCount} {t('plans.fields.statusDone')}
+                                </Tag>
+
                                 <div style={{ flex: 1, minWidth: 120, maxWidth: 240, marginLeft: 8 }}>
-                                    <Progress percent={avgProgress} size="small" strokeColor={isCurrent ? '#E11D2E' : undefined} />
+                                    <Progress
+                                        percent={avgProgress} size="small"
+                                        strokeColor={isCurrent ? BRAND_COLORS.primary : undefined}
+                                    />
                                 </div>
 
-                                <Space style={{ marginLeft: 'auto' }}>
+                                <Space style={{ marginLeft: 'auto' }} wrap>
                                     <Button size="small" icon={<FileExcelOutlined />} onClick={() => handleExportExcel(plan.id)}>
                                         {t('common.export')}
                                     </Button>
                                     {canEdit && (
-                                        <Button size="small" type="primary" icon={<PlusOutlined />} onClick={() => handleAddItem(plan.id)}>
-                                            {t('business.weeklyPlan.addItem')}
-                                        </Button>
+                                        <>
+                                            <Button size="small" type="primary" icon={<PlusOutlined />} onClick={() => handleAddItem(plan.id)}>
+                                                {t('plans.weekly.addItem')}
+                                            </Button>
+                                            <Popconfirm
+                                                title={t('plans.weekly.deleteConfirm')}
+                                                onConfirm={() => handleDeletePlan(plan.id)}
+                                                okText={t('common.delete')}
+                                                cancelText={t('common.cancel')}
+                                                okButtonProps={{ loading: deleteWeeklyPlan.isPending }}
+                                            >
+                                                <Button size="small" danger icon={<DeleteOutlined />} />
+                                            </Popconfirm>
+                                        </>
                                     )}
                                 </Space>
                             </div>
@@ -416,19 +471,21 @@ const DepartmentPlan: React.FC<DepartmentPlanProps> = ({ department, selectedMon
                                 scroll={{ x: 1400 }}
                                 className="vcm-plan-table"
                                 rowSelection={canEdit ? {
-                                    selectedRowKeys,
-                                    onChange: (keys: React.Key[]) => setSelectedRowKeys(keys),
+                                    selectedRowKeys: selectionByPlan[plan.id] || [],
+                                    onChange: (keys: React.Key[]) =>
+                                        setSelectionByPlan(prev => ({ ...prev, [plan.id]: keys })),
                                 } : undefined}
                                 expandable={{
                                     expandedRowRender: (record: WeeklyPlanItem) => (
-                                        <div style={{ padding: '8px 48px', background: '#f8fafc' }}>
-                                            <p><strong>{t('business.weeklyPlan.why')}:</strong> {record.why || '-'}</p>
-                                            <p><strong>{t('business.weeklyPlan.where')}:</strong> {record.location || '-'}</p>
-                                            <p><strong>{t('business.weeklyPlan.how')}:</strong> {record.method || '-'}</p>
-                                            {record.result && <p><strong>{t('business.weeklyPlan.result')}:</strong> {record.result}</p>}
+                                        <div style={{ padding: '8px 48px', background: BRAND_COLORS.slate50 }}>
+                                            <p><strong>{t('plans.fields.why')}:</strong> {record.why || '-'}</p>
+                                            <p><strong>{t('plans.fields.where')}:</strong> {record.location || '-'}</p>
+                                            <p><strong>{t('plans.fields.how')}:</strong> {record.method || '-'}</p>
+                                            {record.result && <p><strong>{t('plans.fields.result')}:</strong> {record.result}</p>}
                                         </div>
                                     ),
-                                    rowExpandable: (record: WeeklyPlanItem) => !!(record.why || record.location || record.method || record.result),
+                                    rowExpandable: (record: WeeklyPlanItem) =>
+                                        !!(record.why || record.location || record.method || record.result),
                                 }}
                             />
                         </Card>
@@ -440,7 +497,7 @@ const DepartmentPlan: React.FC<DepartmentPlanProps> = ({ department, selectedMon
             <Modal
                 title={
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <span>{editingItem ? t('business.weeklyPlan.editItem') : t('business.weeklyPlan.addItem')}</span>
+                        <span>{editingItem ? t('plans.weekly.editItem') : t('plans.weekly.addItem')}</span>
                         <Button type="link" size="small" icon={<QuestionCircleOutlined />}
                             onClick={() => setGuideVisible(true)} style={{ padding: '0 4px', fontSize: 12 }}>
                             {t('plans.guideBtn')}
@@ -448,91 +505,94 @@ const DepartmentPlan: React.FC<DepartmentPlanProps> = ({ department, selectedMon
                     </div>
                 }
                 open={modalVisible}
-                onCancel={() => { setModalVisible(false); form.resetFields(); }}
+                onCancel={closeModal}
                 onOk={() => form.submit()}
+                confirmLoading={isSaving}
                 okText={t('common.save')}
                 cancelText={t('common.cancel')}
-                width={650}
-                destroyOnClose
+                width="min(650px, 94vw)"
+                destroyOnHidden
+                afterOpenChange={open => {
+                    if (open && pendingValues) form.setFieldsValue(pendingValues);
+                }}
             >
                 <Form form={form} layout="vertical" onFinish={handleSubmitItem}>
                     <Row gutter={16}>
                         <Col xs={24} sm={6}>
                             <Form.Item name="sortOrder" label="#" rules={[{ required: true }]}>
-                                <Select>{[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15].map(n => <Option key={n} value={n}>{n}</Option>)}</Select>
+                                <SortOrderSelect
+                                    itemCount={plans.find(p => p.id === activePlanId)?.items?.length || 0}
+                                />
                             </Form.Item>
                         </Col>
                         <Col xs={24} sm={18}>
                             <Form.Item name="monthlyItemId" label={t('plans.monthly.sectionTitle')}>
-                                <Select allowClear placeholder={t('plans.monthly.addItem')}>
-                                    {monthlyPlanItems.map((mi: MonthlyPlanItem) => (
-                                        <Option key={mi.id} value={mi.id}>{mi.title}</Option>
-                                    ))}
-                                </Select>
+                                <Select
+                                    allowClear
+                                    placeholder={t('plans.monthly.addItem')}
+                                    options={monthlyPlanItems.map(mi => ({ value: mi.id, label: mi.title }))}
+                                />
                             </Form.Item>
                         </Col>
                     </Row>
-                    <Form.Item name="title" label={t('business.weeklyPlan.what')} rules={[{ required: true }]}>
-                        <Input placeholder={t('business.weeklyPlan.whatPlaceholder')} />
+                    <Form.Item name="title" label={t('plans.fields.what')} rules={[{ required: true }]}>
+                        <Input placeholder={t('plans.fields.whatPlaceholder')} />
                     </Form.Item>
-                    <Form.Item name="why" label={t('business.weeklyPlan.why')}>
-                        <TextArea autoSize={{ minRows: 2, maxRows: 6 }} placeholder={t('business.weeklyPlan.whyPlaceholder')} />
+                    <Form.Item name="why" label={t('plans.fields.why')}>
+                        <TextArea autoSize={{ minRows: 2, maxRows: 6 }} placeholder={t('plans.fields.whyPlaceholder')} />
                     </Form.Item>
-                    <Form.Item name="assigneeId" label={t('business.weeklyPlan.who')}>
-                        <Select allowClear showSearch placeholder={t('business.weeklyPlan.whoPlaceholder')}
-                            filterOption={(input, option) => {
-                                const label = (option?.children as unknown as string) || '';
-                                return label.toLowerCase().includes(input.toLowerCase());
-                            }}>
-                            {users.map((u: any) => <Option key={u.id} value={u.id}>{u.name}</Option>)}
-                        </Select>
+                    <Form.Item name="assigneeId" label={t('plans.fields.who')}>
+                        <AssigneeSelect users={userList} />
                     </Form.Item>
                     <Row gutter={16}>
                         <Col xs={24} sm={12}>
-                            <Form.Item name="startDate" label={t('business.weeklyPlan.whenStart')}>
-                                <DatePicker style={{ width: '100%' }} format="DD/MM/YYYY" />
+                            <Form.Item name="startDate" label={t('plans.fields.whenStart')}>
+                                <DatePicker style={{ width: '100%' }} format={DATE_FORMAT} />
                             </Form.Item>
                         </Col>
                         <Col xs={24} sm={12}>
-                            <Form.Item name="endDate" label={t('business.weeklyPlan.whenEnd')}>
-                                <DatePicker style={{ width: '100%' }} format="DD/MM/YYYY" />
-                            </Form.Item>
-                        </Col>
-                    </Row>
-                    <Row gutter={16}>
-                        <Col xs={24} sm={12}>
-                            <Form.Item name="location" label={t('business.weeklyPlan.where')}>
-                                <TextArea autoSize={{ minRows: 2, maxRows: 6 }} placeholder={t('business.weeklyPlan.wherePlaceholder')} />
-                            </Form.Item>
-                        </Col>
-                        <Col xs={24} sm={12}>
-                            <Form.Item name="method" label={t('business.weeklyPlan.how')}>
-                                <TextArea autoSize={{ minRows: 2, maxRows: 6 }} placeholder={t('business.weeklyPlan.howPlaceholder')} />
+                            <Form.Item
+                                name="endDate"
+                                label={t('plans.fields.whenEnd')}
+                                dependencies={['startDate']}
+                                rules={[({ getFieldValue }) => ({
+                                    validator(_, value) {
+                                        const start = getFieldValue('startDate');
+                                        if (!value || !start || !value.isBefore(start, 'day')) return Promise.resolve();
+                                        return Promise.reject(new Error(t('plans.fields.dateRangeError')));
+                                    },
+                                })]}
+                            >
+                                <DatePicker style={{ width: '100%' }} format={DATE_FORMAT} />
                             </Form.Item>
                         </Col>
                     </Row>
                     <Row gutter={16}>
                         <Col xs={24} sm={12}>
-                            <Form.Item name="status" label={t('business.weeklyPlan.status')} initialValue="TODO">
-                                <Select>
-                                    <Option value="TODO">{t('business.weeklyPlan.statusTodo')}</Option>
-                                    <Option value="IN_PROGRESS">{t('business.weeklyPlan.statusInProgress')}</Option>
-                                    <Option value="DONE">{t('business.weeklyPlan.statusDone')}</Option>
-                                </Select>
+                            <Form.Item name="location" label={t('plans.fields.where')}>
+                                <TextArea autoSize={{ minRows: 2, maxRows: 6 }} placeholder={t('plans.fields.wherePlaceholder')} />
+                            </Form.Item>
+                        </Col>
+                        <Col xs={24} sm={12}>
+                            <Form.Item name="method" label={t('plans.fields.how')}>
+                                <TextArea autoSize={{ minRows: 2, maxRows: 6 }} placeholder={t('plans.fields.howPlaceholder')} />
+                            </Form.Item>
+                        </Col>
+                    </Row>
+                    <Row gutter={16}>
+                        <Col xs={24} sm={12}>
+                            <Form.Item name="status" label={t('plans.fields.status')} initialValue="TODO">
+                                <StatusSelect />
                             </Form.Item>
                         </Col>
                         <Col xs={24} sm={12}>
                             <Form.Item name="progressPct" label={t('plans.daily.progress')} initialValue={0}>
-                                <Select>
-                                    {[0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100].map(v => (
-                                        <Option key={v} value={v}>{v}%</Option>
-                                    ))}
-                                </Select>
+                                <ProgressSelect />
                             </Form.Item>
                         </Col>
                     </Row>
-                    <Form.Item name="result" label={t('business.weeklyPlan.result')}>
-                        <TextArea rows={2} placeholder={t('business.weeklyPlan.resultPlaceholder')} />
+                    <Form.Item name="result" label={t('plans.fields.result')}>
+                        <TextArea rows={2} placeholder={t('plans.fields.resultPlaceholder')} />
                     </Form.Item>
                 </Form>
             </Modal>

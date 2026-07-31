@@ -51,6 +51,21 @@ export const BRAND_COLORS = {
     warning: '#F59E0B',
     error: '#EF4444',
     info: '#3B82F6',
+
+    // Slate scale - dùng cho bảng/thẻ dày đặc thông tin (Page Plan)
+    slate50: '#F8FAFC',
+    slate100: '#F1F5F9',
+    slate400: '#94A3B8',
+    slate500: '#64748B',
+    slate600: '#475569',
+    slate800: '#1E293B',
+
+    // Nhấn nhẹ theo trạng thái (nền Tag / vùng highlight)
+    successBg: '#F0FDF4',
+    successText: '#15803D',
+    dangerText: '#FF4D4F',
+    primarySoftBg: 'linear-gradient(135deg, #FFF7F7 0%, #FFF 100%)',
+    primaryTint: '#FFFBFB',
 };
 
 // ============================================

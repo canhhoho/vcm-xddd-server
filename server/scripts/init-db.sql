@@ -294,12 +294,38 @@ DO $$ BEGIN
   -- Add staff group
   ALTER TABLE staff ADD COLUMN IF NOT EXISTS staff_group VARCHAR(100) DEFAULT '';
   -- Add tab-specific plan permissions
+  -- (users.plans số ít ở trên là cột DEPRECATED - không còn được đọc bởi frontend
+  --  hay backend; giữ lại để không mất dữ liệu cũ, sẽ DROP ở lần dọn schema sau)
   ALTER TABLE users ADD COLUMN IF NOT EXISTS plans_bd VARCHAR(20) DEFAULT 'NO_ACCESS';
   ALTER TABLE users ADD COLUMN IF NOT EXISTS plans_mkt VARCHAR(20) DEFAULT 'NO_ACCESS';
   ALTER TABLE users ADD COLUMN IF NOT EXISTS plans_qs VARCHAR(20) DEFAULT 'NO_ACCESS';
   ALTER TABLE users ADD COLUMN IF NOT EXISTS plans_des VARCHAR(20) DEFAULT 'NO_ACCESS';
   ALTER TABLE users ADD COLUMN IF NOT EXISTS plans_pm VARCHAR(20) DEFAULT 'NO_ACCESS';
+
+  -- Thống nhất quy ước NULL cho khoá ngoại mềm của plan items
+  -- (weekly trước đây ghi '', monthly ghi NULL -> JOIN và so sánh dễ sai)
+  UPDATE weekly_plan_items SET assignee_id     = NULL WHERE assignee_id = '';
+  UPDATE weekly_plan_items SET monthly_item_id = NULL WHERE monthly_item_id = '';
+  UPDATE weekly_plan_items SET carried_from    = NULL WHERE carried_from = '';
+  UPDATE monthly_plan_items SET assignee_id    = NULL WHERE assignee_id = '';
 END $$;
+
+-- ============================================================
+-- Ràng buộc chống trùng cho Page Plan
+-- Trước đây chỉ kiểm tra tồn tại ở tầng app (check-then-insert) nên hai request
+-- đồng thời vẫn tạo được 2 plan cùng tuần/tháng, hoặc 2 daily log cùng ngày.
+-- daily_logs cần unique index này để INSERT ... ON CONFLICT hoạt động.
+--
+-- LƯU Ý KHI DEPLOY: nếu production đã có dữ liệu trùng, lệnh dưới sẽ lỗi.
+-- Kiểm tra trước bằng:
+--   SELECT week_start, department, count(*) FROM weekly_plans  GROUP BY 1,2 HAVING count(*)>1;
+--   SELECT month_start, department, count(*) FROM monthly_plans GROUP BY 1,2 HAVING count(*)>1;
+--   SELECT item_id, log_date, count(*) FROM daily_logs          GROUP BY 1,2 HAVING count(*)>1;
+-- ============================================================
+CREATE UNIQUE INDEX IF NOT EXISTS uq_weekly_plans_week_dept   ON weekly_plans(week_start, department);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_monthly_plans_month_dept ON monthly_plans(month_start, department);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_daily_logs_item_date     ON daily_logs(item_id, log_date);
+CREATE INDEX IF NOT EXISTS idx_monthly_plan_items_plan        ON monthly_plan_items(plan_id);
 
 -- ============================================================
 -- 14. collaborators

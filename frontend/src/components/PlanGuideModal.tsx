@@ -5,6 +5,7 @@ import {
     CheckCircleOutlined,
     CloseCircleOutlined,
 } from '@ant-design/icons';
+import { BRAND_COLORS } from '../styles/brandIdentity';
 
 interface Props {
     open: boolean;
@@ -25,11 +26,11 @@ const PlanGuideModal: React.FC<Props> = ({ open, onClose }) => {
     };
 
     const SMART_ITEMS = [
-        { letter: 'S', name: 'Specific', viName: 'Cụ thể', descKey: 'Specific' },
-        { letter: 'M', name: 'Measurable', viName: 'Đo lường được', descKey: 'Measurable' },
-        { letter: 'A', name: 'Achievable', viName: 'Khả thi', descKey: 'Achievable' },
-        { letter: 'R', name: 'Relevant', viName: 'Liên quan', descKey: 'Relevant' },
-        { letter: 'T', name: 'Time-bound', viName: 'Có thời hạn', descKey: 'Time-bound' },
+        { letter: 'S', name: 'Specific' },
+        { letter: 'M', name: 'Measurable' },
+        { letter: 'A', name: 'Achievable' },
+        { letter: 'R', name: 'Relevant' },
+        { letter: 'T', name: 'Time-bound' },
     ];
 
     return (
@@ -38,14 +39,14 @@ const PlanGuideModal: React.FC<Props> = ({ open, onClose }) => {
             open={open}
             onCancel={onClose}
             footer={null}
-            width={700}
+            width="min(700px, 92vw)"
             styles={{ body: { maxHeight: '70vh', overflowY: 'auto', padding: '16px 24px' } }}
         >
-            <p style={{ color: '#64748b', marginBottom: 16, fontSize: 13 }}>
+            <p style={{ color: BRAND_COLORS.slate500, marginBottom: 16, fontSize: 13 }}>
                 {t('plans.guide.intro')}
             </p>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))', gap: 10 }}>
                 {W_KEYS.map(key => {
                     const colors = W_COLORS[key];
                     return (
@@ -63,13 +64,13 @@ const PlanGuideModal: React.FC<Props> = ({ open, onClose }) => {
                                 {t(`plans.guide.descs.${key}`)}
                             </p>
                             <div style={{ fontSize: 12, display: 'flex', flexDirection: 'column', gap: 3 }}>
-                                <span style={{ color: '#15803d' }}>
+                                <span style={{ color: BRAND_COLORS.successText }}>
                                     <CheckCircleOutlined style={{ marginRight: 4 }} />
-                                    {t(`business.weeklyPlan.${key.toLowerCase()}Placeholder`).replace('VD: ', '')}
+                                    {t(`plans.guide.examples.${key}`)}
                                 </span>
                                 <span style={{ color: '#b91c1c' }}>
                                     <CloseCircleOutlined style={{ marginRight: 4 }} />
-                                    {t('common.noData')}...
+                                    {t('plans.guide.badExample')}
                                 </span>
                             </div>
                         </div>
@@ -94,8 +95,8 @@ const PlanGuideModal: React.FC<Props> = ({ open, onClose }) => {
                             </span>
                             <span>
                                 <strong>{s.name}</strong>
-                                <span style={{ color: '#64748b', fontSize: 11 }}> ({s.viName})</span>
-                                <span style={{ color: '#475569' }}> — {t(`plans.guide.smart${s.letter}`, s.descKey)}</span>
+                                <span style={{ color: BRAND_COLORS.slate500, fontSize: 11 }}> ({t(`plans.guide.smartNames.${s.letter}`)})</span>
+                                <span style={{ color: BRAND_COLORS.slate600 }}> — {t(`plans.guide.smart${s.letter}`)}</span>
                             </span>
                         </div>
                     ))}

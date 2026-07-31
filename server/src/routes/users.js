@@ -23,7 +23,7 @@ function toUser(r) {
     description: r.description || '', role: r.role,
     branches: r.branches, contracts: r.contracts,
     projects: r.projects, targets: r.targets,
-    business: r.business, plans: r.plans,
+    business: r.business,
     plans_bd: r.plans_bd, plans_mkt: r.plans_mkt,
     plans_qs: r.plans_qs, plans_des: r.plans_des,
     plans_pm: r.plans_pm,
@@ -44,7 +44,7 @@ router.get('/', async (req, res) => {
             ELSE COALESCE(p.name, '')
           END as position_name,
           COALESCE(NULLIF(p.category, ''), u.category) as category,
-          u.description, u.role, u.branches, u.contracts, u.projects, u.targets, u.business, u.plans,
+          u.description, u.role, u.branches, u.contracts, u.projects, u.targets, u.business,
           u.plans_bd, u.plans_mkt, u.plans_qs, u.plans_des, u.plans_pm, u.created_at
         FROM users u
         LEFT JOIN positions p ON u.position_id = p.id
@@ -80,14 +80,14 @@ router.post('/', async (req, res) => {
     }
 
     await query(`
-      INSERT INTO users (id, email, password, name, position_id, position_code, position_name, category, description, role, branches, contracts, projects, targets, business, plans, plans_bd, plans_mkt, plans_qs, plans_des, plans_pm)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21)
+      INSERT INTO users (id, email, password, name, position_id, position_code, position_name, category, description, role, branches, contracts, projects, targets, business, plans_bd, plans_mkt, plans_qs, plans_des, plans_pm)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)
     `, [
       id, d.email, hashedPassword, d.name || '',
       d.positionId || '', posCode, posName,
       d.category || '', d.description || '',
       d.role || 'VIEW',
-      'VIEW', 'VIEW', 'VIEW', 'VIEW', 'VIEW', 'VIEW',
+      'VIEW', 'VIEW', 'VIEW', 'VIEW', 'VIEW',
       'NO_ACCESS', 'NO_ACCESS', 'NO_ACCESS', 'NO_ACCESS', 'NO_ACCESS'
     ]);
 
@@ -113,7 +113,7 @@ router.put('/:id', async (req, res) => {
       positionName: 'position_name', category: 'category',
       description: 'description', role: 'role',
       branches: 'branches', contracts: 'contracts',
-      projects: 'projects', targets: 'targets', business: 'business', plans: 'plans',
+      projects: 'projects', targets: 'targets', business: 'business',
       plans_bd: 'plans_bd', plans_mkt: 'plans_mkt', plans_qs: 'plans_qs',
       plans_des: 'plans_des', plans_pm: 'plans_pm'
     };

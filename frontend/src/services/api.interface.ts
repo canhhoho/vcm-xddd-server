@@ -5,6 +5,76 @@
  * Tất cả các page, hook, component chỉ gọi qua interface này.
  */
 
+import type {
+    Department, PlanItemStatus,
+    WeeklyPlan, WeeklyPlanItem, MonthlyPlan, MonthlyPlanItem, DailyLog,
+} from '../types';
+
+// ==================== PLAN PAYLOADS ====================
+
+export interface WeeklyPlanQuery {
+    department?: Department;
+    weekStart?: string;
+    /** Lọc theo khoảng (week_start >= weekFrom, week_start <= weekTo) */
+    weekFrom?: string;
+    weekTo?: string;
+    includeItems?: 'true';
+    limit?: number;
+}
+
+export interface MonthlyPlanQuery {
+    department?: Department;
+    monthStart?: string;
+    includeItems?: 'true';
+}
+
+export interface CreateWeeklyPlanInput {
+    weekStart: string;
+    weekEnd: string;
+    department: Department;
+    /** Có giá trị => copy đầu việc chưa xong từ plan này sang */
+    carryOverFromPlanId?: string;
+}
+
+export interface CreateMonthlyPlanInput {
+    monthStart: string;
+    department: Department;
+}
+
+export interface WeeklyPlanItemInput {
+    sortOrder?: number;
+    title: string;
+    description?: string;
+    why?: string;
+    assigneeId?: string | null;
+    startDate?: string | null;
+    endDate?: string | null;
+    location?: string;
+    method?: string;
+    status?: PlanItemStatus;
+    result?: string;
+    progressPct?: number;
+    monthlyItemId?: string | null;
+}
+
+export interface MonthlyPlanItemInput {
+    sortOrder?: number;
+    title: string;
+    why?: string;
+    assigneeId?: string | null;
+    target?: string;
+    method?: string;
+    status?: Exclude<PlanItemStatus, 'CARRIED_OVER'>;
+    result?: string;
+}
+
+export interface DailyLogInput {
+    itemId: string;
+    logDate: string;
+    progressPct: number;
+    note?: string | null;
+}
+
 // Generic API response wrapper
 export interface ApiResponse<T = any> {
     success: boolean;
@@ -148,27 +218,27 @@ export interface IApiService {
 
 
     // ==================== WEEKLY PLANS ====================
-    getWeeklyPlans(params?: any): Promise<ApiResponse>;
-    createWeeklyPlan(data: any): Promise<ApiResponse>;
+    getWeeklyPlans(params?: WeeklyPlanQuery): Promise<ApiResponse<WeeklyPlan[]>>;
+    createWeeklyPlan(data: CreateWeeklyPlanInput): Promise<ApiResponse<{ id: string }>>;
     deleteWeeklyPlan(id: string): Promise<ApiResponse>;
-    getWeeklyPlanItems(planId: string): Promise<ApiResponse>;
-    createWeeklyPlanItem(planId: string, data: any): Promise<ApiResponse>;
-    updateWeeklyPlanItem(id: string, data: any): Promise<ApiResponse>;
-    updateWeeklyPlanItemsStatus(ids: string[], status: string): Promise<ApiResponse>;
+    getWeeklyPlanItems(planId: string): Promise<ApiResponse<WeeklyPlanItem[]>>;
+    createWeeklyPlanItem(planId: string, data: WeeklyPlanItemInput): Promise<ApiResponse<{ id: string }>>;
+    updateWeeklyPlanItem(id: string, data: WeeklyPlanItemInput): Promise<ApiResponse>;
+    updateWeeklyPlanItemsStatus(ids: string[], status: PlanItemStatus): Promise<ApiResponse>;
     deleteWeeklyPlanItem(id: string): Promise<ApiResponse>;
 
     // ==================== MONTHLY PLANS ====================
-    getMonthlyPlans(params?: any): Promise<ApiResponse>;
-    createMonthlyPlan(data: any): Promise<ApiResponse>;
+    getMonthlyPlans(params?: MonthlyPlanQuery): Promise<ApiResponse<MonthlyPlan[]>>;
+    createMonthlyPlan(data: CreateMonthlyPlanInput): Promise<ApiResponse<MonthlyPlan>>;
     deleteMonthlyPlan(id: string): Promise<ApiResponse>;
-    getMonthlyPlanItems(planId: string): Promise<ApiResponse>;
-    createMonthlyPlanItem(planId: string, data: any): Promise<ApiResponse>;
-    updateMonthlyPlanItem(id: string, data: any): Promise<ApiResponse>;
+    getMonthlyPlanItems(planId: string): Promise<ApiResponse<MonthlyPlanItem[]>>;
+    createMonthlyPlanItem(planId: string, data: MonthlyPlanItemInput): Promise<ApiResponse<MonthlyPlanItem>>;
+    updateMonthlyPlanItem(id: string, data: MonthlyPlanItemInput): Promise<ApiResponse>;
     deleteMonthlyPlanItem(id: string): Promise<ApiResponse>;
 
     // ==================== DAILY LOGS ====================
-    getDailyLogs(itemId: string): Promise<ApiResponse>;
-    upsertDailyLog(data: any): Promise<ApiResponse>;
+    getDailyLogs(itemId: string): Promise<ApiResponse<DailyLog[]>>;
+    upsertDailyLog(data: DailyLogInput): Promise<ApiResponse>;
 
     // ==================== PROJECT LOGS (Nhat ky Thi cong) ====================
     getProjectLogs(params: { projectId: string; month?: string }): Promise<ApiResponse>;

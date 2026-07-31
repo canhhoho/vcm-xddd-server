@@ -1,29 +1,30 @@
-import React, { useState, useMemo } from 'react';
-import { Button, Table, Tag, Modal, Form, Input, Select, message, Empty, Popconfirm, Typography, Space, Tooltip } from 'antd';
+import React, { useMemo, useState } from 'react';
+import { Button, Table, Modal, Form, Input, message, Empty, Popconfirm, Typography } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
-import { PlusOutlined, DeleteOutlined, QuestionCircleOutlined, SearchOutlined, FileExcelOutlined, FilterOutlined } from '@ant-design/icons';
+import { PlusOutlined, DeleteOutlined, QuestionCircleOutlined, FileExcelOutlined } from '@ant-design/icons';
 import PlanGuideModal from './PlanGuideModal';
 import { useTranslation } from 'react-i18next';
 import type { Dayjs } from 'dayjs';
 import { VcmActionGroup } from './VcmActionGroup';
-import type { MonthlyPlanItem } from '../types';
+import type { Department, MonthlyPlanItem, User } from '../types';
 import { useMonthlyPlans, usePlanMutations } from '../hooks/usePlans';
 import { useUsers } from '../hooks/useUsers';
-import * as XLSX from 'xlsx';
+import { BRAND_COLORS } from '../styles/brandIdentity';
+import PlanFilterBar from './plan/PlanFilterBar';
+import { usePlanFilters } from './plan/usePlanFilters';
+import { exportPlanExcel } from './plan/exportPlanExcel';
+import { WRAP } from './plan/planConstants';
+import { AssigneeSelect, SortOrderSelect, StatusSelect } from './plan/PlanFormFields';
+import {
+    assigneeColumn, indexColumn, methodColumn, resolveAssigneeName,
+    resultColumn, statusColumn, statusLabel, titleColumn, whyColumn,
+} from './plan/planColumns';
 
 const { TextArea } = Input;
-const { Option } = Select;
-const { Title, Text } = Typography;
-
-const STATUS_COLORS: Record<string, string> = {
-    TODO: 'default', IN_PROGRESS: 'processing', DONE: 'success',
-};
-
-/* Cột văn bản dài: xuống hàng đầy đủ (CSS trong pages/Business.css) */
-const WRAP = 'vcm-cell-wrap';
+const { Title } = Typography;
 
 interface Props {
-    department: string;
+    department: Department;
     selectedMonth: Dayjs;
     canEdit: boolean;
 }
@@ -33,144 +34,122 @@ const MonthlyPlanSection: React.FC<Props> = ({ department, selectedMonth, canEdi
     const [modalVisible, setModalVisible] = useState(false);
     const [editingItem, setEditingItem] = useState<MonthlyPlanItem | null>(null);
     const [guideVisible, setGuideVisible] = useState(false);
+    // Giá trị khởi tạo được set khi Modal đã mount (destroyOnHidden huỷ Form khi đóng)
+    const [pendingValues, setPendingValues] = useState<Partial<MonthlyPlanItem> | null>(null);
     const [form] = Form.useForm();
 
-    // Filters state
-    const [searchText, setSearchText] = useState('');
-    const [statusFilter, setStatusFilter] = useState<string | undefined>(undefined);
-    const [assigneeFilter, setAssigneeFilter] = useState<string | undefined>(undefined);
-
+    const filters = usePlanFilters();
     const monthStart = selectedMonth.format('YYYY-MM-DD');
 
-    // React Query Data
     const { data: plans = [], isLoading: loading } = useMonthlyPlans({ department, monthStart });
     const { data: users = [] } = useUsers();
-    const { 
-        createMonthlyPlan, 
-        deleteMonthlyPlan, 
-        createMonthlyPlanItem, 
-        updateMonthlyPlanItem, 
-        deleteMonthlyPlanItem 
+    const {
+        createMonthlyPlan,
+        deleteMonthlyPlan,
+        createMonthlyPlanItem,
+        updateMonthlyPlanItem,
+        deleteMonthlyPlanItem,
     } = usePlanMutations();
 
     const plan = plans.length > 0 ? plans[0] : null;
-    const rawItems = plan?.items || [];
+    const rawItems: MonthlyPlanItem[] = plan?.items || [];
+    const userList = users as User[];
 
-    const filteredItems = useMemo(() => {
-        return rawItems.filter((item: MonthlyPlanItem) => {
-            const matchesSearch = !searchText || item.title.toLowerCase().includes(searchText.toLowerCase());
-            const matchesStatus = !statusFilter || item.status === statusFilter;
-            const matchesAssignee = !assigneeFilter || item.assigneeId === assigneeFilter;
-            return matchesSearch && matchesStatus && matchesAssignee;
-        });
-    }, [rawItems, searchText, statusFilter, assigneeFilter]);
+    const showError = (e: Error) => message.error(e.message || t('common.saveError'));
+
+    const filteredItems = useMemo(
+        () => filters.applyFilters(rawItems),
+        [rawItems, filters]
+    );
 
     const handleExportExcel = () => {
-        const exportData = filteredItems.map((item: MonthlyPlanItem, index: number) => ({
-            [t('common.index') || '#']: index + 1,
-            [t('business.weeklyPlan.what')]: item.title,
-            [t('plans.monthly.target')]: item.target || '',
-            [t('business.weeklyPlan.why')]: item.why || '',
-            [t('business.weeklyPlan.who')]: item.assigneeName || users.find((u: any) => u.id === item.assigneeId)?.name || '',
-            [t('business.weeklyPlan.how')]: item.method || '',
-            [t('business.weeklyPlan.status')]: t(`business.weeklyPlan.status${item.status.charAt(0) + item.status.slice(1).toLowerCase().replace('_', '')}`),
-            [t('business.weeklyPlan.result')]: item.result || '',
-        }));
-
-        const ws = XLSX.utils.json_to_sheet(exportData);
-        const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, "MonthlyPlan");
-        XLSX.writeFile(wb, `MonthlyPlan_${department}_${selectedMonth.format('MM_YYYY')}.xlsx`);
+        exportPlanExcel(
+            filteredItems,
+            [
+                { header: t('common.index'), value: (_, i) => i + 1 },
+                { header: t('plans.fields.what'), value: item => item.title },
+                { header: t('plans.monthly.target'), value: item => item.target || '' },
+                { header: t('plans.fields.why'), value: item => item.why || '' },
+                { header: t('plans.fields.who'), value: item => resolveAssigneeName(item, userList) },
+                { header: t('plans.fields.how'), value: item => item.method || '' },
+                { header: t('plans.fields.status'), value: item => statusLabel(item.status, t) },
+                { header: t('plans.fields.result'), value: item => item.result || '' },
+            ],
+            'MonthlyPlan',
+            `MonthlyPlan_${department}_${selectedMonth.format('MM_YYYY')}.xlsx`
+        );
         message.success(t('common.exportSuccess'));
     };
 
-    const handleCreatePlan = async () => {
+    const handleCreatePlan = () => {
         createMonthlyPlan.mutate({ monthStart, department }, {
-            onSuccess: (res) => {
-                if (res.success) message.success(t('common.saveSuccess'));
-                else message.error(res.error || t('common.saveError'));
-            },
-            onError: () => message.error(t('common.saveError'))
+            onSuccess: () => message.success(t('common.saveSuccess')),
+            onError: showError,
         });
     };
 
-    const handleDeletePlan = async () => {
+    const handleDeletePlan = () => {
         if (!plan) return;
         deleteMonthlyPlan.mutate(plan.id, {
             onSuccess: () => message.success(t('common.deleteSuccess')),
-            onError: () => message.error(t('common.saveError'))
+            onError: showError,
         });
     };
 
     const openAddModal = () => {
         setEditingItem(null);
-        form.resetFields();
-        form.setFieldsValue({ sortOrder: rawItems.length + 1, status: 'TODO' });
+        setPendingValues({ sortOrder: rawItems.length + 1, status: 'TODO' });
         setModalVisible(true);
     };
 
     const openEditModal = (item: MonthlyPlanItem) => {
         setEditingItem(item);
-        form.setFieldsValue(item);
+        setPendingValues(item);
         setModalVisible(true);
     };
 
-    const handleDeleteItem = async (id: string) => {
+    const closeModal = () => {
+        setModalVisible(false);
+        setPendingValues(null);
+    };
+
+    const handleDeleteItem = (id: string) => {
         deleteMonthlyPlanItem.mutate(id, {
             onSuccess: () => message.success(t('common.deleteSuccess')),
-            onError: () => message.error(t('common.saveError'))
+            onError: showError,
         });
     };
 
-    const handleSubmit = async (values: any) => {
+    const handleSubmit = (values: MonthlyPlanItem) => {
         if (!plan) return;
+        const callbacks = {
+            onSuccess: () => {
+                message.success(t('common.saveSuccess'));
+                closeModal();
+            },
+            onError: showError,
+        };
         if (editingItem) {
-            updateMonthlyPlanItem.mutate({ id: editingItem.id, data: values }, {
-                onSuccess: (res) => {
-                    if (res.success) {
-                        message.success(t('common.saveSuccess'));
-                        setModalVisible(false);
-                    }
-                },
-                onError: () => message.error(t('common.saveError'))
-            });
+            updateMonthlyPlanItem.mutate({ id: editingItem.id, data: values }, callbacks);
         } else {
-            createMonthlyPlanItem.mutate({ planId: plan.id, data: values }, {
-                onSuccess: (res) => {
-                    if (res.success) {
-                        message.success(t('common.saveSuccess'));
-                        setModalVisible(false);
-                    }
-                },
-                onError: () => message.error(t('common.saveError'))
-            });
+            createMonthlyPlanItem.mutate({ planId: plan.id, data: values }, callbacks);
         }
     };
 
+    const isSaving = createMonthlyPlanItem.isPending || updateMonthlyPlanItem.isPending;
+
     const columns: ColumnsType<MonthlyPlanItem> = [
-        { title: '#', dataIndex: 'sortOrder', key: 'sortOrder', width: 45, align: 'center' },
-        {
-            title: t('business.weeklyPlan.what'), dataIndex: 'title', key: 'title', width: 220, className: WRAP,
-            render: (val: string) => <Text strong>{val}</Text>,
-        },
+        indexColumn<MonthlyPlanItem>(),
+        titleColumn<MonthlyPlanItem>(t),
         { title: t('plans.monthly.target'), dataIndex: 'target', key: 'target', width: 180, className: WRAP },
-        { title: t('business.weeklyPlan.why'), dataIndex: 'why', key: 'why', width: 150, className: WRAP },
-        {
-            title: t('business.weeklyPlan.who'), key: 'who', width: 130,
-            render: (_: any, r: MonthlyPlanItem) => r.assigneeName || users.find((u: any) => u.id === r.assigneeId)?.name || '-',
-        },
-        { title: t('business.weeklyPlan.how'), dataIndex: 'method', key: 'method', width: 150, className: WRAP, render: (val: string) => val || '-' },
-        {
-            title: t('business.weeklyPlan.status'), dataIndex: 'status', key: 'status', width: 130, align: 'center',
-            render: (val: string) => {
-                const labelKey = val === 'IN_PROGRESS' ? 'statusInProgress' : val === 'DONE' ? 'statusDone' : 'statusTodo';
-                return <Tag color={STATUS_COLORS[val]}>{t(`business.weeklyPlan.${labelKey}`)}</Tag>;
-            },
-        },
-        { title: t('business.weeklyPlan.result'), dataIndex: 'result', key: 'result', width: 120, className: WRAP, render: (val: string) => val || '-' },
+        whyColumn<MonthlyPlanItem>(t, 150),
+        assigneeColumn<MonthlyPlanItem>(t, userList, 130),
+        methodColumn<MonthlyPlanItem>(t, 150),
+        statusColumn<MonthlyPlanItem>(t, 130),
+        resultColumn<MonthlyPlanItem>(t),
         {
             title: t('common.actions'), key: 'action', width: 90, align: 'center', fixed: 'right',
-            render: (_: any, record: MonthlyPlanItem) => (
+            render: (_: unknown, record: MonthlyPlanItem) => (
                 <VcmActionGroup
                     onEdit={canEdit ? () => openEditModal(record) : undefined}
                     onDelete={canEdit ? () => handleDeleteItem(record.id) : undefined}
@@ -184,15 +163,18 @@ const MonthlyPlanSection: React.FC<Props> = ({ department, selectedMonth, canEdi
     return (
         <div style={{ margin: '0 0 4px' }}>
             {/* Section header */}
-            <div style={{
+            <div className="vcm-plan-toolbar" style={{
                 padding: '12px 16px',
                 display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                background: 'linear-gradient(135deg, #fff7f7 0%, #fff 100%)',
-                borderBottom: '1px solid #f1f5f9',
-                flexWrap: 'wrap', gap: 8
+                background: BRAND_COLORS.primarySoftBg,
+                borderBottom: `1px solid ${BRAND_COLORS.slate100}`,
+                flexWrap: 'wrap', gap: 8,
             }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                    <Title level={5} style={{ margin: 0, color: '#E11D2E', fontSize: 13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                    <Title level={5} style={{
+                        margin: 0, color: BRAND_COLORS.primary, fontSize: 13,
+                        fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em',
+                    }}>
                         {t('plans.monthly.sectionTitle')} — {selectedMonth.format('MM/YYYY')}
                     </Title>
                     {plan && (
@@ -203,47 +185,14 @@ const MonthlyPlanSection: React.FC<Props> = ({ department, selectedMonth, canEdi
                 </div>
 
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                    {plan && (
-                        <>
-                            <Input
-                                placeholder={t('common.search') + '...'}
-                                prefix={<SearchOutlined style={{ color: '#bfbfbf' }} />}
-                                size="small"
-                                style={{ width: 130, minWidth: 90 }}
-                                value={searchText}
-                                onChange={e => setSearchText(e.target.value)}
-                                allowClear
-                            />
-                            <Select
-                                size="small"
-                                style={{ width: 110, minWidth: 90 }}
-                                placeholder={t('business.weeklyPlan.status')}
-                                allowClear
-                                value={statusFilter}
-                                onChange={setStatusFilter}
-                            >
-                                <Option value="TODO">{t('business.weeklyPlan.statusTodo')}</Option>
-                                <Option value="IN_PROGRESS">{t('business.weeklyPlan.statusInProgress')}</Option>
-                                <Option value="DONE">{t('business.weeklyPlan.statusDone')}</Option>
-                            </Select>
-                            <Select
-                                size="small"
-                                style={{ width: 130, minWidth: 100 }}
-                                placeholder={t('business.weeklyPlan.who')}
-                                allowClear
-                                showSearch
-                                value={assigneeFilter}
-                                onChange={setAssigneeFilter}
-                                filterOption={(input, option) => ((option?.children as any) || '').toLowerCase().includes(input.toLowerCase())}
-                            >
-                                {users.map((u: any) => <Option key={u.id} value={u.id}>{u.name}</Option>)}
-                            </Select>
-                        </>
-                    )}
+                    {plan && <PlanFilterBar filters={filters} users={userList} />}
 
                     {plan && canEdit && (
                         <>
-                            <Button size="small" type="primary" icon={<PlusOutlined />} onClick={openAddModal}>
+                            <Button
+                                size="small" type="primary" icon={<PlusOutlined />}
+                                onClick={openAddModal}
+                            >
                                 {t('plans.monthly.addItem')}
                             </Button>
                             <Popconfirm
@@ -251,13 +200,18 @@ const MonthlyPlanSection: React.FC<Props> = ({ department, selectedMonth, canEdi
                                 onConfirm={handleDeletePlan}
                                 okText={t('common.delete')}
                                 cancelText={t('common.cancel')}
+                                okButtonProps={{ loading: deleteMonthlyPlan.isPending }}
                             >
                                 <Button size="small" danger icon={<DeleteOutlined />} />
                             </Popconfirm>
                         </>
                     )}
                     {!plan && canEdit && (
-                        <Button size="small" type="primary" icon={<PlusOutlined />} onClick={handleCreatePlan}>
+                        <Button
+                            size="small" type="primary" icon={<PlusOutlined />}
+                            loading={createMonthlyPlan.isPending}
+                            onClick={handleCreatePlan}
+                        >
                             {t('plans.monthly.createPlan')}
                         </Button>
                     )}
@@ -265,7 +219,7 @@ const MonthlyPlanSection: React.FC<Props> = ({ department, selectedMonth, canEdi
             </div>
 
             {!plan ? (
-                <div style={{ padding: '24px 16px', background: '#fafafa' }}>
+                <div style={{ padding: '24px 16px', background: BRAND_COLORS.backgroundLight }}>
                     <Empty description={t('plans.monthly.noplan')} image={Empty.PRESENTED_IMAGE_SIMPLE} />
                 </div>
             ) : (
@@ -278,7 +232,7 @@ const MonthlyPlanSection: React.FC<Props> = ({ department, selectedMonth, canEdi
                     pagination={false}
                     scroll={{ x: 1215 }}
                     className="vcm-plan-table"
-                    style={{ background: '#fffbfb' }}
+                    style={{ background: BRAND_COLORS.primaryTint }}
                 />
             )}
 
@@ -294,47 +248,42 @@ const MonthlyPlanSection: React.FC<Props> = ({ department, selectedMonth, canEdi
                     </div>
                 }
                 open={modalVisible}
-                onCancel={() => { setModalVisible(false); form.resetFields(); }}
+                onCancel={closeModal}
                 onOk={() => form.submit()}
+                confirmLoading={isSaving}
                 okText={t('common.save')}
                 cancelText={t('common.cancel')}
-                width={620}
-                destroyOnClose
+                width="min(620px, 94vw)"
+                destroyOnHidden
+                // Form bị huỷ khi Modal đóng nên chỉ set giá trị sau khi nó mount lại
+                afterOpenChange={open => {
+                    if (open && pendingValues) form.setFieldsValue(pendingValues);
+                }}
             >
                 <Form form={form} layout="vertical" onFinish={handleSubmit}>
                     <Form.Item name="sortOrder" label="#" rules={[{ required: true }]}>
-                        <Select>{[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15].map(n => <Option key={n} value={n}>{n}</Option>)}</Select>
+                        <SortOrderSelect itemCount={rawItems.length} />
                     </Form.Item>
-                    <Form.Item name="title" label={t('business.weeklyPlan.what')} rules={[{ required: true }]}>
-                        <Input placeholder={t('business.weeklyPlan.whatPlaceholder')} />
+                    <Form.Item name="title" label={t('plans.fields.what')} rules={[{ required: true }]}>
+                        <Input placeholder={t('plans.fields.whatPlaceholder')} />
                     </Form.Item>
                     <Form.Item name="target" label={t('plans.monthly.target')}>
                         <TextArea autoSize={{ minRows: 2, maxRows: 6 }} placeholder={t('plans.monthly.targetPlaceholder')} />
                     </Form.Item>
-                    <Form.Item name="why" label={t('business.weeklyPlan.why')}>
-                        <TextArea autoSize={{ minRows: 2, maxRows: 6 }} placeholder={t('business.weeklyPlan.whyPlaceholder')} />
+                    <Form.Item name="why" label={t('plans.fields.why')}>
+                        <TextArea autoSize={{ minRows: 2, maxRows: 6 }} placeholder={t('plans.fields.whyPlaceholder')} />
                     </Form.Item>
-                    <Form.Item name="assigneeId" label={t('business.weeklyPlan.who')}>
-                        <Select allowClear showSearch placeholder={t('business.weeklyPlan.whoPlaceholder')}
-                            filterOption={(input, option) => {
-                                const label = (option?.children as unknown as string) || '';
-                                return label.toLowerCase().includes(input.toLowerCase());
-                            }}>
-                            {users.map((u: any) => <Option key={u.id} value={u.id}>{u.name}</Option>)}
-                        </Select>
+                    <Form.Item name="assigneeId" label={t('plans.fields.who')}>
+                        <AssigneeSelect users={userList} />
                     </Form.Item>
-                    <Form.Item name="method" label={t('business.weeklyPlan.how')}>
-                        <TextArea autoSize={{ minRows: 2, maxRows: 6 }} placeholder={t('business.weeklyPlan.howPlaceholder')} />
+                    <Form.Item name="method" label={t('plans.fields.how')}>
+                        <TextArea autoSize={{ minRows: 2, maxRows: 6 }} placeholder={t('plans.fields.howPlaceholder')} />
                     </Form.Item>
-                    <Form.Item name="status" label={t('business.weeklyPlan.status')} initialValue="TODO">
-                        <Select>
-                            <Option value="TODO">{t('business.weeklyPlan.statusTodo')}</Option>
-                            <Option value="IN_PROGRESS">{t('business.weeklyPlan.statusInProgress')}</Option>
-                            <Option value="DONE">{t('business.weeklyPlan.statusDone')}</Option>
-                        </Select>
+                    <Form.Item name="status" label={t('plans.fields.status')} initialValue="TODO">
+                        <StatusSelect />
                     </Form.Item>
-                    <Form.Item name="result" label={t('business.weeklyPlan.result')}>
-                        <TextArea rows={2} placeholder={t('business.weeklyPlan.resultPlaceholder')} />
+                    <Form.Item name="result" label={t('plans.fields.result')}>
+                        <TextArea rows={2} placeholder={t('plans.fields.resultPlaceholder')} />
                     </Form.Item>
                 </Form>
             </Modal>
