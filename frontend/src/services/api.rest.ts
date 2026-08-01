@@ -9,9 +9,9 @@
 
 import type {
     IApiService, ApiResponse,
-    ContractQuery, ContractInput, InvoiceInput,
+    ContractQuery, ContractInput, InvoiceInput, ProjectInput, TaskInput,
 } from './api.interface';
-import type { Contract, Invoice } from '../types';
+import type { Contract, Invoice, Project, ProjectMember, ProjectItemType, Task } from '../types';
 import axios, { type AxiosInstance, type AxiosError } from 'axios';
 
 export class RestApiService implements IApiService {
@@ -158,15 +158,15 @@ export class RestApiService implements IApiService {
     }
 
     // ==================== PROJECTS ====================
-    async getProjects(params?: any) {
-        return this.request('GET', '/projects', undefined, params);
+    async getProjects(params?: Record<string, string | undefined>) {
+        return this.request<Project[]>('GET', '/projects', undefined, params);
     }
 
-    async createProject(data: any) {
-        return this.request('POST', '/projects', data);
+    async createProject(data: ProjectInput) {
+        return this.request<{ id: string }>('POST', '/projects', data);
     }
 
-    async updateProject(data: any) {
+    async updateProject(data: ProjectInput & { id: string }) {
         return this.request('PUT', `/projects/${data.id}`, data);
     }
 
@@ -174,38 +174,48 @@ export class RestApiService implements IApiService {
         return this.request('DELETE', `/projects/${params.id}`);
     }
 
+    /**
+     * Upload đính kèm cho dự án. Phải là endpoint riêng của /projects: nếu mượn
+     * /contracts/upload thì user `projects=EDIT, contracts=NO_ACCESS` bị
+     * moduleAccess('contracts') trả 403.
+     */
+    async uploadProjectFiles(files: File[]): Promise<ApiResponse<{ urls: string[] }>> {
+        const formData = new FormData();
+        files.forEach((file) => {
+            formData.append('files', file);
+        });
+        try {
+            const response = await this.http.post('/projects/upload', formData, {
+                headers: { 'Content-Type': 'multipart/form-data' },
+            });
+            return response.data;
+        } catch (error: any) {
+            // Backend từ chối đuôi file không cho phép bằng 400 kèm message rõ ràng.
+            const message = error.response?.data?.error || error.message || 'Upload failed';
+            return { success: false, error: message };
+        }
+    }
+
     // ==================== PROJECT ITEMS ====================
     async getProjectItems(params: { projectId: string }) {
-        return this.request('GET', `/projects/${params.projectId}/items`);
-    }
-
-    async createProjectItem(data: { projectId: string; name: string; order?: number }) {
-        return this.request('POST', `/projects/${data.projectId}/items`, data);
-    }
-
-    async updateProjectItem(data: { id: string; name: string; order?: number }) {
-        return this.request('PUT', `/project-items/${data.id}`, data);
-    }
-
-    async deleteProjectItem(params: { id: string }) {
-        return this.request('DELETE', `/project-items/${params.id}`);
+        return this.request<ProjectItemType[]>('GET', `/projects/${params.projectId}/items`);
     }
 
     // ==================== PROJECT MEMBERS ====================
     async getProjectMembers(params: { projectId: string }) {
-        return this.request('GET', `/projects/${params.projectId}/members`);
+        return this.request<ProjectMember[]>('GET', `/projects/${params.projectId}/members`);
     }
 
     async addProjectMember(data: { projectId: string; userId: string; role: string }) {
-        return this.request('POST', `/projects/${data.projectId}/members`, data);
+        return this.request<{ id: string }>('POST', `/projects/${data.projectId}/members`, data);
     }
 
-    async removeProjectMember(params: { id: string }) {
-        return this.request('DELETE', `/project-members/${params.id}`);
+    async removeProjectMember(params: { projectId: string; id: string }) {
+        return this.request('DELETE', `/projects/${params.projectId}/members/${params.id}`);
     }
 
     // ==================== TASKS ====================
-    async getTasks(params: { projectId: string; itemType?: string }) {
+    async getTasks(params: { projectId: string; itemType?: string }): Promise<ApiResponse<Task[]>> {
         return this.request('GET', '/tasks', undefined, params);
     }
 

@@ -53,7 +53,7 @@ const WeatherSelector: React.FC<WeatherSelectorProps> = ({ value, onChange, t })
                         borderRadius: 8,
                         border: `2px solid ${selected ? opt.color : '#E5E7EB'}`,
                         background: selected ? opt.bg : '#FAFAFA',
-                        color: selected ? opt.color : '#6B7280',
+                        color: selected ? opt.color : BRAND_COLORS.textSecondary,
                         fontWeight: selected ? 700 : 400,
                         fontSize: 13,
                         cursor: 'pointer',
@@ -135,9 +135,9 @@ const ProjectLogForm: React.FC<ProjectLogFormProps> = ({
         <Drawer
             title={
                 <div>
-                    <div style={{ fontWeight: 700, fontSize: 15, color: '#1F2937' }}>{title}</div>
+                    <div style={{ fontWeight: 700, fontSize: 15, color: BRAND_COLORS.textPrimary }}>{title}</div>
                     {isEditing && (
-                        <div style={{ fontSize: 12, color: '#6B7280', marginTop: 2 }}>
+                        <div style={{ fontSize: 12, color: BRAND_COLORS.textSecondary, marginTop: 2 }}>
                             {dayjs(editingLog?.logDate).format('DD/MM/YYYY')}
                         </div>
                     )}
@@ -156,7 +156,7 @@ const ProjectLogForm: React.FC<ProjectLogFormProps> = ({
                         icon={<SaveOutlined />}
                         loading={isSaving}
                         onClick={handleSubmit}
-                        style={{ background: '#E11D2E', borderColor: '#E11D2E' }}
+                        style={{ background: BRAND_COLORS.primary, borderColor: BRAND_COLORS.primary }}
                     >
                         {t('common.save', 'Lưu nhật ký')}
                     </Button>
@@ -194,7 +194,7 @@ const ProjectLogForm: React.FC<ProjectLogFormProps> = ({
                             name="workersCount"
                             label={
                                 <span style={{ fontWeight: 600 }}>
-                                    <UserOutlined style={{ marginRight: 4, color: '#3B82F6' }} />
+                                    <UserOutlined style={{ marginRight: 4, color: BRAND_COLORS.info }} />
                                     {t('projectLog.form.workers')}
                                 </span>
                             }
@@ -222,8 +222,8 @@ const ProjectLogForm: React.FC<ProjectLogFormProps> = ({
                                         onChange={v => form.setFieldValue('progressPct', v)}
                                         tooltip={{ formatter: v => `${v}%` }}
                                         styles={{
-                                            track: { backgroundColor: '#E11D2E' },
-                                            handle: { borderColor: '#E11D2E' },
+                                            track: { backgroundColor: BRAND_COLORS.primary },
+                                            handle: { borderColor: BRAND_COLORS.primary },
                                         }}
                                     />
                                 </Col>
@@ -247,7 +247,7 @@ const ProjectLogForm: React.FC<ProjectLogFormProps> = ({
                     name="activities"
                     label={
                         <span style={{ fontWeight: 600 }}>
-                            <FormOutlined style={{ marginRight: 4, color: '#10B981' }} />
+                            <FormOutlined style={{ marginRight: 4, color: BRAND_COLORS.success }} />
                             {t('projectLog.form.activities')}
                         </span>
                     }
@@ -265,9 +265,9 @@ const ProjectLogForm: React.FC<ProjectLogFormProps> = ({
                     name="issues"
                     label={
                         <span style={{ fontWeight: 600 }}>
-                            <WarningOutlined style={{ marginRight: 4, color: '#F59E0B' }} />
+                            <WarningOutlined style={{ marginRight: 4, color: BRAND_COLORS.warning }} />
                             {t('projectLog.form.issues')}
-                            <span style={{ fontWeight: 400, color: '#9CA3AF', marginLeft: 6, fontSize: 12 }}>{t('common.optional')}</span>
+                            <span style={{ fontWeight: 400, color: BRAND_COLORS.textMuted, marginLeft: 6, fontSize: 12 }}>{t('common.optional')}</span>
                         </span>
                     }
                 >
@@ -287,7 +287,7 @@ const ProjectLogForm: React.FC<ProjectLogFormProps> = ({
                             label={
                                 <span style={{ fontWeight: 600 }}>
                                     📦 {t('projectLog.form.materials')}
-                                    <span style={{ fontWeight: 400, color: '#9CA3AF', marginLeft: 6, fontSize: 12 }}>{t('common.optional')}</span>
+                                    <span style={{ fontWeight: 400, color: BRAND_COLORS.textMuted, marginLeft: 6, fontSize: 12 }}>{t('common.optional')}</span>
                                 </span>
                             }
                         >
@@ -305,7 +305,7 @@ const ProjectLogForm: React.FC<ProjectLogFormProps> = ({
                                 <span style={{ fontWeight: 600 }}>
                                     <ToolOutlined style={{ marginRight: 4, color: '#8B5CF6' }} />
                                     {t('projectLog.form.equipment')}
-                                    <span style={{ fontWeight: 400, color: '#9CA3AF', marginLeft: 6, fontSize: 12 }}>{t('common.optional')}</span>
+                                    <span style={{ fontWeight: 400, color: BRAND_COLORS.textMuted, marginLeft: 6, fontSize: 12 }}>{t('common.optional')}</span>
                                 </span>
                             }
                         >

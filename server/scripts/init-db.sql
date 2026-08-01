@@ -75,6 +75,10 @@ CREATE TABLE IF NOT EXISTS invoices (
 );
 
 -- 5. projects
+-- KHÔNG có cột `progress`: tiến độ dự án là giá trị dẫn xuất, luôn tính lại bằng
+-- AVG(tasks.progress) trong routes/projects.js -> toProject(). projectLogs.js từng
+-- chạy `UPDATE projects SET progress = ...` ở đây và ném 42703 sau mỗi lần lưu
+-- nhật ký. Đừng thêm cột này lại.
 CREATE TABLE IF NOT EXISTS projects (
   id           VARCHAR(50) PRIMARY KEY,
   code         VARCHAR(100),

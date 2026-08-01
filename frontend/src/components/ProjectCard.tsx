@@ -9,6 +9,10 @@ import { useTranslation } from 'react-i18next';
 import { VcmActionGroup } from './VcmActionGroup';
 import type { Project, Province } from '../types';
 import { normalizeId, getStatusInfo } from '../utils/projectUtils';
+import { BRAND_COLORS } from '../styles/brandIdentity';
+
+const formatDate = (date?: string | null): string =>
+    date && dayjs(date).isValid() ? dayjs(date).format('DD/MM/YYYY') : '--';
 
 interface ProjectCardProps {
     project: Project;
@@ -41,9 +45,9 @@ export const ProjectCard: React.FC<ProjectCardProps> = memo(({
             style={{
                 cursor: 'pointer',
                 borderRadius: '16px',
-                border: '1px solid #F0F0F0',
+                border: `1px solid ${BRAND_COLORS.border}`,
                 transition: 'all 0.3s ease',
-                background: '#FFFFFF',
+                background: BRAND_COLORS.white,
                 position: 'relative',
                 overflow: 'hidden'
             }}
@@ -63,9 +67,9 @@ export const ProjectCard: React.FC<ProjectCardProps> = memo(({
                     padding: '4px 10px',
                     borderRadius: '8px',
                     fontWeight: 700,
-                    background: '#FFF1F2',
-                    color: '#E11D2E',
-                    border: '1px solid #FECDD3',
+                    background: BRAND_COLORS.primaryTint,
+                    color: BRAND_COLORS.primary,
+                    border: `1px solid ${BRAND_COLORS.border}`,
                     fontSize: '11px'
                 }}>
                     {project.code}
@@ -80,7 +84,7 @@ export const ProjectCard: React.FC<ProjectCardProps> = memo(({
                 <h3 style={{
                     fontSize: '16px',
                     fontWeight: 700,
-                    color: '#1F2937',
+                    color: BRAND_COLORS.textPrimary,
                     margin: 0,
                     lineHeight: '1.4',
                     display: '-webkit-box',
@@ -93,9 +97,9 @@ export const ProjectCard: React.FC<ProjectCardProps> = memo(({
             </div>
 
             {/* INFO: Location & Investor */}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, color: '#6B7280', fontSize: '12px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, color: BRAND_COLORS.textSecondary, fontSize: '12px' }}>
                 <div style={{ display: 'flex', alignItems: 'center' }}>
-                    <EnvironmentOutlined style={{ marginRight: 6, color: '#9CA3AF' }} />
+                    <EnvironmentOutlined style={{ marginRight: 6, color: BRAND_COLORS.textMuted }} />
                     <span style={{ fontWeight: 500 }}>
                         {(() => {
                             const loc = normalizeId(project.location);
@@ -109,7 +113,7 @@ export const ProjectCard: React.FC<ProjectCardProps> = memo(({
                         <div style={{ display: 'flex', alignItems: 'center', maxWidth: '50%' }}>
                             <span style={{
                                 fontWeight: 500,
-                                color: '#6B7280',
+                                color: BRAND_COLORS.textSecondary,
                                 overflow: 'hidden',
                                 textOverflow: 'ellipsis',
                                 whiteSpace: 'nowrap'
@@ -124,23 +128,23 @@ export const ProjectCard: React.FC<ProjectCardProps> = memo(({
                 display: 'grid',
                 gridTemplateColumns: '1fr 1fr',
                 gap: 12,
-                background: '#F9FAFB',
+                background: BRAND_COLORS.backgroundLight,
                 padding: '8px',
                 borderRadius: '8px',
                 marginBottom: 12
             }}>
                 <div style={{ display: 'flex', flexDirection: 'column' }}>
-                    <span style={{ fontSize: '10px', color: '#9CA3AF', marginBottom: 2 }}>{t('projects.cardStart')}</span>
-                    <div style={{ display: 'flex', alignItems: 'center', fontSize: '12px', fontWeight: 600, color: '#4B5563' }}>
-                        <CalendarOutlined style={{ marginRight: 6, color: '#10B981' }} />
-                        {project.startDate ? dayjs(project.startDate).format('DD/MM/YYYY') : '--'}
+                    <span style={{ fontSize: '10px', color: BRAND_COLORS.textMuted, marginBottom: 2 }}>{t('projects.cardStart')}</span>
+                    <div style={{ display: 'flex', alignItems: 'center', fontSize: '12px', fontWeight: 600, color: BRAND_COLORS.secondaryLight }}>
+                        <CalendarOutlined style={{ marginRight: 6, color: BRAND_COLORS.success }} />
+                        {formatDate(project.startDate)}
                     </div>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column' }}>
-                    <span style={{ fontSize: '10px', color: '#9CA3AF', marginBottom: 2 }}>{t('projects.cardEnd')}</span>
-                    <div style={{ display: 'flex', alignItems: 'center', fontSize: '12px', fontWeight: 600, color: '#4B5563' }}>
-                        <CalendarOutlined style={{ marginRight: 6, color: '#EF4444' }} />
-                        {project.endDate ? dayjs(project.endDate).format('DD/MM/YYYY') : '--'}
+                    <span style={{ fontSize: '10px', color: BRAND_COLORS.textMuted, marginBottom: 2 }}>{t('projects.cardEnd')}</span>
+                    <div style={{ display: 'flex', alignItems: 'center', fontSize: '12px', fontWeight: 600, color: BRAND_COLORS.secondaryLight }}>
+                        <CalendarOutlined style={{ marginRight: 6, color: BRAND_COLORS.error }} />
+                        {formatDate(project.endDate)}
                     </div>
                 </div>
             </div>
@@ -148,14 +152,14 @@ export const ProjectCard: React.FC<ProjectCardProps> = memo(({
             {/* PROGRESS */}
             <div style={{ marginBottom: 12 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', marginBottom: 4 }}>
-                    <span style={{ color: '#6B7280', fontWeight: 600 }}>{t('projects.cardProgress')}</span>
-                    <span style={{ color: '#E11D2E', fontWeight: 700 }}>{progress}%</span>
+                    <span style={{ color: BRAND_COLORS.textSecondary, fontWeight: 600 }}>{t('projects.cardProgress')}</span>
+                    <span style={{ color: BRAND_COLORS.primary, fontWeight: 700 }}>{progress}%</span>
                 </div>
-                <div style={{ height: 6, width: '100%', background: '#F3F4F6', borderRadius: 4, overflow: 'hidden' }}>
+                <div style={{ height: 6, width: '100%', background: BRAND_COLORS.borderLight, borderRadius: 4, overflow: 'hidden' }}>
                     <div style={{
                         height: '100%',
                         width: `${progress}%`,
-                        background: 'linear-gradient(90deg, #E11D2E 0%, #FF4D5A 100%)',
+                        background: BRAND_COLORS.primaryGradient,
                         borderRadius: 4,
                         transition: 'width 0.5s ease'
                     }} />
@@ -164,7 +168,7 @@ export const ProjectCard: React.FC<ProjectCardProps> = memo(({
 
             {/* FOOTER ACTIONS */}
             <div style={{
-                borderTop: '1px solid #F3F4F6',
+                borderTop: `1px solid ${BRAND_COLORS.borderLight}`,
                 paddingTop: 8,
                 display: 'flex',
                 justifyContent: 'flex-end',

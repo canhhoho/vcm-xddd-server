@@ -1,11 +1,44 @@
 /**
  * Task Routes — CRUD /tasks
- * Port of getTasks, createTask, updateTask, deleteTask from Code.gs
+ *
+ * Phân quyền: mount kèm moduleAccess('projects') trong app.js — task thuộc về
+ * dự án nên dùng chung cột quyền `users.projects`.
  */
 const router = require('express').Router();
 const { query } = require('../config/database');
 const { v4: uuidv4 } = require('uuid');
 const APP_CONFIG = require('../config');
+const CacheService = require('../services/cacheService');
+const { badRequest, assertRequiredText, assertDateRange, clampPct } = require('./_planValidators');
+
+const TASK_STATUSES = ['TODO', 'INPROCESS', 'DONE'];
+const TASK_PRIORITIES = ['HIGH', 'MEDIUM', 'LOW'];
+
+function normalizeStatus(status) {
+  if (status === undefined || status === null || status === '') return 'TODO';
+  const s = String(status).toUpperCase();
+  const canonical = s === 'IN_PROGRESS' ? 'INPROCESS' : s;
+  if (!TASK_STATUSES.includes(canonical)) {
+    throw badRequest(`Invalid status. Must be one of: ${TASK_STATUSES.join(', ')}`);
+  }
+  return canonical;
+}
+
+function normalizePriority(priority) {
+  if (priority === undefined || priority === null || priority === '') return 'MEDIUM';
+  const p = String(priority).toUpperCase();
+  if (!TASK_PRIORITIES.includes(p)) {
+    throw badRequest(`Invalid priority. Must be one of: ${TASK_PRIORITIES.join(', ')}`);
+  }
+  return p;
+}
+
+/** Tên hạng mục suy từ itemType (allowlist trong APP_CONFIG) */
+function resolveItemName(itemType) {
+  if (!itemType) return '';
+  const itemObj = APP_CONFIG.PROJECT_ITEM_TYPES.find(t => t.id === itemType);
+  return itemObj ? itemObj.name : itemType;
+}
 
 async function logActivity(email, action, description) {
   try {
@@ -14,8 +47,17 @@ async function logActivity(email, action, description) {
   } catch (e) { console.error('logActivity:', e.message); }
 }
 
+/**
+ * Tiến độ dự án (`toProject.progress`) là AVG(tasks.progress), và danh sách
+ * project được cache dưới key PROJECTS_LIST. Mọi thay đổi task phải xoá cache
+ * đó, nếu không card ngoài danh sách vẫn hiện số cũ tới khi hết TTL.
+ */
+function invalidateProjectsCache() {
+  CacheService.clear(['PROJECTS_LIST']);
+}
+
 // GET /tasks?projectId=xxx&itemType=yyy
-router.get('/', async (req, res) => {
+router.get('/', async (req, res, next) => {
   try {
     const { projectId, itemType } = req.query;
     let sql = 'SELECT * FROM tasks WHERE 1=1';
@@ -40,45 +82,58 @@ router.get('/', async (req, res) => {
 
     res.json({ success: true, data: tasks });
   } catch (err) {
-    res.json({ success: false, error: err.message });
+    next(err);
   }
 });
 
 // POST /tasks
-router.post('/', async (req, res) => {
+router.post('/', async (req, res, next) => {
   try {
     const d = req.body;
-    const id = uuidv4();
+    const projectId = assertRequiredText(d.projectId, 'projectId', 50);
+    const name = assertRequiredText(d.name, 'name', 1000);
+    const status = normalizeStatus(d.status);
+    const priority = normalizePriority(d.priority);
+    const progress = clampPct(d.progress);
+    assertDateRange(d.startDate, d.endDate, 'startDate', 'endDate');
 
-    // Resolve item name from type
-    let itemName = '';
-    if (d.itemType) {
-      const itemObj = APP_CONFIG.PROJECT_ITEM_TYPES.find(t => t.id === d.itemType);
-      itemName = itemObj ? itemObj.name : d.itemType;
-    }
+    const project = await query('SELECT 1 FROM projects WHERE id = $1', [projectId]);
+    if (project.rowCount === 0) throw badRequest('Project not found');
+
+    const id = uuidv4();
 
     await query(`
       INSERT INTO tasks (id, project_id, item_type, item_name, name, assignee_id, status, progress, start_date, end_date, description, priority, sort_order)
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
     `, [
-      id, d.projectId, d.itemType || '', itemName,
-      d.name, d.assigneeId || '', d.status || 'TODO', d.progress || 0,
+      id, projectId, d.itemType || '', resolveItemName(d.itemType),
+      name, d.assigneeId || '', status, progress,
       d.startDate || null, d.endDate || null,
-      d.description || '', d.priority || 'MEDIUM', d.order || 0
+      d.description || '', priority, Number(d.order) || 0
     ]);
 
-    await logActivity(req.user?.email || '', 'TASK_CREATE', `Created task ${d.name}`);
+    await logActivity(req.user?.email || '', 'TASK_CREATE', `Created task ${name}`);
+    invalidateProjectsCache();
     res.json({ success: true, id });
   } catch (err) {
-    res.json({ success: false, error: err.message });
+    next(err);
   }
 });
 
 // PUT /tasks/:id
-router.put('/:id', async (req, res) => {
+router.put('/:id', async (req, res, next) => {
   try {
     const { id } = req.params;
     const d = req.body;
+
+    if (d.name !== undefined) d.name = assertRequiredText(d.name, 'name', 1000);
+    if (d.status !== undefined) d.status = normalizeStatus(d.status);
+    if (d.priority !== undefined) d.priority = normalizePriority(d.priority);
+    if (d.progress !== undefined) d.progress = clampPct(d.progress);
+    if (d.startDate !== undefined || d.endDate !== undefined) {
+      assertDateRange(d.startDate, d.endDate, 'startDate', 'endDate');
+    }
+
     const fields = []; const values = []; let idx = 1;
 
     const mapping = {
@@ -96,33 +151,43 @@ router.put('/:id', async (req, res) => {
 
     // Auto-update item_name if item_type changed
     if (d.itemType !== undefined) {
-      const itemObj = APP_CONFIG.PROJECT_ITEM_TYPES.find(t => t.id === d.itemType);
       fields.push(`item_name = $${idx}`);
-      values.push(itemObj ? itemObj.name : d.itemType);
+      values.push(resolveItemName(d.itemType));
       idx++;
     }
 
-    if (fields.length === 0) return res.json({ success: false, error: 'No fields to update' });
+    if (fields.length === 0) throw badRequest('No fields to update');
 
     values.push(id);
-    await query(`UPDATE tasks SET ${fields.join(', ')} WHERE id = $${idx}`, values);
+    const result = await query(`UPDATE tasks SET ${fields.join(', ')} WHERE id = $${idx}`, values);
+    if (result.rowCount === 0) {
+      const err = new Error('Task not found');
+      err.statusCode = 404;
+      throw err;
+    }
 
     await logActivity(req.user?.email || '', 'TASK_UPDATE', `Updated task ${id}`);
+    invalidateProjectsCache();
     res.json({ success: true });
   } catch (err) {
-    res.json({ success: false, error: err.message });
+    next(err);
   }
 });
 
 // DELETE /tasks/:id
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', async (req, res, next) => {
   try {
     const result = await query('DELETE FROM tasks WHERE id = $1 RETURNING name', [req.params.id]);
-    if (result.rowCount === 0) return res.json({ success: false, error: 'Task not found' });
+    if (result.rowCount === 0) {
+      const err = new Error('Task not found');
+      err.statusCode = 404;
+      throw err;
+    }
     await logActivity(req.user?.email || '', 'TASK_DELETE', `Deleted task ${result.rows[0].name}`);
+    invalidateProjectsCache();
     res.json({ success: true });
   } catch (err) {
-    res.json({ success: false, error: err.message });
+    next(err);
   }
 });
 

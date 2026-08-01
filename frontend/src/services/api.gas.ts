@@ -7,7 +7,7 @@
 
 import type {
     IApiService, ApiResponse,
-    ContractQuery, ContractInput, InvoiceInput,
+    ContractQuery, ContractInput, InvoiceInput, ProjectInput, TaskInput,
 } from './api.interface';
 import type { Contract, Invoice } from '../types';
 
@@ -417,16 +417,16 @@ export class GasApiService implements IApiService {
     }
 
     // ==================== PROJECTS ====================
-    async getProjects(params?: any) {
+    async getProjects(params?: Record<string, string | undefined>) {
         return this.runGasFunction('getProjects', params || {});
     }
 
-    async createProject(data: any) {
+    async createProject(data: ProjectInput) {
         const userId = localStorage.getItem('userId');
         return this.runGasFunction('createProject', { ...data, userId });
     }
 
-    async updateProject(data: any) {
+    async updateProject(data: ProjectInput & { id: string }) {
         const userId = localStorage.getItem('userId');
         return this.runGasFunction('updateProject', { ...data, userId });
     }
@@ -436,21 +436,13 @@ export class GasApiService implements IApiService {
         return this.runGasFunction('deleteProject', { ...params, userId });
     }
 
+    async uploadProjectFiles(files: File[]) {
+        return this.runGasFunction('uploadProjectFiles', { data: files });
+    }
+
     // ==================== PROJECT ITEMS ====================
     async getProjectItems(params: { projectId: string }) {
         return this.runGasFunction('getProjectItems', params);
-    }
-
-    async createProjectItem(data: { projectId: string; name: string; order?: number }) {
-        return this.runGasFunction('createProjectItem', data);
-    }
-
-    async updateProjectItem(data: { id: string; name: string; order?: number }) {
-        return this.runGasFunction('updateProjectItem', data);
-    }
-
-    async deleteProjectItem(params: { id: string }) {
-        return this.runGasFunction('deleteProjectItem', params);
     }
 
     // ==================== PROJECT MEMBERS ====================
@@ -462,7 +454,7 @@ export class GasApiService implements IApiService {
         return this.runGasFunction('addProjectMember', data);
     }
 
-    async removeProjectMember(params: { id: string }) {
+    async removeProjectMember(params: { projectId: string; id: string }) {
         return this.runGasFunction('removeProjectMember', params);
     }
 
@@ -471,12 +463,12 @@ export class GasApiService implements IApiService {
         return this.runGasFunction('getTasks', params);
     }
 
-    async createTask(data: any) {
+    async createTask(data: TaskInput & { projectId: string; name: string }) {
         const userId = localStorage.getItem('userId');
         return this.runGasFunction('createTask', { ...data, userId });
     }
 
-    async updateTask(data: any) {
+    async updateTask(data: TaskInput & { id: string }) {
         const userId = localStorage.getItem('userId');
         return this.runGasFunction('updateTask', { ...data, userId });
     }

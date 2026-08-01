@@ -84,8 +84,9 @@ app.use('/api/meta', metaRoutes);
 // invoices không có cột quyền riêng -> dùng chung quyền contracts.
 app.use('/api/contracts', moduleAccess('contracts'), contractRoutes);
 app.use('/api/invoices', moduleAccess('contracts'), invoiceRoutes);
+// tasks và project-logs thuộc về dự án -> dùng chung cột quyền `users.projects`.
 app.use('/api/projects', moduleAccess('projects'), projectRoutes);
-app.use('/api/tasks', taskRoutes);
+app.use('/api/tasks', moduleAccess('projects'), taskRoutes);
 app.use('/api/targets', moduleAccess('targets'), targetRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/permissions', permissionRoutes);
@@ -100,7 +101,7 @@ app.use('/api/prospects', prospectRoutes);
 app.use('/api/weekly-plans', planAccess('weekly'), weeklyPlanRoutes);
 app.use('/api/monthly-plans', planAccess('monthly'), monthlyPlanRoutes);
 app.use('/api/daily-logs', planAccess('daily'), dailyLogRoutes);
-app.use('/api/project-logs', projectLogRoutes);
+app.use('/api/project-logs', moduleAccess('projects'), projectLogRoutes);
 app.use('/api/collaborators', collaboratorRoutes);
 app.use('/api/partners', partnerRoutes);
 

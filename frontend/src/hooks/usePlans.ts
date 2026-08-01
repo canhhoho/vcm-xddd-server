@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiService } from '../services/api';
-import type { ApiResponse } from '../services/api.interface';
+import { unwrap } from '../services/unwrap';
 import type {
     WeeklyPlanQuery, MonthlyPlanQuery,
     CreateWeeklyPlanInput, CreateMonthlyPlanInput,
@@ -13,17 +13,6 @@ export const PLAN_KEYS = {
     monthly: (filters: MonthlyPlanQuery) => [...PLAN_KEYS.all, 'monthly', filters] as const,
     weekly: (filters: WeeklyPlanQuery) => [...PLAN_KEYS.all, 'weekly', filters] as const,
 };
-
-/**
- * api.rest.ts nuốt lỗi HTTP thành { success: false } thay vì throw, nên nếu
- * mutationFn trả thẳng response thì React Query luôn coi là thành công và
- * onError không bao giờ chạy. Bọc qua đây để lỗi nổi lên đúng chỗ.
- */
-async function unwrap<T>(promise: Promise<ApiResponse<T>>, fallbackMessage: string): Promise<T> {
-    const res = await promise;
-    if (!res.success) throw new Error(res.error || fallbackMessage);
-    return res.data as T;
-}
 
 export const useMonthlyPlans = (filters: MonthlyPlanQuery, enabled = true) => {
     return useQuery({

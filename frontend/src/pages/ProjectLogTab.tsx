@@ -7,13 +7,15 @@
  * - Thống kê tháng: ngày làm việc, tổng lao động, tiến độ TB, số sự cố
  * - Bảng tổng hợp vật tư & thiết bị trong tháng
  * - Nút "Ghi nhật ký hôm nay" / Sửa / Xóa
- * - Phân quyền: chỉ members của project mới ghi được
+ * - Phân quyền: server gác /api/project-logs bằng moduleAccess('projects'),
+ *   nên UI phải theo đúng `canEdit` — không tự nới cho member của dự án nữa,
+ *   nếu không nút hiện ra rồi request bị 403.
  */
 
 import React, { useState, useMemo } from 'react';
 import {
     Button, Tag, Progress, Empty, Popconfirm, message,
-    Row, Col, Statistic, Divider, Tooltip, Spin,
+    Row, Col, Tooltip, Spin,
 } from 'antd';
 import {
     PlusOutlined,
@@ -22,7 +24,6 @@ import {
     LeftOutlined,
     RightOutlined,
     UserOutlined,
-    WarningOutlined,
     ToolOutlined,
     FileExcelOutlined,
     FileWordOutlined,
@@ -32,7 +33,8 @@ import { useTranslation } from 'react-i18next';
 import * as XLSX from 'xlsx';
 import { useProjectLogs, useProjectLogMutations } from '../hooks/useProjectLogs';
 import ProjectLogForm from '../components/ProjectLogForm';
-import type { ProjectLog, ProjectLogPayload } from '../types';
+import type { Project, ProjectLog, ProjectLogPayload } from '../types';
+import { BRAND_COLORS } from '../styles/brandIdentity';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -43,24 +45,29 @@ const WEATHER_ICONS: Record<string, { icon: string; color: string }> = {
     STORMY: { icon: '⛈️', color: '#FF4D4F' },
 };
 
-// Lấy currentUser từ localStorage
-function getCurrentUserId(): string {
-    try {
-        return JSON.parse(localStorage.getItem('user') || '{}')?.id || '';
-    } catch {
-        return '';
-    }
+/**
+ * Nội dung nhật ký do người dùng nhập được nhúng thẳng vào chuỗi HTML của file
+ * Word xuất ra. Không escape thì một dấu `</td>` trong phần "công việc" là vỡ
+ * cả bảng báo cáo.
+ */
+function escapeHtml(value: unknown): string {
+    if (value === null || value === undefined) return '';
+    return String(value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
 }
 
 // ── Props ─────────────────────────────────────────────────────────────────────
 interface ProjectLogTabProps {
-    project: any;   // project details object
-    members: { id: string; userId: string; role: string }[];   // project members
-    canEdit: boolean;   // Admin/Manager quyền cao nhất
+    project: Project;
+    canEdit: boolean;   // quyền `projects` = EDIT hoặc ADMIN
 }
 
 // ── Main Component ────────────────────────────────────────────────────────────
-const ProjectLogTab: React.FC<ProjectLogTabProps> = ({ project, members, canEdit }) => {
+const ProjectLogTab: React.FC<ProjectLogTabProps> = ({ project, canEdit }) => {
     const { t } = useTranslation();
     const projectId = project?.id || '';
 
@@ -69,14 +76,11 @@ const ProjectLogTab: React.FC<ProjectLogTabProps> = ({ project, members, canEdit
     const [formOpen, setFormOpen] = useState(false);
     const [editingLog, setEditingLog] = useState<ProjectLog | null>(null);
 
-    // Phân quyền ghi nhật ký: canEdit (admin) HOẶC là member của project
-    const currentUserId = getCurrentUserId();
-    const isMember = members.some(m => m.userId === currentUserId);
-    const canWriteLog = canEdit || isMember;
+    const canWriteLog = canEdit;
 
     // Data
     const { data: logs = [], isLoading } = useProjectLogs(projectId, currentMonth);
-    const { upsertLog, deleteLog } = useProjectLogMutations(projectId, currentMonth);
+    const { upsertLog, deleteLog } = useProjectLogMutations(projectId);
 
     // Kiểm tra đã có log hôm nay chưa
     const today = dayjs().format('YYYY-MM-DD');
@@ -177,10 +181,11 @@ const ProjectLogTab: React.FC<ProjectLogTabProps> = ({ project, members, canEdit
             return;
         }
 
-        const projectName = project?.name || 'N/A';
-        const projectCode = project?.code || 'N/A';
-        const investor = project?.investor || 'N/A';
-        const location = project?.location || 'N/A';
+        // Mọi giá trị do người dùng nhập phải đi qua escapeHtml trước khi nhúng.
+        const projectName = escapeHtml(project?.name || 'N/A');
+        const projectCode = escapeHtml(project?.code || 'N/A');
+        const investor = escapeHtml(project?.investor || 'N/A');
+        const location = escapeHtml(project?.location || 'N/A');
         const monthStr = dayjs(currentMonth).format('MM/YYYY');
         const reportTitle = t('projectLog.export.reportTitle');
 
@@ -364,21 +369,21 @@ const ProjectLogTab: React.FC<ProjectLogTabProps> = ({ project, members, canEdit
             const workers = log.workersCount || 0;
             const progress = `${log.progressPct || 0}%`;
 
-            let activitiesText = log.activities || t('projectLog.export.noActivities');
+            let activitiesText = escapeHtml(log.activities || t('projectLog.export.noActivities'));
             if (log.issues) {
-                activitiesText += `<br><strong style=\"color: #FF0000;\">${t('projectLog.export.incidentIssuesLabel')}</strong> ${log.issues}`;
+                activitiesText += `<br><strong style="color: #FF0000;">${t('projectLog.export.incidentIssuesLabel')}</strong> ${escapeHtml(log.issues)}`;
             }
             if (log.note) {
-                activitiesText += `<br><span style=\"color: #666666; font-style: italic;\">${t('projectLog.export.noteLabel', { note: log.note })}</span>`;
+                activitiesText += `<br><span style="color: #666666; font-style: italic;">${escapeHtml(t('projectLog.export.noteLabel', { note: log.note }))}</span>`;
             }
 
             let resourcesText = '';
             if (log.materials) {
-                resourcesText += `<strong>${t('projectLog.export.materialLabel')}</strong> ${log.materials}`;
+                resourcesText += `<strong>${t('projectLog.export.materialLabel')}</strong> ${escapeHtml(log.materials)}`;
             }
             if (log.equipment) {
                 if (resourcesText) resourcesText += '<br>';
-                resourcesText += `<strong>${t('projectLog.export.equipmentLabel')}</strong> ${log.equipment}`;
+                resourcesText += `<strong>${t('projectLog.export.equipmentLabel')}</strong> ${escapeHtml(log.equipment)}`;
             }
             if (!resourcesText) resourcesText = '--';
 
@@ -442,25 +447,18 @@ const ProjectLogTab: React.FC<ProjectLogTabProps> = ({ project, members, canEdit
 
     const handleSave = (payload: ProjectLogPayload) => {
         upsertLog.mutate(payload, {
-            onSuccess: res => {
-                if (res.success) {
-                    message.success(editingLog ? t('projectLog.updateSuccess') : t('projectLog.saveSuccess'));
-                    setFormOpen(false);
-                } else {
-                    message.error(res.error || t('common.error'));
-                }
+            onSuccess: () => {
+                message.success(editingLog ? t('projectLog.updateSuccess') : t('projectLog.saveSuccess'));
+                setFormOpen(false);
             },
-            onError: () => message.error(t('projectLog.saveError')),
+            onError: (err: Error) => message.error(err.message || t('projectLog.saveError')),
         });
     };
 
     const handleDelete = (id: string) => {
         deleteLog.mutate(id, {
-            onSuccess: res => {
-                if (res.success) message.success(t('projectLog.deleteSuccess'));
-                else message.error(res.error || t('common.error'));
-            },
-            onError: () => message.error(t('projectLog.deleteError')),
+            onSuccess: () => message.success(t('projectLog.deleteSuccess')),
+            onError: (err: Error) => message.error(err.message || t('projectLog.deleteError')),
         });
     };
 
@@ -482,7 +480,7 @@ const ProjectLogTab: React.FC<ProjectLogTabProps> = ({ project, members, canEdit
                         icon={<LeftOutlined style={{ fontSize: 11 }} />}
                         size="small"
                         onClick={prevMonth}
-                        style={{ borderRadius: 6, color: '#6B7280', width: 28, height: 28, minWidth: 28, padding: 0 }}
+                        style={{ borderRadius: 6, color: BRAND_COLORS.textSecondary, width: 28, height: 28, minWidth: 28, padding: 0 }}
                     />
                     <div className="month-display">
                         {dayjs(currentMonth).format('MM / YYYY')}
@@ -493,7 +491,7 @@ const ProjectLogTab: React.FC<ProjectLogTabProps> = ({ project, members, canEdit
                         size="small"
                         onClick={nextMonth}
                         disabled={isCurrentMonth}
-                        style={{ borderRadius: 6, color: isCurrentMonth ? '#D1D5DB' : '#6B7280', width: 28, height: 28, minWidth: 28, padding: 0 }}
+                        style={{ borderRadius: 6, color: isCurrentMonth ? '#D1D5DB' : BRAND_COLORS.textSecondary, width: 28, height: 28, minWidth: 28, padding: 0 }}
                     />
                 </div>
 
@@ -505,7 +503,7 @@ const ProjectLogTab: React.FC<ProjectLogTabProps> = ({ project, members, canEdit
                         onClick={exportToExcel}
                         disabled={logs.length === 0}
                         style={{
-                            borderColor: '#10B981', color: '#10B981', borderRadius: 7,
+                            borderColor: BRAND_COLORS.success, color: BRAND_COLORS.success, borderRadius: 7,
                             fontWeight: 600, fontSize: 12, height: 32,
                             opacity: logs.length === 0 ? 0.45 : 1,
                         }}
@@ -518,7 +516,7 @@ const ProjectLogTab: React.FC<ProjectLogTabProps> = ({ project, members, canEdit
                         onClick={exportToWord}
                         disabled={logs.length === 0}
                         style={{
-                            borderColor: '#3B82F6', color: '#3B82F6', borderRadius: 7,
+                            borderColor: BRAND_COLORS.info, color: BRAND_COLORS.info, borderRadius: 7,
                             fontWeight: 600, fontSize: 12, height: 32,
                             opacity: logs.length === 0 ? 0.45 : 1,
                         }}
@@ -532,7 +530,7 @@ const ProjectLogTab: React.FC<ProjectLogTabProps> = ({ project, members, canEdit
                             size="small"
                             onClick={openNew}
                             style={{
-                                background: '#E11D2E', borderColor: '#E11D2E', borderRadius: 7,
+                                background: BRAND_COLORS.primary, borderColor: BRAND_COLORS.primary, borderRadius: 7,
                                 fontWeight: 600, fontSize: 12, height: 32,
                             }}
                         >
@@ -566,7 +564,7 @@ const ProjectLogTab: React.FC<ProjectLogTabProps> = ({ project, members, canEdit
                         value: `${stats.avgProgress}%`,
                         suffix: '',
                         icon: '📈',
-                        color: stats.avgProgress >= 70 ? '#10B981' : stats.avgProgress >= 40 ? '#F59E0B' : '#EF4444',
+                        color: stats.avgProgress >= 70 ? '#10B981' : stats.avgProgress >= 40 ? '#F59E0B' : BRAND_COLORS.error,
                         bg: stats.avgProgress >= 70 ? '#ECFDF5' : stats.avgProgress >= 40 ? '#FFFBEB' : '#FEF2F2',
                     },
                     {
@@ -574,8 +572,8 @@ const ProjectLogTab: React.FC<ProjectLogTabProps> = ({ project, members, canEdit
                         value: stats.incidentDays,
                         suffix: t('projectLog.workDaysUnit'),
                         icon: '⚠️',
-                        color: stats.incidentDays > 0 ? '#F59E0B' : '#9CA3AF',
-                        bg: stats.incidentDays > 0 ? '#FFFBEB' : '#F9FAFB',
+                        color: stats.incidentDays > 0 ? '#F59E0B' : BRAND_COLORS.textMuted,
+                        bg: stats.incidentDays > 0 ? '#FFFBEB' : BRAND_COLORS.backgroundLight,
                     },
                 ].map((s, i) => (
                     <Col xs={12} sm={12} md={6} key={i}>
@@ -647,10 +645,10 @@ const ProjectLogTab: React.FC<ProjectLogTabProps> = ({ project, members, canEdit
                     image={Empty.PRESENTED_IMAGE_SIMPLE}
                     description={
                         <div>
-                            <div style={{ fontWeight: 600, color: '#374151', marginBottom: 4 }}>
+                            <div style={{ fontWeight: 600, color: BRAND_COLORS.secondaryMid, marginBottom: 4 }}>
                                 {t('projectLog.noLogsTitle')} {dayjs(currentMonth).format('MM/YYYY')}
                             </div>
-                            <div style={{ fontSize: 13, color: '#9CA3AF' }}>
+                            <div style={{ fontSize: 13, color: BRAND_COLORS.textMuted }}>
                                 {canWriteLog ? t('projectLog.noLogsHint') : t('projectLog.noLogsReadOnly')}
                             </div>
                         </div>
@@ -664,7 +662,7 @@ const ProjectLogTab: React.FC<ProjectLogTabProps> = ({ project, members, canEdit
                         const weatherLabel = log.weather ? getWeatherLabel(log.weather) : '';
                         const isToday = log.logDate === today;
                         const pct = log.progressPct || 0;
-                        const progressColor = pct >= 80 ? '#10B981' : pct >= 50 ? '#3B82F6' : pct >= 30 ? '#F59E0B' : '#94A3B8';
+                        const progressColor = pct >= 80 ? '#10B981' : pct >= 50 ? '#3B82F6' : pct >= 30 ? '#F59E0B' : BRAND_COLORS.slate400;
                         const canEditThisLog = canEdit || log.createdBy === currentUserId;
 
                         return (
@@ -689,7 +687,7 @@ const ProjectLogTab: React.FC<ProjectLogTabProps> = ({ project, members, canEdit
                                             </Tooltip>
                                         )}
                                         {(log.workersCount ?? 0) > 0 && (
-                                            <span style={{ fontSize: 12, color: '#6B7280', display: 'flex', alignItems: 'center', gap: 3 }}>
+                                            <span style={{ fontSize: 12, color: BRAND_COLORS.textSecondary, display: 'flex', alignItems: 'center', gap: 3 }}>
                                                 <UserOutlined style={{ fontSize: 11 }} />
                                                 {log.workersCount} {t('projectLog.workers')}
                                             </span>
@@ -707,7 +705,7 @@ const ProjectLogTab: React.FC<ProjectLogTabProps> = ({ project, members, canEdit
                                                     size="small"
                                                     icon={<EditOutlined />}
                                                     onClick={() => openEdit(log)}
-                                                    style={{ color: '#6B7280', borderRadius: 6, width: 28, height: 28, padding: 0 }}
+                                                    style={{ color: BRAND_COLORS.textSecondary, borderRadius: 6, width: 28, height: 28, padding: 0 }}
                                                 />
                                                 <Popconfirm
                                                     title={t('projectLog.deleteConfirm')}
@@ -721,7 +719,7 @@ const ProjectLogTab: React.FC<ProjectLogTabProps> = ({ project, members, canEdit
                                                         type="text"
                                                         size="small"
                                                         icon={<DeleteOutlined />}
-                                                        style={{ color: '#EF4444', borderRadius: 6, width: 28, height: 28, padding: 0 }}
+                                                        style={{ color: BRAND_COLORS.error, borderRadius: 6, width: 28, height: 28, padding: 0 }}
                                                     />
                                                 </Popconfirm>
                                             </>
@@ -801,7 +799,7 @@ const ProjectLogTab: React.FC<ProjectLogTabProps> = ({ project, members, canEdit
                                     {/* Footer */}
                                     <div className="log-item-footer">
                                         <span>
-                                            {t('projectLog.createdBy')} <strong style={{ color: '#9CA3AF' }}>{log.createdByName || 'N/A'}</strong>
+                                            {t('projectLog.createdBy')} <strong style={{ color: BRAND_COLORS.textMuted }}>{log.createdByName || 'N/A'}</strong>
                                         </span>
                                         {log.updatedAt && (
                                             <span>{t('projectLog.updatedAt')} {dayjs(log.updatedAt).format('HH:mm DD/MM')}</span>

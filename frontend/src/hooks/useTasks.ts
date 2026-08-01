@@ -1,62 +1,58 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiService } from '../services/api';
+import { unwrap } from '../services/unwrap';
+import { PROJECT_KEYS } from './useProjects';
+import type { TaskInput } from '../services/api.interface';
+import type { Task } from '../types';
 
 export const TASK_KEYS = {
     all: ['tasks'] as const,
-    list: (filters?: any) => [...TASK_KEYS.all, 'list', filters] as const,
+    list: (filters?: { projectId: string; itemType?: string }) => [...TASK_KEYS.all, 'list', filters] as const,
     detail: (id: string) => [...TASK_KEYS.all, 'detail', id] as const,
 };
 
-export const useTasks = (enabled: boolean = true, filters?: any) => {
-    return useQuery({
+const STALE_TIME = 30_000;
+
+export const useTasks = (enabled: boolean = true, filters?: { projectId: string; itemType?: string }) => {
+    return useQuery<Task[]>({
         queryKey: TASK_KEYS.list(filters),
-        queryFn: async () => {
-            const response = await apiService.getTasks(filters);
-            if (!response.success) {
-                throw new Error(response.error || 'Failed to fetch tasks');
-            }
-            return response.data;
-        },
+        queryFn: () => unwrap(
+            apiService.getTasks(filters ?? { projectId: '' }),
+            'Failed to fetch tasks',
+        ),
         enabled,
-        staleTime: 5 * 60 * 1000, // 5 minutes
+        staleTime: STALE_TIME,
     });
 };
 
 export const useTaskMutations = (projectId?: string) => {
     const queryClient = useQueryClient();
 
+    // Tiến độ dự án = AVG(tasks.progress), nên mọi thay đổi task cũng làm cũ
+    // danh sách project.
+    const invalidate = () => {
+        queryClient.invalidateQueries({ queryKey: TASK_KEYS.all });
+        queryClient.invalidateQueries({ queryKey: PROJECT_KEYS.all });
+    };
+
     const createTask = useMutation({
-        mutationFn: (data: any) => apiService.createTask(data),
-        onSuccess: () => {
-            if (projectId) {
-                queryClient.invalidateQueries({ queryKey: TASK_KEYS.list({ projectId }) });
-            } else {
-                queryClient.invalidateQueries({ queryKey: TASK_KEYS.all });
-            }
-        },
+        mutationFn: (data: TaskInput & { name: string }) =>
+            unwrap(
+                apiService.createTask({ ...data, projectId: data.projectId ?? projectId ?? '' }),
+                'Không tạo được công việc',
+            ),
+        onSuccess: invalidate,
     });
 
     const updateTask = useMutation({
-        mutationFn: (data: any) => apiService.updateTask(data),
-        onSuccess: () => {
-            // Invalidate list
-            if (projectId) {
-                queryClient.invalidateQueries({ queryKey: TASK_KEYS.list({ projectId }) });
-            } else {
-                queryClient.invalidateQueries({ queryKey: TASK_KEYS.all });
-            }
-        },
+        mutationFn: (data: TaskInput & { id: string }) =>
+            unwrap(apiService.updateTask(data), 'Không cập nhật được công việc'),
+        onSuccess: invalidate,
     });
 
     const deleteTask = useMutation({
-        mutationFn: (data: { id: string }) => apiService.deleteTask(data),
-        onSuccess: () => {
-            if (projectId) {
-                queryClient.invalidateQueries({ queryKey: TASK_KEYS.list({ projectId }) });
-            } else {
-                queryClient.invalidateQueries({ queryKey: TASK_KEYS.all });
-            }
-        },
+        mutationFn: (data: { id: string }) => unwrap(apiService.deleteTask(data), 'Không xoá được công việc'),
+        onSuccess: invalidate,
     });
 
     return { createTask, updateTask, deleteTask };

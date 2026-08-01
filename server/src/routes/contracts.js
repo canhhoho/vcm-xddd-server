@@ -8,53 +8,16 @@ const router = require('express').Router();
 const { query } = require('../config/database');
 const { v4: uuidv4 } = require('uuid');
 const CacheService = require('../services/cacheService');
-const multer = require('multer');
-const path = require('path');
-const fs = require('fs');
-const { badRequest, conflict, assertDateRange } = require('./_planValidators');
+const {
+  badRequest, conflict, assertDateRange, assertRequiredText, assertNonNegative,
+} = require('./_planValidators');
+const { createUploader, removeUploadedFiles: removeFiles, toPublicUrls } = require('../middleware/fileUpload');
 const { toInvoice } = require('./invoices');
 
-// File upload config
-const uploadDir = path.join(__dirname, '..', '..', 'uploads', 'contracts');
-if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
-
-// Chỉ nhận các loại file thật sự cần cho hợp đồng.
-// File tải lên nằm cùng origin với app; cho phép .html/.svg là mở đường stored XSS
-// (script chạy trên origin của app đọc được JWT trong localStorage).
-const ALLOWED_EXT = new Set([
-  '.pdf', '.jpg', '.jpeg', '.png', '.webp', '.gif',
-  '.doc', '.docx', '.xls', '.xlsx', '.csv', '.txt',
-]);
-const ALLOWED_MIME = new Set([
-  'application/pdf',
-  'image/jpeg', 'image/png', 'image/webp', 'image/gif',
-  'application/msword',
-  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-  'application/vnd.ms-excel',
-  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-  'text/csv', 'text/plain',
-  'application/octet-stream', // một số trình duyệt gửi kiểu này cho .docx/.xlsx
-]);
-
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, uploadDir),
-  filename: (req, file, cb) => {
-    const ext = path.extname(file.originalname);
-    cb(null, `${Date.now()}-${Math.random().toString(36).substring(7)}${ext}`);
-  }
-});
-
-const upload = multer({
-  storage,
-  limits: { fileSize: 50 * 1024 * 1024 },
-  fileFilter: (req, file, cb) => {
-    const ext = path.extname(file.originalname || '').toLowerCase();
-    if (!ALLOWED_EXT.has(ext) || !ALLOWED_MIME.has(file.mimetype)) {
-      return cb(badRequest(`File type not allowed: ${file.originalname}`));
-    }
-    cb(null, true);
-  },
-});
+// Cấu hình multer (allowlist đuôi + MIME) nằm ở middleware/fileUpload.js để
+// mỗi module có endpoint upload riêng đi qua đúng middleware phân quyền của nó.
+const UPLOAD_SUBDIR = 'contracts';
+const upload = createUploader(UPLOAD_SUBDIR);
 
 // Helper: log activity
 async function logActivity(email, action, description) {
@@ -68,30 +31,14 @@ async function logActivity(email, action, description) {
   }
 }
 
-/** Xoá file đã upload khỏi đĩa. Bỏ qua file không tồn tại. */
+/** Xoá file đính kèm của hợp đồng khỏi đĩa. Bỏ qua file không tồn tại. */
 function removeUploadedFiles(raw) {
-  if (!raw) return;
-  String(raw)
-    .split(/[\r\n,]+/)
-    .map(s => s.trim())
-    .filter(Boolean)
-    .forEach(url => {
-      // Chỉ đụng tới file nằm trong thư mục uploads của chính app.
-      const name = path.basename(url);
-      if (!name || name === '.' || name === '..') return;
-      const target = path.join(uploadDir, name);
-      if (!target.startsWith(uploadDir)) return;
-      fs.unlink(target, () => { /* ENOENT là bình thường */ });
-    });
+  removeFiles(raw, UPLOAD_SUBDIR);
 }
 
 /** Giá trị hợp đồng: số hữu hạn, không âm */
 function assertValue(value) {
-  if (value === undefined || value === null || value === '') return 0;
-  const n = Number(value);
-  if (!Number.isFinite(n)) throw badRequest('value must be a number');
-  if (n < 0) throw badRequest('value must not be negative');
-  return n;
+  return assertNonNegative(value, 'value');
 }
 
 // IN_PROGRESS là giá trị chuẩn (khớp APP_CONFIG.STATUS). INPROCESS là biến thể cũ
@@ -106,12 +53,6 @@ function normalizeStatus(status) {
     throw badRequest(`Invalid status. Must be one of: ${CONTRACT_STATUSES.join(', ')}`);
   }
   return canonical;
-}
-
-function assertRequiredText(value, field, max = 500) {
-  if (typeof value !== 'string' || !value.trim()) throw badRequest(`${field} is required`);
-  if (value.length > max) throw badRequest(`${field} is too long (max ${max} characters)`);
-  return value.trim();
 }
 
 // GET /contracts
@@ -305,7 +246,7 @@ router.post('/upload', upload.array('files', 20), async (req, res, next) => {
       throw badRequest('No files uploaded');
     }
 
-    const urls = req.files.map(f => `/uploads/contracts/${f.filename}`);
+    const urls = toPublicUrls(req.files, UPLOAD_SUBDIR);
 
     res.json({
       success: true,

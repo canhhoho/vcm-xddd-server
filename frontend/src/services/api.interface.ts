@@ -8,7 +8,8 @@
 import type {
     Department, PlanItemStatus,
     WeeklyPlan, WeeklyPlanItem, MonthlyPlan, MonthlyPlanItem, DailyLog,
-    Contract, Invoice,
+    Contract, Invoice, Project, ProjectMember, Task, ProjectItemType,
+    ProjectLog, ProjectLogPayload,
 } from '../types';
 
 // ==================== CONTRACT / INVOICE PAYLOADS ====================
@@ -51,6 +52,44 @@ export interface InvoiceInput {
     paidAmount?: number;
     issuedDate?: string | null;
     files?: string;
+}
+
+// ==================== PROJECT / TASK PAYLOADS ====================
+
+/** Payload tạo/sửa dự án. `id` chỉ bắt buộc khi cập nhật. */
+export interface ProjectInput {
+    id?: string;
+    code?: string;
+    name?: string;
+    status?: Project['status'];
+    managerId?: string;
+    contractId?: string;
+    location?: string;
+    investor?: string;
+    startDate?: string | null;
+    endDate?: string | null;
+    budget?: number;
+    description?: string;
+    fileUrls?: string;
+}
+
+/**
+ * Payload tạo/sửa task.
+ * `startDate`/`endDate` phải là chuỗi `YYYY-MM-DD` — backend validate bằng
+ * `assertDateRange` và từ chối chuỗi ISO đầy đủ bằng 400.
+ */
+export interface TaskInput {
+    projectId?: string;
+    itemType?: string;
+    name?: string;
+    assigneeId?: string;
+    status?: Task['status'];
+    progress?: number;
+    startDate?: string | null;
+    endDate?: string | null;
+    description?: string;
+    priority?: Task['priority'];
+    order?: number;
 }
 
 // ==================== PLAN PAYLOADS ====================
@@ -155,50 +194,26 @@ export interface IApiService {
     deleteInvoice(id: string): Promise<ApiResponse>;
 
     // ==================== PROJECTS ====================
-    getProjects(params?: any): Promise<ApiResponse>;
-    createProject(data: any): Promise<ApiResponse>;
-    updateProject(data: any): Promise<ApiResponse>;
+    getProjects(params?: Record<string, string | undefined>): Promise<ApiResponse<Project[]>>;
+    createProject(data: ProjectInput): Promise<ApiResponse<{ id: string }>>;
+    updateProject(data: ProjectInput & { id: string }): Promise<ApiResponse>;
     deleteProject(params: { id: string }): Promise<ApiResponse>;
+    uploadProjectFiles(files: File[]): Promise<ApiResponse<{ urls: string[] }>>;
 
     // ==================== PROJECT ITEMS ====================
-    getProjectItems(params: { projectId: string }): Promise<ApiResponse>;
-    createProjectItem(data: { projectId: string; name: string; order?: number }): Promise<ApiResponse>;
-    updateProjectItem(data: { id: string; name: string; order?: number }): Promise<ApiResponse>;
-    deleteProjectItem(params: { id: string }): Promise<ApiResponse>;
+    // Chỉ có GET: danh sách hạng mục là hằng số trong APP_CONFIG, không CRUD được.
+    getProjectItems(params: { projectId: string }): Promise<ApiResponse<ProjectItemType[]>>;
 
     // ==================== PROJECT MEMBERS ====================
-    getProjectMembers(params: { projectId: string }): Promise<ApiResponse>;
-    addProjectMember(data: { projectId: string; userId: string; role: string }): Promise<ApiResponse>;
-    removeProjectMember(params: { id: string }): Promise<ApiResponse>;
+    getProjectMembers(params: { projectId: string }): Promise<ApiResponse<ProjectMember[]>>;
+    addProjectMember(data: { projectId: string; userId: string; role: string }): Promise<ApiResponse<{ id: string }>>;
+    /** Cần cả projectId: members lưu trong cột JSONB của chính project đó. */
+    removeProjectMember(params: { projectId: string; id: string }): Promise<ApiResponse>;
 
     // ==================== TASKS ====================
-    getTasks(params: { projectId: string; itemType?: string }): Promise<ApiResponse>;
-    createTask(data: {
-        projectId: string;
-        itemType?: string;
-        name: string;
-        assigneeId?: string;
-        status?: string;
-        progress?: number;
-        startDate?: string;
-        endDate?: string;
-        description?: string;
-        priority?: string;
-        order?: number;
-    }): Promise<ApiResponse>;
-    updateTask(data: {
-        id: string;
-        itemType?: string;
-        name?: string;
-        assigneeId?: string;
-        status?: string;
-        progress?: number;
-        startDate?: string;
-        endDate?: string;
-        description?: string;
-        priority?: string;
-        order?: number;
-    }): Promise<ApiResponse>;
+    getTasks(params: { projectId: string; itemType?: string }): Promise<ApiResponse<Task[]>>;
+    createTask(data: TaskInput & { projectId: string; name: string }): Promise<ApiResponse<{ id: string }>>;
+    updateTask(data: TaskInput & { id: string }): Promise<ApiResponse>;
     deleteTask(params: { id: string }): Promise<ApiResponse>;
 
     // ==================== TARGETS ====================
@@ -284,18 +299,7 @@ export interface IApiService {
     upsertDailyLog(data: DailyLogInput): Promise<ApiResponse>;
 
     // ==================== PROJECT LOGS (Nhat ky Thi cong) ====================
-    getProjectLogs(params: { projectId: string; month?: string }): Promise<ApiResponse>;
-    upsertProjectLog(data: {
-        projectId: string;
-        logDate: string;
-        weather?: string;
-        workersCount?: number;
-        progressPct?: number;
-        activities?: string;
-        issues?: string;
-        materials?: string;
-        equipment?: string;
-        note?: string;
-    }): Promise<ApiResponse>;
+    getProjectLogs(params: { projectId: string; month?: string }): Promise<ApiResponse<ProjectLog[]>>;
+    upsertProjectLog(data: ProjectLogPayload): Promise<ApiResponse<{ id: string }>>;
     deleteProjectLog(id: string): Promise<ApiResponse>;
 }

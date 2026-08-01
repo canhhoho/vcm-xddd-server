@@ -37,6 +37,22 @@ function assertTitle(title) {
   return title.trim();
 }
 
+/** Text bắt buộc, không rỗng, có giới hạn độ dài. Trả về chuỗi đã trim. */
+function assertRequiredText(value, field, max = 500) {
+  if (typeof value !== 'string' || !value.trim()) throw badRequest(`${field} is required`);
+  if (value.length > max) throw badRequest(`${field} is too long (max ${max} characters)`);
+  return value.trim();
+}
+
+/** Số hữu hạn, không âm. undefined/rỗng → 0. */
+function assertNonNegative(value, field) {
+  if (value === undefined || value === null || value === '') return 0;
+  const n = Number(value);
+  if (!Number.isFinite(n)) throw badRequest(`${field} must be a number`);
+  if (n < 0) throw badRequest(`${field} must not be negative`);
+  return n;
+}
+
 /** Ép progress về 0..100 (tránh 500 hoặc -20 lọt vào DB) */
 function clampPct(value) {
   const n = Number(value);
@@ -118,6 +134,8 @@ module.exports = {
   conflict,
   forbidden,
   assertTitle,
+  assertRequiredText,
+  assertNonNegative,
   clampPct,
   assertStatus,
   assertDate,

@@ -73,7 +73,22 @@ export interface Project {
     description?: string;   // NEW: Project description
     members?: ProjectMember[];  // NEW: Embedded members
     createdAt?: string;
+    /** Danh sách URL file đính kèm, phân tách bằng xuống dòng hoặc dấu phẩy */
+    fileUrls?: string;
+    /** % thời gian đã trôi qua, backend tính từ start_date/end_date */
+    timeProgress?: number;
+    /**
+     * Tiến độ thi công 0-100. GIÁ TRỊ DẪN XUẤT — backend tính bằng
+     * AVG(tasks.progress); bảng `projects` không có cột này.
+     */
     progress?: number;
+}
+
+/** Hạng mục công việc định sẵn, backend trả từ APP_CONFIG.PROJECT_ITEM_TYPES */
+export interface ProjectItemType {
+    id: string;
+    name: string;
+    order: number;
 }
 
 export interface ProjectMember {
