@@ -11,7 +11,6 @@ import {
     Space,
     message,
     Popconfirm,
-    Card,
     Typography,
     Tooltip,
     Row,
@@ -39,6 +38,7 @@ import {
 import { apiService } from '../services/api';
 import { usePermissions } from '../hooks/usePermissions';
 import type { Position, User, UserRole, ModulePermission, ModuleAccess, Activity } from '../types';
+import { BRAND_COLORS } from '../styles/brandIdentity';
 import './UserManagement.css';
 import { useFilterSync } from '../hooks/useFilterSync';
 import { VcmFilterBar } from '../components/VcmFilterBar';
@@ -135,8 +135,6 @@ const UserManagement: React.FC = () => {
     const [selectedPosition, setSelectedPosition] = useFilterSync<string | undefined>('position', undefined);
     const [selectedCategory, setSelectedCategory] = useFilterSync<string | undefined>('category', undefined);
 
-    console.log('UserManagement Permission Debug:', { isAdmin, role: usePermissions().role });
-
     // Active Filters List for Chips
     const activeFilters = [
         { key: 'q', label: t('common.search'), value: searchText, onRemove: () => setSearchText('') },
@@ -150,25 +148,9 @@ const UserManagement: React.FC = () => {
         { key: 'category', label: t('users.colGroup'), value: selectedCategory, onRemove: () => setSelectedCategory(undefined) }
     ];
 
-    // --- ACCESS CONTROL ---
-    if (!isAdmin) {
-        return (
-            <div style={{
-                display: 'flex',
-                justifyContent: 'center',
-                alignItems: 'center',
-                height: '80vh',
-                flexDirection: 'column'
-            }}>
-                <SafetyCertificateOutlined style={{ fontSize: 64, color: '#ff4d4f', marginBottom: 16 }} />
-                <Title level={3}>{t('branches.noAccess')}</Title>
-                <Text>{t('users.noAccessDescShort')}</Text>
-                <Button type="primary" style={{ marginTop: 24 }} href="/dashboard">
-                    {t('common.back')}
-                </Button>
-            </div>
-        );
-    }
+    // Guard !isAdmin nằm ở cuối, ngay trước return chính — KHÔNG được early-return
+    // ở đây vì bên dưới còn 5 useMemo; thoát sớm sẽ đổi số hook giữa các lần render
+    // và ném "Rendered fewer hooks than expected".
 
     const clearAllFilters = () => {
         setSearchText('');
@@ -500,7 +482,6 @@ const UserManagement: React.FC = () => {
     };
 
     // Role tag colors
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const getRoleColor = (role?: UserRole | ModuleAccess) => {
         switch (role) {
             case 'ADMIN': return 'red';
@@ -511,7 +492,6 @@ const UserManagement: React.FC = () => {
         }
     };
 
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const getRoleLabel = (role?: UserRole | ModuleAccess) => {
         switch (role) {
             case 'ADMIN': return t('users.formDefaultRoleAdmin');
@@ -604,6 +584,16 @@ const UserManagement: React.FC = () => {
             width: 110,
             align: 'center' as const,
             render: (text: string) => text ? <Tag style={{ margin: 0 }}>{t(`users.groups.${text}`, text)}</Tag> : '-'
+        },
+        {
+            title: t('users.colRole'),
+            dataIndex: 'role',
+            key: 'role',
+            width: 130,
+            align: 'center' as const,
+            render: (role: UserRole) => (
+                <Tag color={getRoleColor(role)} style={{ margin: 0 }}>{getRoleLabel(role)}</Tag>
+            )
         },
         {
             title: t('users.colDescription'),
@@ -775,15 +765,18 @@ const UserManagement: React.FC = () => {
 
 
 
+    // --- ACCESS CONTROL --- (đặt sau toàn bộ hook, xem ghi chú ở trên)
     if (!isAdmin) {
         return (
             <div className="user-management-blocked">
-                <Card>
-                    <Title level={4}>⛔ {t('branches.noAccess')}</Title>
-                    <Text type="secondary">
-                        {t('users.noAccessDescShort')}
-                    </Text>
-                </Card>
+                <SafetyCertificateOutlined
+                    style={{ fontSize: 64, color: BRAND_COLORS.error, marginBottom: 16 }}
+                />
+                <Title level={3}>{t('branches.noAccess')}</Title>
+                <Text type="secondary">{t('users.noAccessDescShort')}</Text>
+                <Button type="primary" style={{ marginTop: 24 }} href="#/dashboard">
+                    {t('common.back')}
+                </Button>
             </div>
         );
     }
@@ -880,7 +873,8 @@ const UserManagement: React.FC = () => {
                                             showSizeChanger: true,
                                             showTotal: (total) => t('users.totalUsers', { total }),
                                         }}
-                                        scroll={{ x: 1110 }} // Total width: 150+180+200+120+250+100+110 = 1110
+                                        // 140+160+200+110+130+100 = 840, cộng ~200 cho cột mô tả co giãn
+                                        scroll={{ x: 1040 }}
                                         className="user-table"
                                         size="small"
                                     />
@@ -1064,6 +1058,19 @@ const UserManagement: React.FC = () => {
                             {categories.map((cat: string) => (
                                 <Option key={cat} value={cat}>{t(`users.groups.${cat}`, cat)}</Option>
                             ))}
+                        </Select>
+                    </Form.Item>
+                    <Form.Item
+                        name="role"
+                        label={t('users.formRole')}
+                        initialValue="VIEW"
+                        rules={[{ required: true, message: t('users.formDefaultRoleReq') }]}
+                    >
+                        <Select>
+                            <Option value="ADMIN">{t('users.formDefaultRoleAdmin')}</Option>
+                            <Option value="EDIT">{t('users.formDefaultRoleEdit')}</Option>
+                            <Option value="VIEW">{t('users.formDefaultRoleView')}</Option>
+                            <Option value="NO_ACCESS">{t('users.formDefaultRoleNo')}</Option>
                         </Select>
                     </Form.Item>
                     <Form.Item name="description" label={t('users.formDescription')}>

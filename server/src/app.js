@@ -13,6 +13,7 @@ const authMiddleware = require('./middleware/auth');
 const errorHandler = require('./middleware/errorHandler');
 const planAccess = require('./middleware/planAccess');
 const moduleAccess = require('./middleware/moduleAccess');
+const rbac = require('./middleware/rbac');
 
 // Route modules
 const authRoutes = require('./routes/auth');
@@ -88,13 +89,17 @@ app.use('/api/invoices', moduleAccess('contracts'), invoiceRoutes);
 app.use('/api/projects', moduleAccess('projects'), projectRoutes);
 app.use('/api/tasks', moduleAccess('projects'), taskRoutes);
 app.use('/api/targets', moduleAccess('targets'), targetRoutes);
-app.use('/api/users', userRoutes);
-app.use('/api/permissions', permissionRoutes);
+// Quản trị người dùng: chỉ ADMIN. Trước đây các router này mount trần sau
+// authMiddleware nên bất kỳ user đã đăng nhập nào cũng đọc được toàn bộ email +
+// ma trận quyền, và PUT /users/:id với {"role":"ADMIN"} để tự nâng quyền.
+app.use('/api/users', rbac(['ADMIN']), userRoutes);
+app.use('/api/permissions', rbac(['ADMIN']), permissionRoutes);
 app.use('/api/branches', moduleAccess('branches'), branchRoutes);
 app.use('/api/positions', positionRoutes);
 app.use('/api/staff', staffRoutes);
 app.use('/api/dashboard', dashboardRoutes);
-app.use('/api/activities', activityRoutes);
+// Nhật ký hoạt động toàn hệ thống -> chỉ ADMIN (chỉ trang User dùng tới).
+app.use('/api/activities', rbac(['ADMIN']), activityRoutes);
 app.use('/api/provinces', provinceRoutes);
 app.use('/api/prospects', prospectRoutes);
 // Page Plan: phân quyền theo phòng ban (plans_bd/mkt/qs/des/pm), đọc từ DB mỗi request

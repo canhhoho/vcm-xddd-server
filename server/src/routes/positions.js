@@ -5,9 +5,15 @@ const router = require('express').Router();
 const { query } = require('../config/database');
 const { v4: uuidv4 } = require('uuid');
 const CacheService = require('../services/cacheService');
+const rbac = require('../middleware/rbac');
+const { badRequest } = require('./_planValidators');
+
+// GET để mở: dropdown chức danh trong form user cần nó.
+// Ghi thì chỉ ADMIN — quản lý chức danh là việc của trang User.
+const adminOnly = rbac(['ADMIN']);
 
 // GET /positions
-router.get('/', async (req, res) => {
+router.get('/', async (req, res, next) => {
   try {
     const data = await CacheService.getOrSet('POSITIONS_LIST', async () => {
       const result = await query('SELECT * FROM positions ORDER BY name');
@@ -42,12 +48,12 @@ router.get('/', async (req, res) => {
     }, CacheService.TTL.STATIC);
     res.json(data);
   } catch (err) {
-    res.json({ success: false, error: err.message });
+    next(err);
   }
 });
 
 // POST /positions
-router.post('/', async (req, res) => {
+router.post('/', adminOnly, async (req, res, next) => {
   try {
     const d = req.body; const id = uuidv4();
     await query('INSERT INTO positions (id,name,code,default_role,category,description) VALUES ($1,$2,$3,$4,$5,$6)',
@@ -55,12 +61,12 @@ router.post('/', async (req, res) => {
     CacheService.clear(['POSITIONS_LIST']);
     res.json({ success: true, data: { id } });
   } catch (err) {
-    res.json({ success: false, error: err.message });
+    next(err);
   }
 });
 
 // PUT /positions/:id
-router.put('/:id', async (req, res) => {
+router.put('/:id', adminOnly, async (req, res, next) => {
   try {
     const d = req.body;
     await query('UPDATE positions SET name=$1,code=$2,default_role=$3,category=$4,description=$5 WHERE id=$6',
@@ -68,19 +74,19 @@ router.put('/:id', async (req, res) => {
     CacheService.clear(['POSITIONS_LIST']);
     res.json({ success: true });
   } catch (err) {
-    res.json({ success: false, error: err.message });
+    next(err);
   }
 });
 
 // DELETE /positions/:id
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', adminOnly, async (req, res, next) => {
   try {
     const r = await query('DELETE FROM positions WHERE id=$1', [req.params.id]);
-    if (r.rowCount === 0) return res.json({ success: false, error: 'Position not found' });
+    if (r.rowCount === 0) return next(badRequest('Position not found'));
     CacheService.clear(['POSITIONS_LIST']);
     res.json({ success: true });
   } catch (err) {
-    res.json({ success: false, error: err.message });
+    next(err);
   }
 });
 

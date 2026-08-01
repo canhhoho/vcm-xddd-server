@@ -7,6 +7,18 @@ const { query } = require('../config/database');
 const { v4: uuidv4 } = require('uuid');
 const SecurityService = require('../services/securityService');
 const CacheService = require('../services/cacheService');
+const { MODULE_COLUMNS } = require('../middleware/moduleAccess');
+const { badRequest } = require('./_planValidators');
+
+// Các cột quyền theo phòng ban của page Plan (moduleAccess chỉ quản 5 cột module thường).
+const PLAN_COLUMNS = ['plans_bd', 'plans_mkt', 'plans_qs', 'plans_des', 'plans_pm'];
+const ACCESS_LEVELS = ['ADMIN', 'EDIT', 'VIEW', 'NO_ACCESS'];
+
+/** Chuẩn hoá giá trị quyền từ client; giá trị lạ -> fallback, không ghi thẳng vào DB. */
+function accessLevel(value, fallback) {
+  const v = String(value || '').toUpperCase();
+  return ACCESS_LEVELS.includes(v) ? v : fallback;
+}
 
 async function logActivity(email, action, description) {
   try {
@@ -32,7 +44,7 @@ function toUser(r) {
 }
 
 // GET /users
-router.get('/', async (req, res) => {
+router.get('/', async (req, res, next) => {
   try {
     const data = await CacheService.getOrSet('USERS_LIST', async () => {
       const result = await query(`
@@ -55,12 +67,12 @@ router.get('/', async (req, res) => {
 
     res.json(data);
   } catch (err) {
-    res.json({ success: false, error: err.message });
+    next(err);
   }
 });
 
 // POST /users
-router.post('/', async (req, res) => {
+router.post('/', async (req, res, next) => {
   try {
     const d = req.body;
     const id = 'u_' + uuidv4().substring(0, 8);
@@ -79,29 +91,41 @@ router.post('/', async (req, res) => {
       } catch (e) { console.error('Error resolving position:', e.message); }
     }
 
-    await query(`
-      INSERT INTO users (id, email, password, name, position_id, position_code, position_name, category, description, role, branches, contracts, projects, targets, business, plans_bd, plans_mkt, plans_qs, plans_des, plans_pm)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)
-    `, [
+    // Quyền lấy từ body (PUT vẫn nhận đủ các cột này) — trước đây bị hardcode nên
+    // admin tạo user xong luôn phải sang tab Phân quyền sửa lại.
+    const role = accessLevel(d.role, 'VIEW');
+    const permColumns = [...MODULE_COLUMNS, ...PLAN_COLUMNS];
+    const permValues = [
+      ...MODULE_COLUMNS.map(col => accessLevel(d[col], 'VIEW')),
+      ...PLAN_COLUMNS.map(col => accessLevel(d[col], 'NO_ACCESS')),
+    ];
+
+    const baseColumns = ['id', 'email', 'password', 'name', 'position_id', 'position_code',
+      'position_name', 'category', 'description', 'role'];
+    const baseValues = [
       id, d.email, hashedPassword, d.name || '',
       d.positionId || '', posCode, posName,
-      d.category || '', d.description || '',
-      d.role || 'VIEW',
-      'VIEW', 'VIEW', 'VIEW', 'VIEW', 'VIEW',
-      'NO_ACCESS', 'NO_ACCESS', 'NO_ACCESS', 'NO_ACCESS', 'NO_ACCESS'
-    ]);
+      d.category || '', d.description || '', role,
+    ];
+
+    const allColumns = [...baseColumns, ...permColumns];
+    const placeholders = allColumns.map((_, i) => `$${i + 1}`).join(', ');
+    await query(
+      `INSERT INTO users (${allColumns.join(', ')}) VALUES (${placeholders})`,
+      [...baseValues, ...permValues]
+    );
 
     await logActivity(req.user?.email || 'ADMIN', 'CREATE_USER', `Created user ${d.email}`);
     CacheService.clear(['USERS_LIST']);
 
-    res.json({ success: true, data: { id, email: d.email, name: d.name, role: d.role || 'VIEW' } });
+    res.json({ success: true, data: { id, email: d.email, name: d.name, role } });
   } catch (err) {
-    res.json({ success: false, error: err.message });
+    next(err);
   }
 });
 
 // PUT /users/:id
-router.put('/:id', async (req, res) => {
+router.put('/:id', async (req, res, next) => {
   try {
     const { id } = req.params;
     const d = req.body;
@@ -131,11 +155,19 @@ router.put('/:id', async (req, res) => {
        } catch (e) { console.error('Error resolving position on update:', e.message); }
     }
 
+    // Cột quyền + role phải qua allowlist, không ghi thẳng chuỗi từ client vào DB.
+    const accessFields = new Set(['role', ...MODULE_COLUMNS, ...PLAN_COLUMNS]);
+
     for (const [jsKey, dbCol] of Object.entries(mapping)) {
       if (d[jsKey] !== undefined) {
         let val = d[jsKey];
         if (jsKey === 'positionCode' && localPosCode !== undefined) val = localPosCode;
         if (jsKey === 'positionName' && localPosName !== undefined) val = localPosName;
+        if (accessFields.has(jsKey)) {
+          const normalized = accessLevel(val, null);
+          if (normalized === null) throw badRequest(`Invalid access level for ${jsKey}`);
+          val = normalized;
+        }
         fields.push(`${dbCol} = $${idx}`); values.push(val); idx++;
       }
     }
@@ -147,7 +179,7 @@ router.put('/:id', async (req, res) => {
       idx++;
     }
 
-    if (fields.length === 0) return res.json({ success: false, error: 'No fields to update' });
+    if (fields.length === 0) return next(badRequest('No fields to update'));
 
     values.push(id);
     await query(`UPDATE users SET ${fields.join(', ')} WHERE id = $${idx}`, values);
@@ -157,20 +189,20 @@ router.put('/:id', async (req, res) => {
 
     res.json({ success: true });
   } catch (err) {
-    res.json({ success: false, error: err.message });
+    next(err);
   }
 });
 
 // DELETE /users/:id
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', async (req, res, next) => {
   try {
     const result = await query('DELETE FROM users WHERE id = $1 RETURNING email', [req.params.id]);
-    if (result.rowCount === 0) return res.json({ success: false, error: 'User not found' });
+    if (result.rowCount === 0) return next(badRequest('User not found'));
     await logActivity(req.user?.email || 'ADMIN', 'DELETE_USER', `Deleted user ${result.rows[0].email}`);
     CacheService.clear(['USERS_LIST']);
     res.json({ success: true });
   } catch (err) {
-    res.json({ success: false, error: err.message });
+    next(err);
   }
 });
 

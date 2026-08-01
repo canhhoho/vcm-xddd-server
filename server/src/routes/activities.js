@@ -5,7 +5,7 @@ const router = require('express').Router();
 const { query } = require('../config/database');
 
 // GET /activities
-router.get('/', async (req, res) => {
+router.get('/', async (req, res, next) => {
   try {
     const result = await query('SELECT * FROM activities ORDER BY created_at DESC LIMIT 200');
     const data = result.rows.map(r => ({
@@ -14,7 +14,7 @@ router.get('/', async (req, res) => {
     }));
     res.json({ success: true, data });
   } catch (err) {
-    res.json({ success: false, error: err.message });
+    next(err);
   }
 });
 
