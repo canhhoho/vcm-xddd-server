@@ -225,7 +225,9 @@
         "detailTotalValue": "Tổng giá trị",
         "detailInvoiced": "Đã xuất HĐ",
         "detailPaid": "Thực thu",
-        "detailInvoiceList": "DANH SÁCH HÓA ĐƠN & THANH TOÁN"
+        "detailInvoiceList": "DANH SÁCH HÓA ĐƠN & THANH TOÁN",
+        "exportContracts": "Xuất Hợp đồng",
+        "exportInvoices": "Xuất Hóa đơn"
     },
     "invoices": {
         "listTitle": "Danh sách hóa đơn",

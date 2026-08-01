@@ -20,7 +20,6 @@ import {
     Upload,
     Tooltip,
     Progress,
-    Popconfirm,
     Dropdown,
     List,
     Typography,
@@ -29,15 +28,10 @@ import type { MenuProps } from 'antd';
 import {
     PlusOutlined,
     SearchOutlined,
-    EditOutlined,
-    DeleteOutlined,
     UploadOutlined,
-    EyeOutlined,
     DownloadOutlined,
-    GlobalOutlined,
     DownOutlined,
     FilePdfOutlined,
-    FileImageOutlined,
     CloseCircleOutlined,
 } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
@@ -58,23 +52,17 @@ import { FilterChips } from '../components/FilterChips';
 import { useTranslation } from 'react-i18next';
 import { VcmFilterBar } from '../components/VcmFilterBar';
 import { VcmActionGroup } from '../components/VcmActionGroup';
+import { normalizeId, toCsvCell } from '../utils/common';
+import { BRAND_COLORS } from '../styles/brandIdentity';
 
 const { Option } = Select;
-const { RangePicker } = DatePicker;
 const { Text } = Typography;
 
-// --- HELPERS ---
-const normalizeId = (id: any): string => {
-    if (id === null || id === undefined) return '';
-    let str = String(id).trim();
-    if (str.endsWith('.0')) str = str.slice(0, -2);
-    // Handle numeric strings: remove leading zeros ('01' -> '1')
-    if (/^\d+$/.test(str)) {
-        const num = parseInt(str, 10);
-        if (!isNaN(num)) return num.toString();
-    }
-    return str;
-};
+const DATE_FORMAT = 'DD/MM/YYYY';
+
+/** Ngày trong DB cho phép NULL -> tránh in ra "Invalid Date". */
+const formatDate = (date?: string | null): string =>
+    date && dayjs(date).isValid() ? dayjs(date).format(DATE_FORMAT) : '—';
 
 const Contracts: React.FC = () => {
     const { t } = useTranslation();
@@ -109,14 +97,15 @@ const Contracts: React.FC = () => {
     const [submitting, setSubmitting] = useState(false);
     const loading = isLoadingContracts || submitting;
 
-    if (permissions.contracts === 'NO_ACCESS' && !isAdmin) {
-        return (
-            <div style={{ padding: '20px', textAlign: 'center' }}>
-                <h2>{t('contracts.noAccess')}</h2>
-                <p>{t('contracts.noAccessDesc')}</p>
-            </div>
-        );
-    }
+    // Giá trị chờ nạp vào Form. Modal dùng destroyOnHidden nên Form chưa mount
+    // lúc bấm "Sửa" -> phải set trong afterOpenChange, không set trước khi mở.
+    const [pendingValues, setPendingValues] = useState<Record<string, unknown> | null>(null);
+
+    const isBlocked = permissions.contracts === 'NO_ACCESS' && !isAdmin;
+
+    // LƯU Ý: không đặt early return ở đây. Mọi hook phải được gọi ở mọi lần render,
+    // nếu không React ném "Rendered fewer hooks than expected". Nhánh chặn truy cập
+    // nằm ngay trước phần return JSX ở cuối component.
 
     // Filters
     // Filters (Synced with URL)
@@ -132,7 +121,9 @@ const Contracts: React.FC = () => {
             key: 'branch',
             label: t('contracts.filterBranch'),
             value: selectedProvince,
-            displayValue: branches.find(b => b.id === selectedProvince)?.code,
+            // Phải qua normalizeId như mọi chỗ khác, nếu không chip hiện trống
+            // khi chi nhánh lưu bằng code hoặc id có số 0 đứng đầu.
+            displayValue: branches.find(b => normalizeId(b.id) === normalizeId(selectedProvince))?.code,
             onRemove: () => setSelectedProvince(undefined)
         },
         { key: 'field', label: t('contracts.filterField'), value: selectedField, onRemove: () => setSelectedField(undefined) },
@@ -163,23 +154,27 @@ const Contracts: React.FC = () => {
     const handleCreate = useCallback(() => {
         setEditingContract(null);
         form.resetFields();
+        setPendingValues(null);
         setFileList([]);
+        setExistingFiles([]);
         setModalVisible(true);
     }, [form]);
 
     const handleEdit = useCallback((record: Contract) => {
         setEditingContract(record);
-        form.setFieldsValue({
+        // Không gọi form.setFieldsValue ở đây: Modal dùng destroyOnHidden nên Form
+        // chưa mount, giá trị sẽ mất và antd cảnh báo "useForm is not connected".
+        setPendingValues({
             ...record,
-            startDate: dayjs(record.startDate),
-            endDate: dayjs(record.endDate),
+            startDate: record.startDate && dayjs(record.startDate).isValid() ? dayjs(record.startDate) : null,
+            endDate: record.endDate && dayjs(record.endDate).isValid() ? dayjs(record.endDate) : null,
         });
         setFileList([]);
         // Parse existing files from the record
         const existing = record.fileUrl ? record.fileUrl.split('\n').filter((f: string) => f.trim()) : [];
         setExistingFiles(existing);
         setModalVisible(true);
-    }, [form]);
+    }, []);
 
     const handleDetail = useCallback((record: Contract) => {
         setDetailContract(record);
@@ -238,10 +233,9 @@ const Contracts: React.FC = () => {
 
             const data = {
                 ...values,
-                startDate: values.startDate.format('YYYY-MM-DD'),
-                endDate: values.endDate.format('YYYY-MM-DD'),
+                startDate: values.startDate ? values.startDate.format('YYYY-MM-DD') : null,
+                endDate: values.endDate ? values.endDate.format('YYYY-MM-DD') : null,
                 fileUrls: finalFileUrls,
-                fileUrl: finalFileUrls
             };
 
             const onSuccess = (res: any) => {
@@ -308,7 +302,7 @@ const Contracts: React.FC = () => {
                     (p) => normalizeId(p.id) === normalizedSearch ||
                         normalizeId(p.code) === normalizedSearch
                 );
-                return <Text strong style={{ color: '#E11D2E' }}>{branch?.code || provinceId}</Text>;
+                return <Text strong style={{ color: BRAND_COLORS.primary }}>{branch?.code || provinceId}</Text>;
             },
         },
         {
@@ -345,7 +339,7 @@ const Contracts: React.FC = () => {
             key: 'startDate',
             width: 110,
             align: 'center' as const,
-            render: (date: string) => dayjs(date).format('DD/MM/YYYY'),
+            render: (date: string) => formatDate(date),
         },
         {
             title: t('contracts.colEndDate'),
@@ -353,7 +347,7 @@ const Contracts: React.FC = () => {
             key: 'endDate',
             width: 110,
             align: 'center' as const,
-            render: (date: string) => dayjs(date).format('DD/MM/YYYY'),
+            render: (date: string) => formatDate(date),
         },
         {
             title: t('contracts.colStatus'),
@@ -458,15 +452,15 @@ const Contracts: React.FC = () => {
             const statusText = (appConfig?.STATUS && appConfig.STATUS[c.status === 'INPROCESS' ? 'IN_PROGRESS' : c.status]) || c.status;
 
             return [
-                `"${c.code}"`,
-                `"${c.name}"`,
-                `"${branchCode}"`,
-                `"${c.businessField}"`,
+                toCsvCell(c.code),
+                toCsvCell(c.name),
+                toCsvCell(branchCode),
+                toCsvCell(c.businessField),
                 c.value,
                 c.progress || 0,
-                `"${dayjs(c.startDate).format('DD/MM/YYYY')}"`,
-                `"${dayjs(c.endDate).format('DD/MM/YYYY')}"`,
-                `"${statusText}"`
+                toCsvCell(formatDate(c.startDate)),
+                toCsvCell(formatDate(c.endDate)),
+                toCsvCell(statusText)
             ].join(',');
         });
 
@@ -486,10 +480,10 @@ const Contracts: React.FC = () => {
             setSubmitting(true);
             const response = await apiService.getAllInvoices();
             if (response.success) {
-                const allInvoices = response.data;
+                const allInvoices = response.data ?? [];
                 // Filter invoices based on currently filtered contracts
                 const filteredContractIds = new Set(filteredContracts.map(c => String(c.id)));
-                const filteredInvoices = allInvoices.filter((inv: any) => filteredContractIds.has(String(inv.contractId)));
+                const filteredInvoices = allInvoices.filter(inv => filteredContractIds.has(String(inv.contractId)));
 
                 const headers = [
                     t('invoices.exportInvoiceNumber'),
@@ -507,14 +501,14 @@ const Contracts: React.FC = () => {
                 const csvContent = filteredInvoices.map((inv: any) => {
                     const contract = contractMap.get(String(inv.contractId));
                     return [
-                        `"${inv.invoiceNumber}"`,
-                        `"${contract?.code || ''}"`,
-                        `"${contract?.name || ''}"`,
-                        `"${inv.installment}"`,
+                        toCsvCell(inv.invoiceNumber),
+                        toCsvCell(contract?.code || ''),
+                        toCsvCell(contract?.name || ''),
+                        toCsvCell(inv.installment),
                         Number(inv.value) || 0,
                         Number(inv.paidAmount) || 0,
-                        `"${dayjs(inv.issuedDate).format('DD/MM/YYYY')}"`,
-                        `"${dayjs(inv.createdAt).format('DD/MM/YYYY')}"`
+                        toCsvCell(formatDate(inv.issuedDate)),
+                        toCsvCell(formatDate(inv.createdAt))
                     ].join(',');
                 });
 
@@ -541,15 +535,25 @@ const Contracts: React.FC = () => {
     const exportItems: MenuProps['items'] = [
         {
             key: 'contracts',
-            label: 'Xuất Hợp đồng',
+            label: t('contracts.exportContracts'),
             onClick: handleExport,
         },
         {
             key: 'invoices',
-            label: 'Xuất Hóa đơn',
+            label: t('contracts.exportInvoices'),
             onClick: handleExportInvoices,
         },
     ];
+
+    // Chặn truy cập: đặt SAU toàn bộ hook để số hook không đổi giữa các lần render.
+    if (isBlocked) {
+        return (
+            <div style={{ padding: '20px', textAlign: 'center' }}>
+                <h2>{t('contracts.noAccess')}</h2>
+                <p>{t('contracts.noAccessDesc')}</p>
+            </div>
+        );
+    }
 
     return (
         <div className="vcm-page-container">
@@ -681,10 +685,14 @@ const Contracts: React.FC = () => {
                 open={modalVisible}
                 onCancel={() => setModalVisible(false)}
                 onOk={() => form.submit()}
-                width={800}
+                width="min(800px, 94vw)"
                 okText={editingContract ? t('contracts.update') : t('contracts.create')}
                 cancelText={t('common.cancel')}
-                destroyOnClose
+                confirmLoading={submitting}
+                destroyOnHidden
+                afterOpenChange={(open) => {
+                    if (open && pendingValues) form.setFieldsValue(pendingValues);
+                }}
             >
                 <Form form={form} layout="vertical" onFinish={handleSubmit}>
                     <Row gutter={16}>
@@ -763,7 +771,7 @@ const Contracts: React.FC = () => {
                             >
                                 <Select placeholder={t('contracts.formStatusPlaceholder')}>
                                     <Option value="TODO">{t('contracts.statusTodo')}</Option>
-                                    <Option value="INPROCESS">{t('contracts.statusInProgress')}</Option>
+                                    <Option value="IN_PROGRESS">{t('contracts.statusInProgress')}</Option>
                                     <Option value="DONE">{t('contracts.statusDone')}</Option>
                                 </Select>
                             </Form.Item>

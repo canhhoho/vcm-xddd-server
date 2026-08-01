@@ -8,7 +8,50 @@
 import type {
     Department, PlanItemStatus,
     WeeklyPlan, WeeklyPlanItem, MonthlyPlan, MonthlyPlanItem, DailyLog,
+    Contract, Invoice,
 } from '../types';
+
+// ==================== CONTRACT / INVOICE PAYLOADS ====================
+
+export interface ContractQuery {
+    branchId?: string;
+    status?: Contract['status'];
+    businessField?: Contract['businessField'];
+}
+
+/**
+ * Payload tạo/sửa hợp đồng.
+ * Chi nhánh chỉ gửi qua `provinceId` — backend map khoá này sang cột branch_id.
+ * KHÔNG thêm alias `branchId`: hai khoá cùng trỏ một cột sẽ sinh
+ * "SET branch_id=$1, branch_id=$2" (PostgreSQL 42701).
+ */
+export interface ContractInput {
+    code?: string;
+    name?: string;
+    provinceId?: string;
+    businessField?: Contract['businessField'];
+    value?: number;
+    startDate?: string | null;
+    endDate?: string | null;
+    status?: Contract['status'];
+    fileUrls?: string;
+    note?: string;
+}
+
+/**
+ * Payload tạo/sửa hoá đơn.
+ * Số tiền thực thu chỉ gửi qua `paidAmount` (backend map sang cột payment);
+ * không gửi kèm `payment`, và không gửi `status` vì bảng invoices không có cột đó.
+ */
+export interface InvoiceInput {
+    contractId?: string;
+    invoiceNumber?: string;
+    installment?: string;
+    value?: number;
+    paidAmount?: number;
+    issuedDate?: string | null;
+    files?: string;
+}
 
 // ==================== PLAN PAYLOADS ====================
 
@@ -98,17 +141,17 @@ export interface IApiService {
     getBranches(): Promise<ApiResponse>;
 
     // ==================== CONTRACTS ====================
-    getContracts(filters?: any): Promise<ApiResponse>;
-    createContract(data: any): Promise<ApiResponse>;
-    updateContract(id: string, data: any): Promise<ApiResponse>;
+    getContracts(filters?: ContractQuery): Promise<ApiResponse<Contract[]>>;
+    createContract(data: ContractInput): Promise<ApiResponse<{ id: string }>>;
+    updateContract(id: string, data: ContractInput): Promise<ApiResponse>;
     deleteContract(id: string): Promise<ApiResponse>;
-    uploadContractFiles(files: any[]): Promise<ApiResponse>;
+    uploadContractFiles(files: File[]): Promise<ApiResponse<{ urls: string[] }>>;
 
     // ==================== INVOICES ====================
-    getAllInvoices(): Promise<ApiResponse>;
-    getInvoices(contractId: string): Promise<ApiResponse>;
-    createInvoice(data: any): Promise<ApiResponse>;
-    updateInvoice(data: any): Promise<ApiResponse>;
+    getAllInvoices(): Promise<ApiResponse<Invoice[]>>;
+    getInvoices(contractId: string): Promise<ApiResponse<Invoice[]>>;
+    createInvoice(data: InvoiceInput): Promise<ApiResponse<{ id: string }>>;
+    updateInvoice(data: InvoiceInput & { id: string }): Promise<ApiResponse>;
     deleteInvoice(id: string): Promise<ApiResponse>;
 
     // ==================== PROJECTS ====================

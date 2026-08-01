@@ -9,20 +9,9 @@ import type { TFunction } from 'i18next';
 // ---------------------------------------------------------------------------
 // normalizeId
 // ---------------------------------------------------------------------------
-/**
- * Chuẩn hóa ID (xử lý ".0" suffix, trim whitespace, parse số nguyên).
- * Dùng để so sánh id giữa frontend và backend khi format không đồng nhất.
- */
-export const normalizeId = (id: unknown): string => {
-    if (id === null || id === undefined) return '';
-    let str = String(id).trim();
-    if (str.endsWith('.0')) str = str.slice(0, -2);
-    if (/^\d+$/.test(str)) {
-        const num = parseInt(str, 10);
-        if (!isNaN(num)) return num.toString();
-    }
-    return str;
-};
+// Đã chuyển sang utils/common.ts để module Contract dùng chung.
+// Re-export để các import cũ (`from '../utils/projectUtils'`) không phải sửa.
+export { normalizeId } from './common';
 
 // ---------------------------------------------------------------------------
 // getStatusInfo

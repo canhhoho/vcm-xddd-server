@@ -5,7 +5,11 @@
  * Dùng khi VITE_API_MODE='gas' (mặc định, tương thích ngược).
  */
 
-import type { IApiService, ApiResponse } from './api.interface';
+import type {
+    IApiService, ApiResponse,
+    ContractQuery, ContractInput, InvoiceInput,
+} from './api.interface';
+import type { Contract, Invoice } from '../types';
 
 // Declare google for TypeScript
 declare const google: any;
@@ -18,6 +22,8 @@ export class GasApiService implements IApiService {
     }
 
     // Generic handler for GAS calls
+    // Trả ApiResponse<any>: khối mock data bên dưới resolve nhiều hình dạng khác nhau
+    // nên không generic hoá được. Kiểu trả về cụ thể do IApiService quy định.
     private runGasFunction(action: string, params: any = {}): Promise<ApiResponse> {
         return new Promise(async (resolve, reject) => {
             if (!this.isGasEnvironment) {
@@ -363,16 +369,16 @@ export class GasApiService implements IApiService {
     }
 
     // ==================== CONTRACTS ====================
-    async getContracts(filters?: any) {
+    async getContracts(filters?: ContractQuery) {
         return this.runGasFunction('getContracts', filters);
     }
 
-    async createContract(data: any) {
+    async createContract(data: ContractInput) {
         const userId = localStorage.getItem('userId');
         return this.runGasFunction('createContract', { ...data, userId });
     }
 
-    async updateContract(id: string, data: any) {
+    async updateContract(id: string, data: ContractInput) {
         const userId = localStorage.getItem('userId');
         return this.runGasFunction('updateContract', { id, ...data, userId });
     }
@@ -382,7 +388,7 @@ export class GasApiService implements IApiService {
         return this.runGasFunction('deleteContract', { id, userId });
     }
 
-    async uploadContractFiles(files: any[]) {
+    async uploadContractFiles(files: File[]) {
         return this.runGasFunction('uploadContractFiles', { data: files });
     }
 
@@ -395,12 +401,12 @@ export class GasApiService implements IApiService {
         return this.runGasFunction('getInvoices', { contractId });
     }
 
-    async createInvoice(data: any) {
+    async createInvoice(data: InvoiceInput) {
         const userId = localStorage.getItem('userId');
         return this.runGasFunction('createInvoice', { data: { ...data, userId } });
     }
 
-    async updateInvoice(data: any) {
+    async updateInvoice(data: InvoiceInput & { id: string }) {
         const userId = localStorage.getItem('userId');
         return this.runGasFunction('updateInvoice', { data: { ...data, userId } });
     }

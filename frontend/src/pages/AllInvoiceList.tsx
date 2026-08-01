@@ -8,7 +8,6 @@ import {
     Input,
     Tooltip,
     Button,
-    Space,
     Progress,
     Modal,
     Form,
@@ -16,7 +15,7 @@ import {
     AutoComplete,
     message,
 } from 'antd';
-import { SearchOutlined, EyeOutlined, DownloadOutlined, EditOutlined } from '@ant-design/icons';
+import { SearchOutlined, EyeOutlined, DownloadOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import dayjs from 'dayjs';
 import { apiService } from '../services/api';
@@ -77,7 +76,7 @@ const AllInvoiceList: React.FC = () => {
         try {
             const response = await apiService.getAllInvoices();
             if (response.success) {
-                setInvoices(response.data);
+                setInvoices(response.data ?? []);
             }
         } catch (error) {
             console.error('Failed to load invoices:', error);
@@ -491,7 +490,7 @@ const AllInvoiceList: React.FC = () => {
                 onOk={() => form.submit()}
                 okText={t('common.save')}
                 cancelText={t('common.cancel')}
-                destroyOnClose
+                destroyOnHidden
             >
                 <Form form={form} layout="vertical" onFinish={handleEditSubmit}>
                     <Form.Item name="invoiceNumber" label={t('invoices.formInvoiceNumber')} rules={[{ required: true, message: t('invoices.formInvoiceNumberRequired') }]}>

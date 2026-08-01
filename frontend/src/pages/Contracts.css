@@ -23,3 +23,46 @@
 .contracts-card .ant-table-tbody>tr:hover>td {
     background: #F9FAFB;
 }
+
+/* Bảng cuộn ngang trong khung của chính nó, không đẩy cả trang cuộn theo */
+.contracts-card {
+    overflow: hidden;
+}
+
+.contracts-card .ant-table-content,
+.contracts-card .ant-table-body {
+    max-width: 100%;
+}
+
+/* Tên hợp đồng dài: xuống hàng thay vì kéo giãn bảng */
+.contracts-card .ant-table-thead>tr>th {
+    white-space: normal;
+    word-break: break-word;
+}
+
+/* ===== Responsive: dưới md (768px) ===== */
+@media (max-width: 768px) {
+    .contracts-card {
+        border-radius: 8px;
+        margin: 0 4px;
+    }
+
+    /* Bảng dày đặc hơn cho màn hình nhỏ */
+    .contracts-card .ant-table-tbody>tr>td,
+    .contracts-card .ant-table-thead>tr>th {
+        padding: 6px 6px !important;
+        font-size: 12px;
+    }
+
+    /* Modal chi tiết: 2 cột cạnh nhau quá chật, cho xếp dọc */
+    .contract-detail-modal .ant-col-14,
+    .contract-detail-modal .ant-col-10 {
+        flex: 0 0 100%;
+        max-width: 100%;
+    }
+
+    .contract-detail-modal .ant-descriptions-item-label,
+    .contract-detail-modal .ant-descriptions-item-content {
+        font-size: 12px;
+    }
+}

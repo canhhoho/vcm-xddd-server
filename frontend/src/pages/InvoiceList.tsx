@@ -1,13 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { Table, Button, Tag, Space, Modal, Form, Input, InputNumber, DatePicker, Select, message, Popconfirm, Tooltip, Upload, List, AutoComplete } from 'antd';
+import { Table, Button, Space, Modal, Form, Input, InputNumber, DatePicker, message, Tooltip, Upload, List, AutoComplete } from 'antd';
 import {
     PlusOutlined,
     EditOutlined,
     DeleteOutlined,
     EyeOutlined,
-    GlobalOutlined,
-    BankOutlined,
-    FileExcelOutlined,
     CrownOutlined,
     SafetyCertificateOutlined,
     TeamOutlined,
@@ -16,7 +13,6 @@ import {
     UserOutlined,
     PaperClipOutlined,
     FilePdfOutlined,
-    FileImageOutlined,
     DownloadOutlined,
     CloseCircleOutlined
 } from '@ant-design/icons';
@@ -31,10 +27,16 @@ import { VcmActionGroup } from '../components/VcmActionGroup';
 interface InvoiceListProps {
     contractId: string;
     onStatsChange?: (stats: { totalInvoiced: number; totalPaid: number }) => void;
+    /**
+     * Chỉ gọi sau thao tác GHI (tạo/sửa/xoá hoá đơn), không gọi sau mỗi lần đọc.
+     * Trước đây component cha invalidate cache dựa vào onStatsChange — vốn chạy
+     * cả khi chỉ load danh sách — nên sinh vòng refetch thừa.
+     */
+    onInvoiceMutated?: () => void;
     appConfig?: any;
 }
 
-const InvoiceList: React.FC<InvoiceListProps> = ({ contractId, onStatsChange, appConfig }) => {
+const InvoiceList: React.FC<InvoiceListProps> = ({ contractId, onStatsChange, onInvoiceMutated, appConfig }) => {
     const { t } = useTranslation();
     const [invoices, setInvoices] = useState<Invoice[]>([]);
     const [loading, setLoading] = useState(false);
@@ -74,7 +76,7 @@ const InvoiceList: React.FC<InvoiceListProps> = ({ contractId, onStatsChange, ap
         try {
             const response = await apiService.getInvoices(contractId);
             if (response.success) {
-                const loadedInvoices = response.data;
+                const loadedInvoices = response.data ?? [];
                 setInvoices(loadedInvoices);
 
                 // Calculate stats
@@ -125,6 +127,7 @@ const InvoiceList: React.FC<InvoiceListProps> = ({ contractId, onStatsChange, ap
             if (response.success) {
                 message.success(t('invoices.deleteSuccess'));
                 loadInvoices();
+                onInvoiceMutated?.();
             } else {
                 message.error(response.error || t('invoices.deleteFailed'));
             }
@@ -172,9 +175,6 @@ const InvoiceList: React.FC<InvoiceListProps> = ({ contractId, onStatsChange, ap
                 }
             }
 
-            // Auto-set status: nếu có giá trị thanh toán > 0 thì PAID, ngược lại UNPAID
-            const paidVal = Number(values.paidAmount) || 0;
-
             // Merge existing files (kept after deletions) + newly uploaded URLs
             const keptFilesStr = editingInvoice ? existingFiles.join('\n') : '';
             let finalFiles = '';
@@ -184,11 +184,12 @@ const InvoiceList: React.FC<InvoiceListProps> = ({ contractId, onStatsChange, ap
                 finalFiles = uploadedUrls || keptFilesStr;
             }
 
+            // Không gửi `status`: bảng invoices không có cột này, backend bỏ qua.
+            // Trạng thái thanh toán được UI suy ra từ paidAmount so với value.
             const data = {
                 ...values,
                 contractId,
-                issuedDate: values.issuedDate.format('YYYY-MM-DD'),
-                status: paidVal > 0 ? 'PAID' : 'UNPAID',
+                issuedDate: values.issuedDate ? values.issuedDate.format('YYYY-MM-DD') : null,
                 files: finalFiles || undefined
             };
 
@@ -205,6 +206,7 @@ const InvoiceList: React.FC<InvoiceListProps> = ({ contractId, onStatsChange, ap
                 setFileList([]);
                 setExistingFiles([]);
                 loadInvoices();
+                onInvoiceMutated?.();
             } else {
                 message.error(response.error || t('invoices.submitError'));
             }
@@ -365,7 +367,7 @@ const InvoiceList: React.FC<InvoiceListProps> = ({ contractId, onStatsChange, ap
                 cancelText={t('common.cancel')}
                 cancelButtonProps={{ disabled: uploading }}
                 closable={!uploading}
-                destroyOnClose
+                destroyOnHidden
             >
                 <Form
                     form={form}

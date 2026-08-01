@@ -47,7 +47,9 @@ export interface Contract {
     value: number;
     startDate: string;
     endDate: string;
-    status: 'TODO' | 'INPROCESS' | 'DONE';
+    // IN_PROGRESS là giá trị chuẩn (khớp APP_CONFIG.STATUS ở backend và dữ liệu
+    // đang có trong DB). INPROCESS là biến thể cũ, còn chấp nhận khi đọc.
+    status: 'TODO' | 'IN_PROGRESS' | 'INPROCESS' | 'DONE';
     fileUrl?: string;
     note?: string;
     progress?: number;
@@ -210,7 +212,8 @@ export interface Invoice {
     value: number;
     paidAmount?: number; // Số tiền thực thu (null/undefined = bằng value)
     issuedDate: string;
-    status: 'PAID' | 'UNPAID' | 'OVERDUE';
+    // KHÔNG có trường `status`: bảng invoices không có cột tương ứng và API không
+    // trả về. Trạng thái thanh toán suy ra từ paidAmount so với value.
     createdAt: string;
     files?: string;
     contractCode?: string;

@@ -20,7 +20,10 @@ export const useContracts = (enabled: boolean = true) => {
             return response.data as Contract[];
         },
         enabled,
-        staleTime: 5 * 60 * 1000, // 5 minutes
+        // Backend đã cache CONTRACTS_LIST (TTL.SHORT). Để thêm 5 phút ở client là
+        // chồng hai tầng: thêm hoá đơn xong, tiến độ hợp đồng trễ tới 5 phút dù
+        // cache server đã hết hạn. 30s đủ để gộp request mà không giữ dữ liệu cũ.
+        staleTime: 30 * 1000,
     });
 };
 

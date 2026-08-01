@@ -7,7 +7,11 @@
  * Giai đoạn hiện tại: Stub - sẽ được implement đầy đủ ở Giai Đoạn 2-3.
  */
 
-import type { IApiService, ApiResponse } from './api.interface';
+import type {
+    IApiService, ApiResponse,
+    ContractQuery, ContractInput, InvoiceInput,
+} from './api.interface';
+import type { Contract, Invoice } from '../types';
 import axios, { type AxiosInstance, type AxiosError } from 'axios';
 
 export class RestApiService implements IApiService {
@@ -99,15 +103,15 @@ export class RestApiService implements IApiService {
     }
 
     // ==================== CONTRACTS ====================
-    async getContracts(filters?: any) {
-        return this.request('GET', '/contracts', undefined, filters);
+    async getContracts(filters?: ContractQuery) {
+        return this.request<Contract[]>('GET', '/contracts', undefined, filters);
     }
 
-    async createContract(data: any) {
-        return this.request('POST', '/contracts', data);
+    async createContract(data: ContractInput) {
+        return this.request<{ id: string }>('POST', '/contracts', data);
     }
 
-    async updateContract(id: string, data: any) {
+    async updateContract(id: string, data: ContractInput) {
         return this.request('PUT', `/contracts/${id}`, data);
     }
 
@@ -115,7 +119,7 @@ export class RestApiService implements IApiService {
         return this.request('DELETE', `/contracts/${id}`);
     }
 
-    async uploadContractFiles(files: any[]) {
+    async uploadContractFiles(files: File[]): Promise<ApiResponse<{ urls: string[] }>> {
         const formData = new FormData();
         files.forEach((file) => {
             formData.append('files', file);
@@ -126,24 +130,26 @@ export class RestApiService implements IApiService {
             });
             return response.data;
         } catch (error: any) {
-            return { success: false, error: error.message };
+            // Backend từ chối đuôi file không cho phép bằng 400 kèm message rõ ràng.
+            const message = error.response?.data?.error || error.message || 'Upload failed';
+            return { success: false, error: message };
         }
     }
 
     // ==================== INVOICES ====================
     async getAllInvoices() {
-        return this.request('GET', '/invoices');
+        return this.request<Invoice[]>('GET', '/invoices');
     }
 
     async getInvoices(contractId: string) {
-        return this.request('GET', `/contracts/${contractId}/invoices`);
+        return this.request<Invoice[]>('GET', `/contracts/${contractId}/invoices`);
     }
 
-    async createInvoice(data: any) {
-        return this.request('POST', '/invoices', data);
+    async createInvoice(data: InvoiceInput) {
+        return this.request<{ id: string }>('POST', '/invoices', data);
     }
 
-    async updateInvoice(data: any) {
+    async updateInvoice(data: InvoiceInput & { id: string }) {
         return this.request('PUT', `/invoices/${data.id}`, data);
     }
 

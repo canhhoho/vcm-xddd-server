@@ -53,6 +53,9 @@ CREATE TABLE IF NOT EXISTS contracts (
   status         VARCHAR(50) DEFAULT 'TODO',
   file_urls      TEXT DEFAULT '',
   note           TEXT DEFAULT '',
+  -- DEPRECATED: không còn được đọc hay ghi. GET /contracts luôn tính lại tiến độ
+  -- từ SUM(invoices.payment)/value. Giữ lại để không mất dữ liệu cũ; sẽ DROP ở
+  -- lần dọn schema sau (cùng đợt với users.plans).
   progress       INTEGER DEFAULT 0,
   created_at     TIMESTAMPTZ DEFAULT NOW(),
   created_by     VARCHAR(50) DEFAULT ''

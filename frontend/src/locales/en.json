@@ -224,7 +224,9 @@
         "detailTotalValue": "Total Value",
         "detailInvoiced": "Invoiced",
         "detailPaid": "Collected",
-        "detailInvoiceList": "INVOICE & PAYMENT LIST"
+        "detailInvoiceList": "INVOICE & PAYMENT LIST",
+        "exportContracts": "Export Contracts",
+        "exportInvoices": "Export Invoices"
     },
     "invoices": {
         "listTitle": "Invoice List",

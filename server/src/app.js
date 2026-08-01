@@ -12,6 +12,7 @@ const path = require('path');
 const authMiddleware = require('./middleware/auth');
 const errorHandler = require('./middleware/errorHandler');
 const planAccess = require('./middleware/planAccess');
+const moduleAccess = require('./middleware/moduleAccess');
 
 // Route modules
 const authRoutes = require('./routes/auth');
@@ -60,8 +61,16 @@ if (process.env.NODE_ENV !== 'test') {
   app.use(morgan('short'));
 }
 
-// Serve uploaded files
-app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')));
+// Serve uploaded files.
+// nosniff + attachment: file người dùng tải lên nằm cùng origin với app, nếu để
+// trình duyệt tự đoán kiểu và render inline thì một file .html/.svg độc hại sẽ
+// chạy script đọc được localStorage (nơi chứa JWT).
+app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads'), {
+  setHeaders: (res) => {
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('Content-Disposition', 'attachment');
+  },
+}));
 
 // ==================== AUTH MIDDLEWARE ====================
 app.use('/api', authMiddleware);
@@ -71,14 +80,16 @@ app.get('/api/ping', (req, res) => res.json({ success: true, message: 'pong', ti
 
 app.use('/api/auth', authRoutes);
 app.use('/api/meta', metaRoutes);
-app.use('/api/contracts', contractRoutes);
-app.use('/api/invoices', invoiceRoutes);
-app.use('/api/projects', projectRoutes);
+// Phân quyền theo module, đọc cột quyền từ bảng users mỗi request.
+// invoices không có cột quyền riêng -> dùng chung quyền contracts.
+app.use('/api/contracts', moduleAccess('contracts'), contractRoutes);
+app.use('/api/invoices', moduleAccess('contracts'), invoiceRoutes);
+app.use('/api/projects', moduleAccess('projects'), projectRoutes);
 app.use('/api/tasks', taskRoutes);
-app.use('/api/targets', targetRoutes);
+app.use('/api/targets', moduleAccess('targets'), targetRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/permissions', permissionRoutes);
-app.use('/api/branches', branchRoutes);
+app.use('/api/branches', moduleAccess('branches'), branchRoutes);
 app.use('/api/positions', positionRoutes);
 app.use('/api/staff', staffRoutes);
 app.use('/api/dashboard', dashboardRoutes);
