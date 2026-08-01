@@ -5,6 +5,7 @@ const router = require('express').Router();
 const { query } = require('../config/database');
 const { v4: uuidv4 } = require('uuid');
 const CacheService = require('../services/cacheService');
+const { badRequest } = require('./_planValidators');
 
 async function logActivity(email, action, desc) {
   try { await query('INSERT INTO activities (id, email, action, description) VALUES ($1,$2,$3,$4)', [uuidv4(), email, action, desc]); }
@@ -42,16 +43,39 @@ router.post('/', async (req, res) => {
 });
 
 // PUT /branches/:id
-router.put('/:id', async (req, res) => {
+// Chỉ ghi những cột thực sự có trong body. Form sửa chi nhánh chỉ gửi
+// code/name/address, nên bản UPDATE cũ (ghi đè cả 5 cột, undefined -> '')
+// xoá trắng phone/email đang có trong DB mỗi lần lưu.
+router.put('/:id', async (req, res, next) => {
   try {
     const d = req.body;
-    await query('UPDATE branches SET name=$1, code=$2, address=$3, phone=$4, email=$5 WHERE id=$6',
-      [d.name, d.code || '', d.address || '', d.phone || '', d.email || '', req.params.id]);
-    await logActivity(req.user?.email || '', 'UPDATE_BRANCH', `Updated branch ${d.name}`);
+    const fields = []; const values = []; let idx = 1;
+
+    const mapping = {
+      name: 'name', code: 'code', address: 'address',
+      phone: 'phone', email: 'email',
+    };
+
+    for (const [jsKey, dbCol] of Object.entries(mapping)) {
+      if (d[jsKey] !== undefined) {
+        fields.push(`${dbCol} = $${idx}`); values.push(d[jsKey]); idx++;
+      }
+    }
+    if (fields.length === 0) throw badRequest('No fields to update');
+
+    values.push(req.params.id);
+    const result = await query(`UPDATE branches SET ${fields.join(', ')} WHERE id = $${idx}`, values);
+    if (result.rowCount === 0) {
+      const err = new Error('Branch not found');
+      err.statusCode = 404;
+      throw err;
+    }
+
+    await logActivity(req.user?.email || '', 'UPDATE_BRANCH', `Updated branch ${d.name || req.params.id}`);
     CacheService.clear(['BRANCHES_LIST']);
     res.json({ success: true });
   } catch (err) {
-    res.json({ success: false, error: err.message });
+    next(err);
   }
 });
 

@@ -90,7 +90,7 @@ const Branches: React.FC = () => {
     const { data: appConfig } = useAppConfig();
 
     // Mutations
-    const { createBranch, updateBranch, deleteBranch } = useBranchMutations();
+    const { createBranch, updateBranch } = useBranchMutations();
     const { createStaff, updateStaff, deleteStaff } = useStaffMutations();
     const { createCollaborator, updateCollaborator, deleteCollaborator } = useCollaboratorMutations();
     const { createPartner, updatePartner, deletePartner } = usePartnerMutations();
@@ -131,15 +131,6 @@ const Branches: React.FC = () => {
     const [partnerSearchText, setPartnerSearchText] = useFilterSync('pq', '');
     const [partnerTypeFilter, setPartnerTypeFilter] = useFilterSync<string | undefined>('ptype', undefined);
     const [partnerBranchFilter, setPartnerBranchFilter] = useFilterSync<string | undefined>('pbranch', undefined);
-
-    if (permissions.branches === 'NO_ACCESS' && !isAdmin) {
-        return (
-            <div style={{ padding: '20px', textAlign: 'center' }}>
-                <h2>{t('branches.noAccess')}</h2>
-                <p>{t('branches.noAccessDesc')}</p>
-            </div>
-        );
-    }
 
     const positionOptions = useMemo(() => {
         // Fallback if POSITIONS is missing
@@ -273,6 +264,17 @@ const Branches: React.FC = () => {
         });
     }, [partners, partnerTypeFilter, partnerBranchFilter, partnerSearchText]);
 
+    // Guard quyền phải đứng sau toàn bộ hook: đặt trước useMemo/useCallback thì
+    // số hook chạy đổi theo quyền, React ném "Rendered fewer hooks than expected".
+    if (permissions.branches === 'NO_ACCESS' && !isAdmin) {
+        return (
+            <div style={{ padding: '20px', textAlign: 'center' }}>
+                <h2>{t('branches.noAccess')}</h2>
+                <p>{t('branches.noAccessDesc')}</p>
+            </div>
+        );
+    }
+
     // Collaborator handlers
     const handleCreateCollaborator = () => {
         setEditingCollaborator(null);
@@ -392,29 +394,9 @@ const Branches: React.FC = () => {
         setModalVisible(true);
     };
 
-    const handleDeleteBranch = (record: Branch) => {
-        Modal.confirm({
-            title: t('common.confirm'),
-            content: t('branches.deleteBranchConfirm', { name: record.name }),
-            okText: t('common.delete'),
-            okType: 'danger',
-            cancelText: t('common.cancel'),
-            onOk: () => {
-                deleteBranch.mutate({ id: record.id }, {
-                    onSuccess: (res: any) => {
-                        if (res.success) {
-                            message.success(t('branches.deleteBranchSuccess'));
-                        } else {
-                            message.error(res.error);
-                        }
-                    },
-                    onError: () => {
-                        message.error(t('common.error'));
-                    }
-                });
-            },
-        });
-    };
+    // Không có nút Xoá chi nhánh: staff/contracts/collaborators/partners tham chiếu
+    // branch_id dạng soft-FK (VARCHAR, không có FK constraint) và DELETE /branches/:id
+    // không kiểm ràng buộc, nên xoá sẽ để lại bản ghi mồ côi im lặng.
 
     const handleBranchSubmit = async (values: any) => {
         const onSuccess = (res: any) => {

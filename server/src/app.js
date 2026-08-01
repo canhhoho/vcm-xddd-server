@@ -94,9 +94,13 @@ app.use('/api/targets', moduleAccess('targets'), targetRoutes);
 // ma trận quyền, và PUT /users/:id với {"role":"ADMIN"} để tự nâng quyền.
 app.use('/api/users', rbac(['ADMIN']), userRoutes);
 app.use('/api/permissions', rbac(['ADMIN']), permissionRoutes);
+// Cả 4 tab của page Branches (chi nhánh, nhân sự, CTV, đối tác) dùng chung
+// quyền `branches` ở frontend, nên backend phải gate cả 4 bằng cùng cột đó.
+// Trước đây chỉ /api/branches có middleware; ba route còn lại mount trần nên
+// user branches=NO_ACCESS hoặc role=VIEW vẫn POST/PUT/DELETE được qua cURL.
 app.use('/api/branches', moduleAccess('branches'), branchRoutes);
 app.use('/api/positions', positionRoutes);
-app.use('/api/staff', staffRoutes);
+app.use('/api/staff', moduleAccess('branches'), staffRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 // Nhật ký hoạt động toàn hệ thống -> chỉ ADMIN (chỉ trang User dùng tới).
 app.use('/api/activities', rbac(['ADMIN']), activityRoutes);
@@ -107,8 +111,8 @@ app.use('/api/weekly-plans', planAccess('weekly'), weeklyPlanRoutes);
 app.use('/api/monthly-plans', planAccess('monthly'), monthlyPlanRoutes);
 app.use('/api/daily-logs', planAccess('daily'), dailyLogRoutes);
 app.use('/api/project-logs', moduleAccess('projects'), projectLogRoutes);
-app.use('/api/collaborators', collaboratorRoutes);
-app.use('/api/partners', partnerRoutes);
+app.use('/api/collaborators', moduleAccess('branches'), collaboratorRoutes);
+app.use('/api/partners', moduleAccess('branches'), partnerRoutes);
 
 // ==================== ERROR HANDLER ====================
 app.use(errorHandler);
