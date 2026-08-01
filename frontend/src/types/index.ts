@@ -167,15 +167,6 @@ export interface ProjectExecution {
     total: number;
 }
 
-export interface RecentActivity {
-    id: string;
-    description: string;
-    type: string;
-    timestamp: string;
-    date: string;
-    userName?: string;
-}
-
 export interface PipelineItem {
     stage: 'NEW' | 'CONTACTED' | 'PROPOSAL' | 'NEGOTIATION' | 'WON';
     count: number;
@@ -189,7 +180,6 @@ export interface DashboardStats {
     branchBreakdown: BranchData[];
     businessStructure: BusinessStructure;
     projectExecution: ProjectExecution;
-    recentActivities: RecentActivity[];
     pipelineData: PipelineItem[];
     pipelineDataB2C: PipelineItem[];
     // Legacy fields for backward compatibility

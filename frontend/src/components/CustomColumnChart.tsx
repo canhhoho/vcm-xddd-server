@@ -68,10 +68,6 @@ const CustomColumnChart: React.FC<CustomColumnChartProps> = ({
         return '#1890FF';
     };
 
-    if (!data || data.length === 0) {
-        return <div className="empty-state" style={{ height }}>No data available</div>;
-    }
-
     // 4. Determine Legend Items (Unique Series)
     const legendItems = useMemo(() => {
         if (!seriesField) return [];
@@ -98,6 +94,14 @@ const CustomColumnChart: React.FC<CustomColumnChartProps> = ({
         }
         return result;
     }, [maxValue]);
+
+    // Guard phải đứng sau toàn bộ hook: đặt trước legendItems/ticks thì số hook đổi
+    // theo việc data rỗng hay không, và cùng một instance chuyển từ rỗng sang có dữ
+    // liệu (đổi năm trên Dashboard) sẽ ném "Rendered more hooks than during the
+    // previous render". placeholderData giữ instance sống nên đây là crash thật.
+    if (!data || data.length === 0) {
+        return <div className="empty-state" style={{ height }}>No data available</div>;
+    }
 
     const maxTick = ticks[ticks.length - 1];
 

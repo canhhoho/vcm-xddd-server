@@ -7,7 +7,7 @@ const { query } = require('../config/database');
 const CacheService = require('../services/cacheService');
 
 // GET /dashboard/stats
-router.get('/stats', async (req, res) => {
+router.get('/stats', async (req, res, next) => {
   try {
     const { forceRefresh, targetDate, viewMode } = req.query;
     const cacheKey = `DASHBOARD_STATS_${targetDate || 'now'}_MODE_${viewMode || 'MONTH'}`;
@@ -63,13 +63,17 @@ router.get('/stats', async (req, res) => {
         SELECT status, COUNT(*) as cnt FROM projects GROUP BY status
       `);
 
+      // Phải cộng dồn: GROUP BY status sinh một nhóm cho mỗi giá trị status khác
+      // nhau, mà projects.status là VARCHAR nullable không CHECK constraint. Gán (=)
+      // khiến nhóm sau xoá nhóm trước — 'INPROCESS' và 'IN_PROGRESS' cùng tồn tại,
+      // và nhánh else gom cả 'TODO'/'PENDING'/NULL nên chạy nhiều lần.
       const projectExecution = { total: 0, done: 0, inProgress: 0, waiting: 0 };
       projStats.rows.forEach(r => {
         const count = parseInt(r.cnt);
         projectExecution.total += count;
-        if (r.status === 'DONE') projectExecution.done = count;
-        else if (r.status === 'INPROCESS' || r.status === 'IN_PROGRESS') projectExecution.inProgress = count;
-        else projectExecution.waiting = count;
+        if (r.status === 'DONE') projectExecution.done += count;
+        else if (r.status === 'INPROCESS' || r.status === 'IN_PROGRESS') projectExecution.inProgress += count;
+        else projectExecution.waiting += count;
       });
 
       // Nguồn việc target (Yearly)
@@ -311,17 +315,9 @@ router.get('/stats', async (req, res) => {
       const dtMom = Math.round((dtMtdValActual - parseFloat(dtPrevMonth.rows[0].total)) * 100) / 100;
       const ttMom = Math.round((ttMtdValActual - parseFloat(ttPrevMonth.rows[0].total)) * 100) / 100;
 
-      // Recent activities
-      const recentActs = await query(
-        'SELECT id, email, action, description, created_at FROM activities ORDER BY created_at DESC LIMIT 10'
-      );
-      const recentActivities = recentActs.rows.map(r => ({
-        id: r.id,
-        userName: r.email || '',
-        description: `${r.action}: ${r.description || ''}`,
-        type: r.action || '',
-        createdAt: r.created_at,
-      }));
+      // Không đọc bảng activities ở đây: /api/activities đã bị giới hạn cho ADMIN,
+      // mà /api/dashboard mount trần nên trả nhật ký hệ thống (kèm email) ra đây
+      // là đường vòng qua giới hạn đó. Frontend cũng không render dữ liệu này.
 
       // Sales Pipeline B2B
       const pipelineB2BQuery = await query(`
@@ -404,7 +400,6 @@ router.get('/stats', async (req, res) => {
           branchBreakdown,
           businessStructure,
           projectExecution: { ...projectExecution, delayed: 0 },
-          recentActivities,
           pipelineData,
           pipelineDataB2C,
           totalContracts: parseInt(nvYtd.rows[0].count),
@@ -416,13 +411,12 @@ router.get('/stats', async (req, res) => {
 
     res.json(data);
   } catch (err) {
-    console.error('Dashboard stats error:', err);
-    res.json({ success: false, error: err.message });
+    next(err);
   }
 });
 
 // GET /dashboard/branch-performance
-router.get('/branch-performance', async (req, res) => {
+router.get('/branch-performance', async (req, res, next) => {
   try {
     const { year } = req.query;
     const y = year || new Date().getFullYear();
@@ -459,12 +453,12 @@ router.get('/branch-performance', async (req, res) => {
 
     res.json({ success: true, data: result });
   } catch (err) {
-    res.json({ success: false, error: err.message });
+    next(err);
   }
 });
 
 // GET /dashboard/general-performance
-router.get('/general-performance', async (req, res) => {
+router.get('/general-performance', async (req, res, next) => {
   try {
     const { year } = req.query;
     const y = year || new Date().getFullYear();
@@ -500,7 +494,7 @@ router.get('/general-performance', async (req, res) => {
       }
     });
   } catch (err) {
-    res.json({ success: false, error: err.message });
+    next(err);
   }
 });
 

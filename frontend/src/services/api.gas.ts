@@ -143,7 +143,6 @@ export class GasApiService implements IApiService {
                                     payment: [{ field: 'B2B', value: 800000000, percent: 100 }, { field: 'B2C', value: 0, percent: 0 }]
                                 },
                                 projectExecution: { done: 42, inProgress: 35, waiting: 8, total: 85 },
-                                recentActivities: [],
                                 pipelineData: [
                                     { stage: 'NEW', count: 12, value: 50000000000 },
                                     { stage: 'CONTACTED', count: 8, value: 30000000000 },
