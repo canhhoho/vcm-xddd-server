@@ -94,13 +94,19 @@ const ProspectList: React.FC<ProspectListProps> = ({ prospectType = 'B2B' }) => 
                 contactDate: values.contactDate?.format('YYYY-MM-DD') || null,
                 prospectType,
             };
-            if (editingRecord) {
-                const res = await apiService.updateProspect(editingRecord.id, payload);
-                if (res.success) message.success(t('common.saveSuccess'));
-            } else {
-                const res = await apiService.createProspect(payload);
-                if (res.success) message.success(t('common.saveSuccess'));
+            const res = editingRecord
+                ? await apiService.updateProspect(editingRecord.id, payload)
+                : await apiService.createProspect(payload);
+
+            // request() không bao giờ throw (nuốt lỗi thành {success:false}), nên phải
+            // tự kiểm ở đây. Thoát sớm để modal không đóng và form không bị reset —
+            // trước đây lưu hỏng là mất sạch dữ liệu vừa nhập mà không báo gì.
+            if (!res.success) {
+                message.error(res.error || t('common.saveError'));
+                return;
             }
+
+            message.success(t('common.saveSuccess'));
             setModalVisible(false);
             form.resetFields();
             loadData();
@@ -111,7 +117,11 @@ const ProspectList: React.FC<ProspectListProps> = ({ prospectType = 'B2B' }) => 
 
     const handleDelete = async (id: string) => {
         try {
-            await apiService.deleteProspect(id);
+            const res = await apiService.deleteProspect(id);
+            if (!res.success) {
+                message.error(res.error || t('common.saveError'));
+                return;
+            }
             message.success(t('common.deleteSuccess'));
             loadData();
         } catch {

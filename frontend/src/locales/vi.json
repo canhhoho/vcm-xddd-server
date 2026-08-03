@@ -825,6 +825,7 @@
         "loading": "Đang tải...",
         "noData": "Không có dữ liệu",
         "confirm": "Xác nhận",
+        "deleteConfirm": "Bạn chắc chắn muốn xóa mục này?",
         "success": "Thành công",
         "error": "Lỗi",
         "actions": "Thao tác",

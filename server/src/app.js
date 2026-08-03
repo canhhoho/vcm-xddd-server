@@ -105,7 +105,10 @@ app.use('/api/dashboard', dashboardRoutes);
 // Nhật ký hoạt động toàn hệ thống -> chỉ ADMIN (chỉ trang User dùng tới).
 app.use('/api/activities', rbac(['ADMIN']), activityRoutes);
 app.use('/api/provinces', provinceRoutes);
-app.use('/api/prospects', prospectRoutes);
+// Page Kinh doanh (pipeline B2B/B2C) gate bằng quyền `business` ở frontend, backend
+// phải gate cùng cột đó. Trước đây mount trần nên user business=NO_ACCESS vẫn đọc và
+// xoá được prospect — gồm cả tên khách, SĐT liên hệ, giá trị ước tính.
+app.use('/api/prospects', moduleAccess('business'), prospectRoutes);
 // Page Plan: phân quyền theo phòng ban (plans_bd/mkt/qs/des/pm), đọc từ DB mỗi request
 app.use('/api/weekly-plans', planAccess('weekly'), weeklyPlanRoutes);
 app.use('/api/monthly-plans', planAccess('monthly'), monthlyPlanRoutes);

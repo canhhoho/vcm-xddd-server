@@ -4,15 +4,13 @@
  */
 const express = require('express');
 const router = express.Router();
-const { Pool } = require('pg');
 const { v4: uuidv4 } = require('uuid');
 
 const CacheService = require('../services/cacheService');
-
-const pool = new Pool({
-  host: process.env.DB_HOST, port: process.env.DB_PORT,
-  database: process.env.DB_NAME, user: process.env.DB_USER, password: process.env.DB_PASSWORD
-});
+// Dùng pool chung như 21 route còn lại. Pool riêng trước đây thiếu listener
+// 'error' (lỗi trên idle client sẽ throw và giết process), không parseInt PORT,
+// không đặt max/connectionTimeoutMillis.
+const { query } = require('../config/database');
 
 // Helper: DB row → API object
 function toProspect(row) {
@@ -44,7 +42,7 @@ router.get('/', async (req, res) => {
     const { type } = req.query;
     const whereClause = type ? `WHERE p.prospect_type = $1` : '';
     const params = type ? [type] : [];
-    const result = await pool.query(`
+    const result = await query(`
       SELECT p.*, b.code as branch_code
       FROM prospects p
       LEFT JOIN branches b ON p.branch_id = b.id
@@ -63,7 +61,7 @@ router.post('/', async (req, res) => {
     const { name, client, location, branchId, estimatedValue, contactPerson, contactPhone, source, status, priority, note, expectedDate, contactDate, prospectType } = req.body;
     const id = uuidv4();
     const createdBy = req.user?.id || '';
-    await pool.query(
+    await query(
       `INSERT INTO prospects (id, name, client, location, branch_id, estimated_value, contact_person, contact_phone, source, status, priority, note, expected_date, contact_date, prospect_type, created_by)
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)`,
       [id, name, client || '', location || '', branchId || '', estimatedValue || 0, contactPerson || '', contactPhone || '', source || 'DIRECT', status || 'NEW', priority || 'MEDIUM', note || '', expectedDate || null, contactDate || null, prospectType || 'B2B', createdBy]
@@ -79,7 +77,7 @@ router.post('/', async (req, res) => {
 router.put('/:id', async (req, res) => {
   try {
     const { name, client, location, branchId, estimatedValue, contactPerson, contactPhone, source, status, priority, note, expectedDate, contactDate } = req.body;
-    await pool.query(
+    await query(
       `UPDATE prospects SET name=$1, client=$2, location=$3, branch_id=$4, estimated_value=$5, contact_person=$6, contact_phone=$7, source=$8, status=$9, priority=$10, note=$11, expected_date=$12, contact_date=$13
        WHERE id=$14`,
       [name, client || '', location || '', branchId || '', estimatedValue || 0, contactPerson || '', contactPhone || '', source || 'DIRECT', status || 'NEW', priority || 'MEDIUM', note || '', expectedDate || null, contactDate || null, req.params.id]
@@ -95,7 +93,7 @@ router.put('/:id', async (req, res) => {
 // DELETE /prospects/:id
 router.delete('/:id', async (req, res) => {
   try {
-    await pool.query('DELETE FROM prospects WHERE id=$1', [req.params.id]);
+    await query('DELETE FROM prospects WHERE id=$1', [req.params.id]);
     CacheService.clearByPrefix('DASHBOARD_STATS');
     res.json({ success: true });
   } catch (err) {

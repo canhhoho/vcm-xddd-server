@@ -824,6 +824,7 @@
         "loading": "Loading...",
         "noData": "No data",
         "confirm": "Confirm",
+        "deleteConfirm": "Are you sure you want to delete this item?",
         "success": "Success",
         "error": "Error",
         "actions": "Actions",
