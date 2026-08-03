@@ -65,7 +65,14 @@
         "salesFunnelB2C": "B2C Sales Funnel",
         "totalProjects": "Total Projects",
         "totalExpectedValue": "Total Expected Value",
-        "projectUnit": "Prj"
+        "projectUnit": "Prj",
+        "all": "All",
+        "funnelPeriod": "Period",
+        "dateField": {
+            "createdAt": "Created date",
+            "contactDate": "Contact date",
+            "expectedDate": "Expected date"
+        }
     },
     "login": {
         "title": "VCM CONSTRUCTION MANAGEMENT",

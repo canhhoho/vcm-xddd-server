@@ -64,7 +64,15 @@
         "salesFunnelB2C": "Phễu Kinh Doanh B2C",
         "totalProjects": "Tổng Dự Án",
         "totalExpectedValue": "Tổng Giá Trị Kỳ Vọng",
-        "projectUnit": "DA"
+        "projectUnit": "DA",
+        "all": "Tất cả",
+        "month": "Tháng",
+        "funnelPeriod": "Kỳ",
+        "dateField": {
+            "createdAt": "Ngày tạo",
+            "contactDate": "Ngày liên hệ",
+            "expectedDate": "Ngày dự kiến"
+        }
     },
     "login": {
         "title": "VCM CONSTRUCTION MANAGEMENT",
