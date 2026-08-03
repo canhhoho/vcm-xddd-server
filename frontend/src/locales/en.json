@@ -630,6 +630,19 @@
             "noHistory": "No update history yet",
             "saveSuccess": "Progress saved",
             "logDate": "Date"
+        },
+        "export": {
+            "reportTitle": "PLAN REPORT",
+            "department": "Department:",
+            "period": "Period:",
+            "totalItems": "Total tasks:",
+            "doneItems": "Completed:",
+            "avgProgress": "Average progress:",
+            "exportedAt": "Exported at:",
+            "monthSheet": "Monthly Plan",
+            "weekSheet": "Week {{range}}",
+            "exportMonth": "Export whole month",
+            "noData": "No data to export"
         }
     },
     "business": {
@@ -853,7 +866,8 @@
         "exportSuccess": "Export successful!",
         "set": "Set",
         "setAll": "Set All",
-        "optional": "(optional)"
+        "optional": "(optional)",
+        "index": "No."
     },
     "changePassword": {
         "title": "Change Password",

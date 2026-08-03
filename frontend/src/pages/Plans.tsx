@@ -11,6 +11,7 @@ import { usePermissions } from '../hooks/usePermissions';
 import type { Department, ModuleAccess } from '../types';
 import { BRAND_COLORS } from '../styles/brandIdentity';
 import MonthlyPlanSection from '../components/MonthlyPlanSection';
+import ExportMonthButton from '../components/plan/ExportMonthButton';
 import DepartmentPlan from './DepartmentPlan';
 import './Business.css';
 
@@ -128,6 +129,12 @@ const Plans: React.FC = () => {
                         >
                             {t('plans.today')}
                         </Button>
+                        {activeTab && (
+                            <ExportMonthButton
+                                department={activeTab as Department}
+                                selectedMonth={selectedMonth}
+                            />
+                        )}
                     </div>
                 </div>
             </div>

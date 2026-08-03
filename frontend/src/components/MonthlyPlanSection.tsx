@@ -13,11 +13,12 @@ import { BRAND_COLORS } from '../styles/brandIdentity';
 import PlanFilterBar from './plan/PlanFilterBar';
 import { usePlanFilters } from './plan/usePlanFilters';
 import { exportPlanExcel } from './plan/exportPlanExcel';
+import { buildPlanHeaderRows, monthlyExportColumns } from './plan/planExportColumns';
 import { WRAP } from './plan/planConstants';
 import { AssigneeSelect, SortOrderSelect, StatusSelect } from './plan/PlanFormFields';
 import {
-    assigneeColumn, indexColumn, methodColumn, resolveAssigneeName,
-    resultColumn, statusColumn, statusLabel, titleColumn, whyColumn,
+    assigneeColumn, indexColumn, methodColumn,
+    resultColumn, statusColumn, titleColumn, whyColumn,
 } from './plan/planColumns';
 
 const { TextArea } = Input;
@@ -63,22 +64,17 @@ const MonthlyPlanSection: React.FC<Props> = ({ department, selectedMonth, canEdi
     );
 
     const handleExportExcel = () => {
-        exportPlanExcel(
+        const period = selectedMonth.format('MM/YYYY');
+        const ok = exportPlanExcel(
             filteredItems,
-            [
-                { header: t('common.index'), value: (_, i) => i + 1 },
-                { header: t('plans.fields.what'), value: item => item.title },
-                { header: t('plans.monthly.target'), value: item => item.target || '' },
-                { header: t('plans.fields.why'), value: item => item.why || '' },
-                { header: t('plans.fields.who'), value: item => resolveAssigneeName(item, userList) },
-                { header: t('plans.fields.how'), value: item => item.method || '' },
-                { header: t('plans.fields.status'), value: item => statusLabel(item.status, t) },
-                { header: t('plans.fields.result'), value: item => item.result || '' },
-            ],
-            'MonthlyPlan',
-            `MonthlyPlan_${department}_${selectedMonth.format('MM_YYYY')}.xlsx`
+            monthlyExportColumns(t, userList),
+            t('plans.export.monthSheet'),
+            `MonthlyPlan_${department}_${selectedMonth.format('MM_YYYY')}.xlsx`,
+            buildPlanHeaderRows({ t, department, period, items: filteredItems })
         );
-        message.success(t('common.exportSuccess'));
+        message[ok ? 'success' : 'warning'](
+            ok ? t('common.exportSuccess') : t('plans.export.noData')
+        );
     };
 
     const handleCreatePlan = () => {
@@ -178,7 +174,11 @@ const MonthlyPlanSection: React.FC<Props> = ({ department, selectedMonth, canEdi
                         {t('plans.monthly.sectionTitle')} — {selectedMonth.format('MM/YYYY')}
                     </Title>
                     {plan && (
-                        <Button size="small" icon={<FileExcelOutlined />} onClick={handleExportExcel}>
+                        <Button
+                            size="small" icon={<FileExcelOutlined />}
+                            disabled={filteredItems.length === 0}
+                            onClick={handleExportExcel}
+                        >
                             {t('common.export')}
                         </Button>
                     )}

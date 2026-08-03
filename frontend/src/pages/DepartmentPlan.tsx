@@ -23,13 +23,14 @@ import { BRAND_COLORS } from '../styles/brandIdentity';
 import PlanFilterBar from '../components/plan/PlanFilterBar';
 import { usePlanFilters } from '../components/plan/usePlanFilters';
 import { exportPlanExcel } from '../components/plan/exportPlanExcel';
+import { buildPlanHeaderRows, weeklyExportColumns } from '../components/plan/planExportColumns';
 import { DATE_FORMAT, DATE_FORMAT_SHORT, WRAP } from '../components/plan/planConstants';
 import {
     AssigneeSelect, ProgressSelect, SortOrderSelect, StatusSelect,
 } from '../components/plan/PlanFormFields';
 import {
-    assigneeColumn, indexColumn, methodColumn, resolveAssigneeName,
-    resultColumn, statusColumn, statusLabel, whyColumn,
+    assigneeColumn, indexColumn, methodColumn,
+    resultColumn, statusColumn, whyColumn,
 } from '../components/plan/planColumns';
 
 dayjs.extend(isoWeek);
@@ -211,27 +212,20 @@ const DepartmentPlan: React.FC<DepartmentPlanProps> = ({ department, selectedMon
         });
     };
 
-    const handleExportExcel = (planId: string) => {
-        const plan = plans.find(p => p.id === planId);
-        if (!plan) return;
-        exportPlanExcel(
-            plan.items || [],
-            [
-                { header: t('common.index'), value: (_, i) => i + 1 },
-                { header: t('plans.fields.what'), value: item => item.title },
-                { header: t('plans.fields.why'), value: item => item.why || '' },
-                { header: t('plans.fields.who'), value: item => resolveAssigneeName(item, userList) },
-                { header: t('plans.fields.when'), value: item => `${item.startDate || ''} - ${item.endDate || ''}` },
-                { header: t('plans.fields.where'), value: item => item.location || '' },
-                { header: t('plans.fields.how'), value: item => item.method || '' },
-                { header: t('plans.fields.status'), value: item => statusLabel(item.status, t) },
-                { header: t('plans.daily.progress'), value: item => `${item.progressPct || 0}%` },
-                { header: t('plans.fields.result'), value: item => item.result || '' },
-            ],
-            'WeeklyPlan',
-            `WeeklyPlan_${department}_${dayjs(plan.weekStart).format('DD_MM_YYYY')}.xlsx`
+    /** Xuất đúng những dòng đang hiển thị — không phải toàn bộ plan.items */
+    const handleExportExcel = (plan: WeeklyPlan) => {
+        const items = filters.applyFilters(plan.items || []);
+        const period = `${dayjs(plan.weekStart).format(DATE_FORMAT)} - ${dayjs(plan.weekEnd).format(DATE_FORMAT)}`;
+        const ok = exportPlanExcel(
+            items,
+            weeklyExportColumns(t, userList),
+            t('plans.export.weekSheet', { range: dayjs(plan.weekStart).format('DD-MM') }),
+            `WeeklyPlan_${department}_${dayjs(plan.weekStart).format('DD_MM_YYYY')}.xlsx`,
+            buildPlanHeaderRows({ t, department, period, items })
         );
-        message.success(t('common.exportSuccess'));
+        message[ok ? 'success' : 'warning'](
+            ok ? t('common.exportSuccess') : t('plans.export.noData')
+        );
     };
 
     const isSaving = createWeeklyPlanItem.isPending || updateWeeklyPlanItem.isPending;
@@ -440,7 +434,11 @@ const DepartmentPlan: React.FC<DepartmentPlanProps> = ({ department, selectedMon
                                 </div>
 
                                 <Space style={{ marginLeft: 'auto' }} wrap>
-                                    <Button size="small" icon={<FileExcelOutlined />} onClick={() => handleExportExcel(plan.id)}>
+                                    <Button
+                                        size="small" icon={<FileExcelOutlined />}
+                                        disabled={planItems.length === 0}
+                                        onClick={() => handleExportExcel(plan)}
+                                    >
                                         {t('common.export')}
                                     </Button>
                                     {canEdit && (

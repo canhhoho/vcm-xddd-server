@@ -631,6 +631,19 @@
             "noHistory": "Chưa có lịch sử cập nhật",
             "saveSuccess": "Đã lưu tiến độ",
             "logDate": "Ngày"
+        },
+        "export": {
+            "reportTitle": "BÁO CÁO KẾ HOẠCH",
+            "department": "Phòng ban:",
+            "period": "Kỳ báo cáo:",
+            "totalItems": "Tổng số đầu việc:",
+            "doneItems": "Đã hoàn thành:",
+            "avgProgress": "Tiến độ trung bình:",
+            "exportedAt": "Ngày xuất:",
+            "monthSheet": "KH Thang",
+            "weekSheet": "Tuan {{range}}",
+            "exportMonth": "Xuất cả tháng",
+            "noData": "Không có dữ liệu để xuất"
         }
     },
     "business": {
@@ -854,7 +867,8 @@
         "exportSuccess": "Xuất file thành công!",
         "set": "Đặt",
         "setAll": "Đặt tất cả",
-        "optional": "(nếu có)"
+        "optional": "(nếu có)",
+        "index": "STT"
     },
     "changePassword": {
         "title": "Đổi mật khẩu",
