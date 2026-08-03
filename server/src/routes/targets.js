@@ -7,6 +7,33 @@ const { query } = require('../config/database');
 const { v4: uuidv4 } = require('uuid');
 const CacheService = require('../services/cacheService');
 const { normalizeTargetValue } = require('./_targetUnits');
+const { normalizeTargetRow, targetKey } = require('./_targetNormalize');
+const { conflict } = require('./_planValidators');
+
+/**
+ * Tìm chỉ tiêu đã tồn tại cùng khoá nghiệp vụ (so trên giá trị ĐÃ CHUẨN HOÁ).
+ *
+ * Không so bằng SQL trên cột thô được: dữ liệu di cư từ GAS có `period` dạng
+ * '2026.0', 'Năm 2026' hoặc rỗng — khác nhau ở cột thô nhưng là cùng một chỉ tiêu
+ * sau chuẩn hoá. So bằng `WHERE period = $1` sẽ không thấy và vẫn tạo ra dòng trùng.
+ *
+ * @param {object} input payload đã ở dạng camelCase từ req.body
+ * @param {string} [excludeId] bỏ qua chính dòng đang sửa (dùng cho PUT)
+ */
+async function findDuplicate(input, excludeId) {
+  const wanted = targetKey(normalizeTargetRow({
+    type: input.type,
+    period_type: input.periodType,
+    period: input.period,
+    unit_type: input.unitType || 'GENERAL',
+    unit_id: input.unitId || '',
+  }));
+
+  const { rows } = await query(
+    'SELECT id, type, period_type, period, unit_type, unit_id FROM targets'
+  );
+  return rows.find(r => r.id !== excludeId && targetKey(normalizeTargetRow(r)) === wanted) || null;
+}
 
 async function logActivity(email, action, description) {
   try {
@@ -211,11 +238,27 @@ router.get('/', async (req, res) => {
 
 
 // POST /targets
-router.post('/', async (req, res) => {
+// Upsert theo khoá nghiệp vụ: gửi lại cùng một chỉ tiêu thì GHI ĐÈ dòng cũ thay vì
+// tạo dòng thứ hai. Auto-link ở frontend dựa vào hành vi này — trước đây nó tự dò
+// bản Nguồn việc hiện có bằng .find() trên danh sách phía client, danh sách chưa
+// refetch kịp là sinh thêm dòng trùng.
+router.post('/', async (req, res, next) => {
   try {
     const d = req.body;
-    const id = uuidv4();
+    const existing = await findDuplicate(d);
 
+    if (existing) {
+      await query(`
+        UPDATE targets SET name=$1, type=$2, period_type=$3, period=$4, unit_type=$5, unit_id=$6, target_value=$7
+        WHERE id=$8
+      `, [d.name, d.type, d.periodType, d.period, d.unitType || 'GENERAL', d.unitId || '', d.targetValue || 0, existing.id]);
+
+      await logActivity(req.user?.email || '', 'UPDATE_TARGET', `Upserted target ${d.name}`);
+      CacheService.clear(['TARGETS_LIST']); CacheService.invalidateDashboard();
+      return res.json({ success: true, data: { id: existing.id, upserted: true } });
+    }
+
+    const id = uuidv4();
     await query(`
       INSERT INTO targets (id, name, type, period_type, period, unit_type, unit_id, target_value)
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
@@ -226,38 +269,55 @@ router.post('/', async (req, res) => {
 
     res.json({ success: true, data: { id } });
   } catch (err) {
-    res.json({ success: false, error: err.message });
+    next(err);
   }
 });
 
 // PUT /targets/:id
-router.put('/:id', async (req, res) => {
+router.put('/:id', async (req, res, next) => {
   try {
     const d = req.body;
-    await query(`
+    // Sửa một chỉ tiêu thành trùng với chỉ tiêu khác thì chặn — ở đây không upsert
+    // được vì sẽ phải xoá bớt một dòng mà người dùng không hề yêu cầu.
+    const clash = await findDuplicate(d, req.params.id);
+    if (clash) {
+      throw conflict(`Đã có chỉ tiêu khác cùng loại và cùng kỳ (id: ${clash.id})`);
+    }
+
+    const result = await query(`
       UPDATE targets SET name=$1, type=$2, period_type=$3, period=$4, unit_type=$5, unit_id=$6, target_value=$7
       WHERE id=$8
     `, [d.name, d.type, d.periodType, d.period, d.unitType || 'GENERAL', d.unitId || '', d.targetValue || 0, req.params.id]);
+
+    if (result.rowCount === 0) {
+      const err = new Error('Target not found');
+      err.statusCode = 404;
+      throw err;
+    }
 
     await logActivity(req.user?.email || '', 'UPDATE_TARGET', `Updated target ${d.name}`);
     CacheService.clear(['TARGETS_LIST']); CacheService.invalidateDashboard();
 
     res.json({ success: true });
   } catch (err) {
-    res.json({ success: false, error: err.message });
+    next(err);
   }
 });
 
 // DELETE /targets/:id
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', async (req, res, next) => {
   try {
     const result = await query('DELETE FROM targets WHERE id = $1 RETURNING name', [req.params.id]);
-    if (result.rowCount === 0) return res.json({ success: false, error: 'Target not found' });
+    if (result.rowCount === 0) {
+      const err = new Error('Target not found');
+      err.statusCode = 404;
+      throw err;
+    }
     await logActivity(req.user?.email || '', 'DELETE_TARGET', 'Deleted target');
     CacheService.clear(['TARGETS_LIST']); CacheService.invalidateDashboard();
     res.json({ success: true });
   } catch (err) {
-    res.json({ success: false, error: err.message });
+    next(err);
   }
 });
 

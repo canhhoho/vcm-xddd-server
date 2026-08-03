@@ -235,41 +235,26 @@ const Targets: React.FC = () => {
             }
 
             // ===== AUTO-LINK: Khi lưu DOANH_THU → tự tạo/cập nhật NGUON_VIEC (cả GENERAL lẫn BRANCH) =====
+            // POST /targets upsert theo khoá nghiệp vụ (type + periodType + period +
+            // unitType + unitId) nên cứ gửi thẳng. Trước đây chỗ này tự dò bản NV hiện
+            // có bằng .find() trên mảng `targets` phía client; mảng đó là ảnh chụp
+            // TRƯỚC mutation nên lưu hai lần liên tiếp — hoặc hai người cùng lúc — sẽ
+            // không thấy bản cũ và tạo ra dòng Nguồn việc thứ hai cho cùng một kỳ.
             if (values.type === 'DOANH_THU') {
-                const linkedValue = Math.round(values.targetValue * 1.2);
-
-                // Tìm record NV hiện tại cùng scope/branch/period
-                const existingNV = targets.find((t: Target) =>
-                    t.type === 'NGUON_VIEC' &&
-                    t.periodType === values.periodType &&
-                    t.period === values.period &&
-                    (
-                        values.unitType === 'GENERAL'
-                            ? (t.unitType === 'GENERAL' || !t.unitType)
-                            : (t.unitType === 'BRANCH' && t.unitId === values.unitId)
-                    )
-                );
-
                 const branchForLink = values.unitType === 'BRANCH'
                     ? branches.find((b: any) => b.id === values.unitId)
                     : null;
 
-                const linkedPayload = {
-                    name: existingNV?.name || `Nguồn việc - ${values.period}`,
+                await createTarget.mutateAsync({
+                    name: `Nguồn việc - ${values.period}`,
                     type: 'NGUON_VIEC',
                     unitType: values.unitType,
                     periodType: values.periodType,
                     period: values.period,
-                    targetValue: linkedValue,
-                    id: existingNV?.id,
+                    targetValue: Math.round(values.targetValue * 1.2),
                     unitId: values.unitType === 'BRANCH' ? values.unitId : undefined,
                     unitName: branchForLink?.name ?? t('targets.company')
-                };
-
-                // Create or update the linked NGUON_VIEC record
-                await (existingNV
-                    ? updateTarget.mutateAsync(linkedPayload)
-                    : createTarget.mutateAsync(linkedPayload));
+                });
             }
             // ===== END AUTO-LINK =====
 

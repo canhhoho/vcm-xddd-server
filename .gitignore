@@ -52,11 +52,15 @@
 !server/scripts/migrate-monthly-daily-plans.sql
 !server/scripts/migrate-add-plans-permission.sql
 !server/scripts/migrate-plan-constraints.sql
+!server/scripts/migrate-target-allocation.js
 !server/scripts/fix-position-uuid.sql
 
 # Script verify (chạy assertion trên API + DB local)
 !server/scripts/verify-plans.js
 !server/scripts/verify-contracts.js
+
+# Script chẩn đoán (chỉ đọc, chạy được trên production)
+!server/scripts/report-duplicate-targets.js
 
 # Upload folder structure
 !server/uploads/
