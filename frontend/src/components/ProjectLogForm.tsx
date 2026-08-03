@@ -19,6 +19,7 @@ import {
 import dayjs from 'dayjs';
 import { useTranslation } from 'react-i18next';
 import type { ProjectLog, ProjectLogPayload, WeatherType } from '../types';
+import { BRAND_COLORS } from '../styles/brandIdentity';
 
 const { TextArea } = Input;
 

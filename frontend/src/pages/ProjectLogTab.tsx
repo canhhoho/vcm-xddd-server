@@ -78,6 +78,12 @@ const ProjectLogTab: React.FC<ProjectLogTabProps> = ({ project, canEdit }) => {
 
     const canWriteLog = canEdit;
 
+    // Lấy userId hiện tại từ localStorage
+    const currentUserId = (() => {
+        try { return JSON.parse(localStorage.getItem('user') || '{}').id || ''; }
+        catch { return ''; }
+    })();
+
     // Data
     const { data: logs = [], isLoading } = useProjectLogs(projectId, currentMonth);
     const { upsertLog, deleteLog } = useProjectLogMutations(projectId);
@@ -120,7 +126,7 @@ const ProjectLogTab: React.FC<ProjectLogTabProps> = ({ project, canEdit }) => {
             return;
         }
 
-        const sheetData = [
+        const sheetData: (string | number | undefined)[][] = [
             [t('projectLog.export.reportTitle')],
             [t('projectLog.export.projectName'), project?.name || 'N/A'],
             [t('projectLog.export.projectCode'), project?.code || 'N/A'],
