@@ -129,7 +129,7 @@ export interface Province {
 export interface DashboardKPI {
     nguonViec: { value: number; valueYTD?: number; targetYTD?: number; valueAllTime?: number; mom: number; achievedPct: number; target: number; yearPct: number; unit?: string };
     doanhThu: { value: number; valueYTD?: number; targetYTD?: number; valueAllTime?: number; valueSuffix?: string; mom: number; achievedPct: number; target: number; yearPct: number; unit?: string };
-    thuTien: { value: number; valueYTD?: number; targetYTD?: number; valueAllTime?: number; target?: number; achievedPct?: number; pct: number; mom: number; yearPct: number };
+    thuTien: { value: number; valueYTD?: number; targetYTD?: number; valueAllTime?: number; target?: number; achievedPct?: number; mom: number; yearPct: number };
     duAn: { total: number; valueYTD?: number; targetYTD?: number; inProgress: number; delayed: number };
 }
 

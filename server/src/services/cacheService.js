@@ -57,6 +57,19 @@ const CacheService = {
   },
 
   /**
+   * Xoá toàn bộ cache dashboard. Gọi hàm này sau mọi thao tác ghi chạm số liệu
+   * dashboard (contracts, invoices, prospects, targets).
+   *
+   * Bắt buộc dùng prefix: dashboard cache một key cho mỗi cặp (targetDate, viewMode)
+   * — `DASHBOARD_STATS_2026-08-03_MODE_MONTH` — nên `clear(['DASHBOARD_STATS'])`
+   * không khớp key nào và xoá hụt trong im lặng. targets.js từng viết đúng như vậy:
+   * sửa chỉ tiêu xong dashboard vẫn hiện số cũ tới hết TTL, không lỗi, không log.
+   */
+  invalidateDashboard() {
+    this.clearByPrefix('DASHBOARD_STATS');
+  },
+
+  /**
    * Flush all cache
    */
   flushAll() {

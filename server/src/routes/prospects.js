@@ -66,7 +66,7 @@ router.post('/', async (req, res) => {
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)`,
       [id, name, client || '', location || '', branchId || '', estimatedValue || 0, contactPerson || '', contactPhone || '', source || 'DIRECT', status || 'NEW', priority || 'MEDIUM', note || '', expectedDate || null, contactDate || null, prospectType || 'B2B', createdBy]
     );
-    CacheService.clearByPrefix('DASHBOARD_STATS');
+    CacheService.invalidateDashboard();
     res.json({ success: true, data: { id } });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
@@ -83,7 +83,7 @@ router.put('/:id', async (req, res) => {
       [name, client || '', location || '', branchId || '', estimatedValue || 0, contactPerson || '', contactPhone || '', source || 'DIRECT', status || 'NEW', priority || 'MEDIUM', note || '', expectedDate || null, contactDate || null, req.params.id]
     );
     // prospect_type is immutable after creation — not updated
-    CacheService.clearByPrefix('DASHBOARD_STATS');
+    CacheService.invalidateDashboard();
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
@@ -94,7 +94,7 @@ router.put('/:id', async (req, res) => {
 router.delete('/:id', async (req, res) => {
   try {
     await query('DELETE FROM prospects WHERE id=$1', [req.params.id]);
-    CacheService.clearByPrefix('DASHBOARD_STATS');
+    CacheService.invalidateDashboard();
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });

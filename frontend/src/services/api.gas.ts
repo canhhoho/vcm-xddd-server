@@ -114,7 +114,7 @@ export class GasApiService implements IApiService {
                                 kpi: {
                                     nguonViec: { value: 142, mom: 12, achievedPct: 88.7, target: 160, yearPct: 71 },
                                     doanhThu: { value: 4800, valueSuffix: 'M', mom: -2, achievedPct: 96.0, target: 5000, yearPct: 64 },
-                                    thuTien: { value: 3200, target: 5000, achievedPct: 64, pct: 64, mom: 3.4, yearPct: 64 },
+                                    thuTien: { value: 3200, target: 5000, achievedPct: 64, mom: 3.4, yearPct: 64 },
                                     duAn: { total: 85, inProgress: 77, delayed: 8 }
                                 },
                                 nguonViecTrend: [

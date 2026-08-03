@@ -5,6 +5,7 @@
 const router = require('express').Router();
 const { query } = require('../config/database');
 const CacheService = require('../services/cacheService');
+const { normalizeTargetValue } = require('./_targetUnits');
 
 // GET /dashboard/stats
 router.get('/stats', async (req, res, next) => {
@@ -46,16 +47,19 @@ router.get('/stats', async (req, res, next) => {
         FROM invoices WHERE EXTRACT(YEAR FROM issued_date) = $1 AND EXTRACT(MONTH FROM issued_date) = $2
       `, [year, month]);
 
-      // KPI: Thu tiền YTD (paid invoices)
+      // KPI: Thu tiền YTD.
+      // Quy về issued_date vì bảng invoices không có cột ngày thu tiền: con số này là
+      // "đã thu được bao nhiêu trên các hoá đơn PHÁT HÀNH trong kỳ", không phải dòng
+      // tiền thực tế của kỳ đó.
       const ttYtd = await query(`
         SELECT COALESCE(SUM(payment), 0) as total
-        FROM invoices WHERE payment > 0 AND EXTRACT(YEAR FROM issued_date) = $1
+        FROM invoices WHERE EXTRACT(YEAR FROM issued_date) = $1
       `, [year]);
 
       // KPI: Thu tiền MTD
       const ttMtd = await query(`
         SELECT COALESCE(SUM(payment), 0) as total
-        FROM invoices WHERE payment > 0 AND EXTRACT(YEAR FROM issued_date) = $1 AND EXTRACT(MONTH FROM issued_date) = $2
+        FROM invoices WHERE EXTRACT(YEAR FROM issued_date) = $1 AND EXTRACT(MONTH FROM issued_date) = $2
       `, [year, month]);
 
       // KPI: Dự án stats
@@ -107,16 +111,24 @@ router.get('/stats', async (req, res, next) => {
         LIMIT 1
       `, [currentMonthStr]);
 
-      // YEAR targets from GAS may be in tỷ (e.g. 6.8) → convert to triệu (×1000)
-      let nvTargetVal = parseFloat(nvTarget.rows[0]?.tv) || 0;
-      let dtTargetVal = parseFloat(dtTarget.rows[0]?.tv) || 0;
-      if (nvTargetVal > 0 && nvTargetVal < 100) nvTargetVal = Math.round(nvTargetVal * 1000 * 100) / 100;
-      if (dtTargetVal > 0 && dtTargetVal < 100) dtTargetVal = Math.round(dtTargetVal * 1000 * 100) / 100;
-      const nvTargetMtdVal = nvTargetMonth.rows[0]?.tv || 0;
-      const dtTargetMtdVal = dtTargetMonth.rows[0]?.tv || 0;
+      // Quy đổi đơn vị chỉ tiêu qua _targetUnits — cùng một quy tắc với targets.js.
+      // Bốn query trên đều đã lọc unit_type GENERAL nên isGeneral luôn true.
+      const nvTargetVal = normalizeTargetValue(nvTarget.rows[0]?.tv, 'YEAR');
+      const dtTargetVal = normalizeTargetValue(dtTarget.rows[0]?.tv, 'YEAR');
+      const nvTargetMtdVal = normalizeTargetValue(nvTargetMonth.rows[0]?.tv, 'MONTH');
+      const dtTargetMtdVal = normalizeTargetValue(dtTargetMonth.rows[0]?.tv, 'MONTH');
 
       // All values in triệu (millions) — round to 2 decimals for consistency
       const round2 = (v) => Math.round(v * 100) / 100;
+
+      // Tỷ lệ đạt (%) — một chữ số thập phân, dùng chung cho cả ba thẻ KPI.
+      // Frontend đổ achievedPct (tháng) và yearPct (năm) vào cùng một ô tuỳ viewMode,
+      // nên hai giá trị phải cùng độ chính xác, nếu không ô đó lúc "88.7%" lúc "71%".
+      // parseFloat vì target_value là NUMERIC → node-postgres trả về chuỗi.
+      const pct1 = (actual, target) => {
+        const t = parseFloat(target) || 0;
+        return t > 0 ? Math.round((actual / t) * 1000) / 10 : 0;
+      };
       const nvActual = round2(parseFloat(nvYtd.rows[0].total) / 1000000);
       const dtActual = round2(parseFloat(dtYtd.rows[0].total) / 1000000);
       const ttActual = round2(parseFloat(ttYtd.rows[0].total) / 1000000);
@@ -303,13 +315,17 @@ router.get('/stats', async (req, res, next) => {
 
       const ttPrevMonth = await query(`
         SELECT COALESCE(SUM(payment)/1000000, 0) as total
-        FROM invoices WHERE payment > 0 AND EXTRACT(YEAR FROM issued_date) = $1 AND EXTRACT(MONTH FROM issued_date) = $2
+        FROM invoices WHERE EXTRACT(YEAR FROM issued_date) = $1 AND EXTRACT(MONTH FROM issued_date) = $2
       `, [prevYear, prevMonth]);
 
-      // All-time totals
-      const nvAllTime = await query(`SELECT COALESCE(SUM(value)/1000000, 0) as total FROM contracts`);
-      const dtAllTime = await query(`SELECT COALESCE(SUM(value)/1000000, 0) as total FROM invoices`);
-      const ttAllTime = await query(`SELECT COALESCE(SUM(payment)/1000000, 0) as total FROM invoices WHERE payment > 0`);
+      // All-time totals.
+      // Loại bản ghi thiếu ngày: mọi query theo năm/tháng dùng EXTRACT(... FROM cột),
+      // mà EXTRACT của NULL cho NULL nên bản ghi đó rơi khỏi hết các kỳ. Nếu ở đây
+      // không lọc, nó vẫn cộng vào all-time và tổng các năm sẽ không bao giờ bằng
+      // tổng "Tất cả" — chênh đúng bằng phần dữ liệu mồ côi, không có cảnh báo nào.
+      const nvAllTime = await query(`SELECT COALESCE(SUM(value)/1000000, 0) as total FROM contracts WHERE start_date IS NOT NULL`);
+      const dtAllTime = await query(`SELECT COALESCE(SUM(value)/1000000, 0) as total FROM invoices WHERE issued_date IS NOT NULL`);
+      const ttAllTime = await query(`SELECT COALESCE(SUM(payment)/1000000, 0) as total FROM invoices WHERE issued_date IS NOT NULL`);
 
       const nvMom = Math.round((nvMtdVal - parseFloat(nvPrevMonth.rows[0].total)) * 100) / 100;
       const dtMom = Math.round((dtMtdValActual - parseFloat(dtPrevMonth.rows[0].total)) * 100) / 100;
@@ -365,10 +381,10 @@ router.get('/stats', async (req, res, next) => {
               value: round2(nvMtdVal),
               valueYTD: round2(nvActual),
               valueAllTime: round2(parseFloat(nvAllTime.rows[0].total)),
-              achievedPct: nvTargetMtdVal > 0 ? Math.round(nvMtdVal / nvTargetMtdVal * 100 * 10) / 10 : 0,
+              achievedPct: pct1(nvMtdVal, nvTargetMtdVal),
               target: parseFloat(nvTargetMtdVal),
               targetYTD: parseFloat(nvTargetVal),
-              yearPct: nvTargetVal > 0 ? Math.round(nvActual / nvTargetVal * 100) : 0,
+              yearPct: pct1(nvActual, nvTargetVal),
               mom: nvMom,
             },
             doanhThu: {
@@ -376,21 +392,22 @@ router.get('/stats', async (req, res, next) => {
               valueYTD: round2(dtActual),
               valueAllTime: round2(parseFloat(dtAllTime.rows[0].total)),
               valueSuffix: 'Tr',
-              achievedPct: dtTargetMtdVal > 0 ? Math.round(dtMtdValActual / dtTargetMtdVal * 100 * 10) / 10 : 0,
+              achievedPct: pct1(dtMtdValActual, dtTargetMtdVal),
               target: parseFloat(dtTargetMtdVal),
               targetYTD: parseFloat(dtTargetVal),
-              yearPct: dtTargetVal > 0 ? Math.round(dtActual / dtTargetVal * 100) : 0,
+              yearPct: pct1(dtActual, dtTargetVal),
               mom: dtMom,
             },
+            // Thu tiền cố ý đo theo chỉ tiêu DOANH_THU: hệ thống chỉ có hai loại
+            // chỉ tiêu (NGUON_VIEC, DOANH_THU), không có chỉ tiêu thu tiền riêng.
             thuTien: {
               value: round2(ttMtdValActual),
               valueYTD: round2(ttActual),
               valueAllTime: round2(parseFloat(ttAllTime.rows[0].total)),
               target: parseFloat(dtTargetMtdVal),
               targetYTD: parseFloat(dtTargetVal),
-              achievedPct: dtTargetMtdVal > 0 ? Math.round(ttMtdValActual / dtTargetMtdVal * 100) : 0,
-              yearPct: dtTargetVal > 0 ? Math.round(ttActual / dtTargetVal * 100) : 0,
-              pct: dtTargetMtdVal > 0 ? Math.round(ttMtdValActual / dtTargetMtdVal * 100) : 0,
+              achievedPct: pct1(ttMtdValActual, dtTargetMtdVal),
+              yearPct: pct1(ttActual, dtTargetVal),
               mom: ttMom,
             },
             duAn: { ...projectExecution, delayed: 0 },

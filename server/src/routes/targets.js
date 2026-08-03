@@ -6,6 +6,7 @@ const router = require('express').Router();
 const { query } = require('../config/database');
 const { v4: uuidv4 } = require('uuid');
 const CacheService = require('../services/cacheService');
+const { normalizeTargetValue } = require('./_targetUnits');
 
 async function logActivity(email, action, description) {
   try {
@@ -185,10 +186,7 @@ router.get('/', async (req, res) => {
         const typeLabel = tType === 'NGUON_VIEC' ? 'Nguồn việc' : tType === 'DOANH_THU' ? 'Doanh thu' : 'Thu tiền';
         const autoName = r.name || `${typeLabel} - ${period}`;
 
-        let targetVal = parseFloat(r.target_value) || 0;
-        if (isGeneral && (pType === 'YEAR' || pType === 'QUARTER') && targetVal > 0 && targetVal < 100) {
-          targetVal = Math.round(targetVal * 1000 * 100) / 100;
-        }
+        const targetVal = normalizeTargetValue(r.target_value, pType, isGeneral);
 
         targets.push({
           id: r.id, name: autoName, type: tType,
@@ -224,7 +222,7 @@ router.post('/', async (req, res) => {
     `, [id, d.name, d.type, d.periodType, d.period, d.unitType || 'GENERAL', d.unitId || '', d.targetValue || 0]);
 
     await logActivity(req.user?.email || '', 'CREATE_TARGET', `Created target ${d.name}`);
-    CacheService.clear(['DASHBOARD_STATS', 'TARGETS_LIST']);
+    CacheService.clear(['TARGETS_LIST']); CacheService.invalidateDashboard();
 
     res.json({ success: true, data: { id } });
   } catch (err) {
@@ -242,7 +240,7 @@ router.put('/:id', async (req, res) => {
     `, [d.name, d.type, d.periodType, d.period, d.unitType || 'GENERAL', d.unitId || '', d.targetValue || 0, req.params.id]);
 
     await logActivity(req.user?.email || '', 'UPDATE_TARGET', `Updated target ${d.name}`);
-    CacheService.clear(['DASHBOARD_STATS', 'TARGETS_LIST']);
+    CacheService.clear(['TARGETS_LIST']); CacheService.invalidateDashboard();
 
     res.json({ success: true });
   } catch (err) {
@@ -256,7 +254,7 @@ router.delete('/:id', async (req, res) => {
     const result = await query('DELETE FROM targets WHERE id = $1 RETURNING name', [req.params.id]);
     if (result.rowCount === 0) return res.json({ success: false, error: 'Target not found' });
     await logActivity(req.user?.email || '', 'DELETE_TARGET', 'Deleted target');
-    CacheService.clear(['DASHBOARD_STATS', 'TARGETS_LIST']);
+    CacheService.clear(['TARGETS_LIST']); CacheService.invalidateDashboard();
     res.json({ success: true });
   } catch (err) {
     res.json({ success: false, error: err.message });

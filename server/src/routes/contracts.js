@@ -9,7 +9,7 @@ const { query } = require('../config/database');
 const { v4: uuidv4 } = require('uuid');
 const CacheService = require('../services/cacheService');
 const {
-  badRequest, conflict, assertDateRange, assertRequiredText, assertNonNegative,
+  badRequest, conflict, assertDateRange, assertRequiredDate, assertRequiredText, assertNonNegative,
 } = require('./_planValidators');
 const { createUploader, removeUploadedFiles: removeFiles, toPublicUrls } = require('../middleware/fileUpload');
 const { toInvoice } = require('./invoices');
@@ -115,6 +115,9 @@ router.post('/', async (req, res, next) => {
     const name = assertRequiredText(d.name, 'name', 1000);
     const value = assertValue(d.value);
     assertDateRange(d.startDate, d.endDate, 'startDate', 'endDate');
+    // Cùng lý do như issued_date của hoá đơn: thiếu start_date thì hợp đồng rơi khỏi
+    // mọi thống kê theo năm/tháng nhưng vẫn cộng vào tổng all-time.
+    assertRequiredDate(d.startDate, 'startDate');
 
     const dup = await query('SELECT 1 FROM contracts WHERE code = $1', [code]);
     if (dup.rowCount > 0) throw conflict(`Contract code already exists: ${code}`);
@@ -134,7 +137,7 @@ router.post('/', async (req, res, next) => {
     ]);
 
     await logActivity(req.user?.email || userId, 'CONTRACT_CREATE', `Created contract ${code}`);
-    CacheService.clear(['CONTRACTS_LIST']); CacheService.clearByPrefix('DASHBOARD_STATS');
+    CacheService.clear(['CONTRACTS_LIST']); CacheService.invalidateDashboard();
 
     res.json({ success: true, data: { id } });
   } catch (err) {
@@ -193,7 +196,7 @@ router.put('/:id', async (req, res, next) => {
     }
 
     await logActivity(req.user?.email || '', 'CONTRACT_UPDATE', `Updated contract ${id}`);
-    CacheService.clear(['CONTRACTS_LIST']); CacheService.clearByPrefix('DASHBOARD_STATS');
+    CacheService.clear(['CONTRACTS_LIST']); CacheService.invalidateDashboard();
 
     res.json({ success: true });
   } catch (err) {
@@ -231,7 +234,7 @@ router.delete('/:id', async (req, res, next) => {
     }
 
     await logActivity(req.user?.email || '', 'CONTRACT_DELETE', `Deleted contract ${result.rows[0].code}`);
-    CacheService.clear(['CONTRACTS_LIST']); CacheService.clearByPrefix('DASHBOARD_STATS');
+    CacheService.clear(['CONTRACTS_LIST']); CacheService.invalidateDashboard();
 
     res.json({ success: true });
   } catch (err) {

@@ -9,7 +9,7 @@ const router = require('express').Router();
 const { query } = require('../config/database');
 const { v4: uuidv4 } = require('uuid');
 const CacheService = require('../services/cacheService');
-const { badRequest } = require('./_planValidators');
+const { badRequest, assertRequiredDate } = require('./_planValidators');
 
 async function logActivity(email, action, description) {
   try {
@@ -77,18 +77,24 @@ router.post('/', async (req, res, next) => {
     const value = assertAmount(d.value, 'value');
     const paid = assertAmount(d.paidAmount !== undefined ? d.paidAmount : d.payment, 'paidAmount');
 
+    // issued_date là mốc duy nhất để dashboard xếp hoá đơn vào kỳ nào. Bỏ trống thì
+    // bản ghi rơi khỏi mọi thống kê theo năm/tháng nhưng vẫn cộng vào tổng all-time,
+    // khiến hai con số không bao giờ khớp. Form đã bắt buộc trường này; chặn thêm ở
+    // đây để đường ghi không qua UI cũng không tạo được bản ghi mồ côi.
+    assertRequiredDate(d.issuedDate, 'issuedDate');
+
     const id = uuidv4();
     await query(`
       INSERT INTO invoices (id, contract_id, invoice_number, installment, value, issued_date, payment, files)
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
     `, [
       id, d.contractId, d.invoiceNumber || '', d.installment || '',
-      value, d.issuedDate || null, paid, d.files || ''
+      value, d.issuedDate, paid, d.files || ''
     ]);
 
     // Người thực hiện lấy từ JWT, không lấy d.userId do client gửi (giả mạo được).
     await logActivity(req.user?.email || '', 'INVOICE_CREATE', `Created invoice ${d.invoiceNumber || id}`);
-    CacheService.clear(['CONTRACTS_LIST']); CacheService.clearByPrefix('DASHBOARD_STATS');
+    CacheService.clear(['CONTRACTS_LIST']); CacheService.invalidateDashboard();
 
     res.json({ success: true, data: { id } });
   } catch (err) {
@@ -138,7 +144,7 @@ router.put('/:id', async (req, res, next) => {
     }
 
     await logActivity(req.user?.email || '', 'INVOICE_UPDATE', `Updated invoice ${id}`);
-    CacheService.clear(['CONTRACTS_LIST']); CacheService.clearByPrefix('DASHBOARD_STATS');
+    CacheService.clear(['CONTRACTS_LIST']); CacheService.invalidateDashboard();
 
     res.json({ success: true });
   } catch (err) {
@@ -157,7 +163,7 @@ router.delete('/:id', async (req, res, next) => {
     }
 
     await logActivity(req.user?.email || '', 'INVOICE_DELETE', `Deleted invoice ${result.rows[0].invoice_number}`);
-    CacheService.clear(['CONTRACTS_LIST']); CacheService.clearByPrefix('DASHBOARD_STATS');
+    CacheService.clear(['CONTRACTS_LIST']); CacheService.invalidateDashboard();
 
     res.json({ success: true });
   } catch (err) {
