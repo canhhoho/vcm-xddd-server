@@ -53,6 +53,7 @@
 !server/scripts/migrate-add-plans-permission.sql
 !server/scripts/migrate-plan-constraints.sql
 !server/scripts/migrate-add-last-seen.sql
+!server/scripts/migrate-add-notifications-read.sql
 !server/scripts/migrate-target-allocation.js
 !server/scripts/fix-position-uuid.sql
 

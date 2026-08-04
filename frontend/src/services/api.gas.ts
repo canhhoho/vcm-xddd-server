@@ -645,6 +645,16 @@ export class GasApiService implements IApiService {
         return { success: false, error: 'Trạng thái online không hỗ trợ ở chế độ GAS' };
     }
 
+    // ==================== NOTIFICATIONS ====================
+    // Cùng lý do với presence: backend GAS không có hàm tương ứng.
+    async getNotifications() {
+        return { success: false, error: 'Thông báo không hỗ trợ ở chế độ GAS' };
+    }
+
+    async markNotificationsRead() {
+        return { success: false, error: 'Thông báo không hỗ trợ ở chế độ GAS' };
+    }
+
     // ==================== PROSPECTS ====================
     async getProspects(type?: string) {
         return this.runGasFunction('getProspects', type ? { type } : {});

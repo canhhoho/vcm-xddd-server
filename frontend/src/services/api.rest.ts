@@ -344,6 +344,15 @@ export class RestApiService implements IApiService {
         return this.request('POST', '/presence/heartbeat');
     }
 
+    // ==================== NOTIFICATIONS ====================
+    async getNotifications() {
+        return this.request('GET', '/notifications');
+    }
+
+    async markNotificationsRead() {
+        return this.request('POST', '/notifications/read');
+    }
+
     // ==================== PROSPECTS ====================
     async getProspects(type?: string) {
         return this.request('GET', '/prospects', undefined, type ? { type } : undefined);

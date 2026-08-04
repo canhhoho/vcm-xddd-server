@@ -260,6 +260,10 @@ export interface IApiService {
     getPresence(): Promise<ApiResponse>;
     sendHeartbeat(): Promise<ApiResponse>;
 
+    // ==================== NOTIFICATIONS ====================
+    getNotifications(): Promise<ApiResponse>;
+    markNotificationsRead(): Promise<ApiResponse>;
+
     // ==================== PROSPECTS ====================
     getProspects(type?: string): Promise<ApiResponse>;
     createProspect(data: any): Promise<ApiResponse>;

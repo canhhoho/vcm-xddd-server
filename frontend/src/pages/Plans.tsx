@@ -8,6 +8,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import dayjs from 'dayjs';
 import { usePermissions } from '../hooks/usePermissions';
+import { useFilterSync } from '../hooks/useFilterSync';
 import type { Department, ModuleAccess } from '../types';
 import { BRAND_COLORS } from '../styles/brandIdentity';
 import MonthlyPlanSection from '../components/MonthlyPlanSection';
@@ -42,9 +43,10 @@ const Plans: React.FC = () => {
         [permissions, isAdmin]
     );
 
-    // Mặc định là tab đầu tiên user được xem — hardcode 'BD' khiến user chỉ có
-    // quyền phòng khác mở trang ra thấy vùng nội dung trống.
-    const [activeTab, setActiveTab] = useState<string>(() => visibleDepartments[0]?.key ?? '');
+    // Giữ tab trong URL (?tab=BD) để thông báo "kế hoạch của tôi" deep-link được
+    // vào đúng phòng ban. Mặc định là tab đầu tiên user được xem — hardcode 'BD'
+    // khiến user chỉ có quyền phòng khác mở trang ra thấy vùng nội dung trống.
+    const [activeTab, setActiveTab] = useFilterSync<string>('tab', visibleDepartments[0]?.key ?? '');
 
     useEffect(() => {
         if (visibleDepartments.length === 0) return;

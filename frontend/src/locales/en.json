@@ -16,6 +16,23 @@
         "footer": "Make by Canhhv1@viettel.com.vn",
         "businessMgmt": "Business Management"
     },
+    "notifications": {
+        "title": "Notifications",
+        "none": "No notifications",
+        "severity": {
+            "overdue": "Overdue",
+            "soon": "Due"
+        },
+        "types": {
+            "MY_TASK": "My task",
+            "MY_PLAN_ITEM": "My plan item",
+            "INVOICE_UNPAID": "Invoice not fully paid",
+            "CONTRACT_ENDING": "Contract ending",
+            "PROJECT_ENDING": "Project ending",
+            "PROSPECT_OVERDUE": "Overdue prospect",
+            "ACTIVITY": "System activity"
+        }
+    },
     "presence": {
         "title": "Online now",
         "count": "{{count}} user(s) online",

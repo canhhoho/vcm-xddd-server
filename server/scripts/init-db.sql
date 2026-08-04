@@ -40,6 +40,9 @@ CREATE TABLE IF NOT EXISTS users (
   -- Thời điểm hoạt động cuối (tính năng "user đang online"). NULL = chưa từng
   -- đăng nhập. Ngưỡng coi là online nằm ở routes/presence.js, không ở schema.
   last_seen_at  TIMESTAMPTZ,
+  -- Mốc "đã xem thông báo". NULL = chưa mở chuông lần nào -> mọi thông báo
+  -- đều tính là chưa đọc. Xem routes/notifications.js.
+  notifications_read_at TIMESTAMPTZ,
   created_at    TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -317,6 +320,9 @@ DO $$ BEGIN
   -- NULL = chưa bao giờ đăng nhập. Ngưỡng coi là online nằm ở routes/presence.js.
   -- Mirror của migrate-add-last-seen.sql.
   ALTER TABLE users ADD COLUMN IF NOT EXISTS last_seen_at TIMESTAMPTZ;
+
+  -- Mốc "đã xem thông báo" — mirror của migrate-add-notifications-read.sql.
+  ALTER TABLE users ADD COLUMN IF NOT EXISTS notifications_read_at TIMESTAMPTZ;
 
   -- Thống nhất quy ước NULL cho khoá ngoại mềm của plan items
   -- (weekly trước đây ghi '', monthly ghi NULL -> JOIN và so sánh dễ sai)

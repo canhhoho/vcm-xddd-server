@@ -30,6 +30,7 @@ const positionRoutes = require('./routes/positions');
 const staffRoutes = require('./routes/staff');
 const dashboardRoutes = require('./routes/dashboard');
 const presenceRoutes = require('./routes/presence');
+const notificationRoutes = require('./routes/notifications');
 const activityRoutes = require('./routes/activities');
 const provinceRoutes = require('./routes/provinces');
 const prospectRoutes = require('./routes/prospects');
@@ -106,6 +107,9 @@ app.use('/api/dashboard', dashboardRoutes);
 // Trạng thái online: mount TRẦN sau authMiddleware, cố ý không rbac/moduleAccess.
 // Badge trên header hiển thị cho mọi user đã đăng nhập, không chỉ ADMIN như /api/users.
 app.use('/api/presence', presenceRoutes);
+// Thông báo gộp nhiều nguồn với nhiều cột quyền khác nhau nên không middleware
+// nào gate hộ được — việc lọc theo quyền nằm trong chính route.
+app.use('/api/notifications', notificationRoutes);
 // Nhật ký hoạt động toàn hệ thống -> chỉ ADMIN (chỉ trang User dùng tới).
 app.use('/api/activities', rbac(['ADMIN']), activityRoutes);
 app.use('/api/provinces', provinceRoutes);

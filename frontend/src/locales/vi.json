@@ -16,6 +16,23 @@
         "footer": "Make by Canhhv1@viettel.com.vn",
         "businessMgmt": "Quản lý Kinh doanh"
     },
+    "notifications": {
+        "title": "Thông báo",
+        "none": "Không có thông báo nào",
+        "severity": {
+            "overdue": "Quá hạn",
+            "soon": "Đến hạn"
+        },
+        "types": {
+            "MY_TASK": "Công việc của tôi",
+            "MY_PLAN_ITEM": "Kế hoạch của tôi",
+            "INVOICE_UNPAID": "Hoá đơn chưa thu đủ",
+            "CONTRACT_ENDING": "Hợp đồng sắp hết hạn",
+            "PROJECT_ENDING": "Dự án sắp hết hạn",
+            "PROSPECT_OVERDUE": "Cơ hội quá hạn",
+            "ACTIVITY": "Hoạt động hệ thống"
+        }
+    },
     "presence": {
         "title": "Đang online",
         "count": "{{count}} người đang online",

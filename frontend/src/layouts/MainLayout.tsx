@@ -1,12 +1,11 @@
 import React, { useState, useMemo } from 'react';
-import { Layout, Menu, Avatar, Dropdown, Badge, Button, Tooltip, Drawer, Grid } from 'antd';
+import { Layout, Menu, Avatar, Dropdown, Button, Tooltip, Drawer, Grid } from 'antd';
 import {
     DashboardOutlined,
     FileTextOutlined,
     ProjectOutlined,
     UserOutlined,
     BankOutlined,
-    BellOutlined,
     LogoutOutlined,
     SettingOutlined,
     AimOutlined,
@@ -23,6 +22,7 @@ import { APP_VERSION } from '../styles/brandIdentity';
 import { useTranslation } from 'react-i18next';
 import ChangePasswordModal from '../components/ChangePasswordModal';
 import { OnlineUsersBadge } from '../components/OnlineUsers';
+import { NotificationBell } from '../components/NotificationBell';
 import { useHeartbeat } from '../hooks/usePresence';
 import './MainLayout.css';
 
@@ -265,9 +265,7 @@ const MainLayout: React.FC = () => {
                             </Button>
                         </Tooltip>
                         <OnlineUsersBadge />
-                        <Badge count={5} className="notification-badge">
-                            <BellOutlined className="header-icon" />
-                        </Badge>
+                        <NotificationBell />
                         <Dropdown menu={{ items: userMenuItems, onClick: handleUserMenuClick }} placement="bottomRight">
                             <div className="user-info">
                                 <Avatar icon={<UserOutlined />} className="user-avatar" />
