@@ -61,11 +61,11 @@ router.get('/', async (req, res, next) => {
     const data = await CacheService.getOrSet('CONTRACTS_LIST', async () => {
       const result = await query(`
         SELECT c.*, b.name as branch_name, b.code as branch_code,
-               COALESCE(inv.total_payment, 0) as total_payment
+               COALESCE(inv.total_invoiced, 0) as total_invoiced
         FROM contracts c
         LEFT JOIN branches b ON c.branch_id = b.id
         LEFT JOIN (
-          SELECT contract_id, SUM(payment) as total_payment
+          SELECT contract_id, SUM(value) as total_invoiced
           FROM invoices
           GROUP BY contract_id
         ) inv ON inv.contract_id = c.id
@@ -74,9 +74,12 @@ router.get('/', async (req, res, next) => {
 
       const contracts = result.rows.map(r => {
         const value = parseFloat(r.value) || 0;
-        const totalPayment = parseFloat(r.total_payment) || 0;
-        // Tiến độ luôn tính lại từ hoá đơn; cột contracts.progress không được đọc.
-        const progress = value > 0 ? Math.round((totalPayment / value) * 100) : 0;
+        const totalInvoiced = parseFloat(r.total_invoiced) || 0;
+        // Tiến độ = phần giá trị hợp đồng ĐÃ XUẤT HOÁ ĐƠN, không phải phần đã thu
+        // tiền. Cùng công thức với percentInvoiced trong ContractDetailModal.tsx,
+        // nên số ngoài danh sách khớp thanh xanh dương trong modal chi tiết.
+        // Luôn tính lại từ hoá đơn; cột contracts.progress không được đọc.
+        const progress = value > 0 ? Math.round((totalInvoiced / value) * 100) : 0;
 
         return {
           id: r.id,

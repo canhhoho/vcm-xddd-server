@@ -5,7 +5,7 @@
 const router = require('express').Router();
 const { query } = require('../config/database');
 const CacheService = require('../services/cacheService');
-const { normalizeTargetValue } = require('./_targetUnits');
+const { loadTargetIndex, getGeneralTarget, listTargets } = require('./_targetLookup');
 
 // GET /dashboard/stats
 router.get('/stats', async (req, res, next) => {
@@ -80,43 +80,29 @@ router.get('/stats', async (req, res, next) => {
         else projectExecution.waiting += count;
       });
 
-      // Nguồn việc target (Yearly)
-      const nvTarget = await query(`
-        SELECT COALESCE(target_value, 0) as tv FROM targets
-        WHERE (type = 'NGUON_VIEC' OR type ILIKE '%NGUON%' OR type ILIKE '%NGUỒN%') AND period_type LIKE '%YEAR%' AND period LIKE '%' || $1 || '%' AND (unit_type = 'GENERAL' OR unit_type IS NULL OR unit_type = '')
-        LIMIT 1
-      `, [String(year)]);
+      // ── Chỉ tiêu ──────────────────────────────────────────────────────────
+      // Đọc cả bảng targets một lần rồi tra trên khoá đã CHUẨN HOÁ, thay cho các
+      // query SQL thô trước đây. Hai lý do, đều đã thành lỗi thật:
+      //   1. `period LIKE '%2026%'` + `period_type LIKE '%YEAR%'` bỏ sót dòng di
+      //      cư từ GAS (period_type='Năm', period='2026.0' hay rỗng) — trong khi
+      //      trang Chỉ tiêu chuẩn hoá lúc đọc nên vẫn hiện chúng. Hai màn hình ra
+      //      hai số cho cùng một chỉ tiêu.
+      //   2. `LIMIT 1` không `ORDER BY`: kỳ nào có hai dòng thì Postgres trả dòng
+      //      nào là tuỳ ý. DB local có đúng ca đó — NGUON_VIEC/YEAR/2026 vừa có
+      //      t-001=500 vừa có t-008=100.
+      // Quy tắc chọn dòng thắng nằm ở _targetNormalize.js:pickWinner.
+      const targetIndex = await loadTargetIndex();
+      const yearStr = String(year);
+      const currentMonthStr = `${year}-${String(month).padStart(2, '0')}`; // vd "2026-03"
 
-      // Doanh thu target (Yearly)
-      const dtTarget = await query(`
-        SELECT COALESCE(target_value, 0) as tv FROM targets
-        WHERE (type = 'DOANH_THU' OR type ILIKE '%DOANH%') AND period_type LIKE '%YEAR%' AND period LIKE '%' || $1 || '%' AND (unit_type = 'GENERAL' OR unit_type IS NULL OR unit_type = '')
-        LIMIT 1
-      `, [String(year)]);
+      const nvTargetVal = getGeneralTarget(targetIndex, 'NGUON_VIEC', 'YEAR', yearStr);
+      const dtTargetVal = getGeneralTarget(targetIndex, 'DOANH_THU', 'YEAR', yearStr);
+      const nvTargetMtdVal = getGeneralTarget(targetIndex, 'NGUON_VIEC', 'MONTH', currentMonthStr);
+      const dtTargetMtdVal = getGeneralTarget(targetIndex, 'DOANH_THU', 'MONTH', currentMonthStr);
 
-      // Current month for target filtering (e.g. "2026-03")
-      const currentMonthStr = `${year}-${String(month).padStart(2, '0')}`;
-
-      // Nguồn việc target (Monthly)
-      const nvTargetMonth = await query(`
-        SELECT COALESCE(target_value, 0) as tv FROM targets
-        WHERE (type = 'NGUON_VIEC' OR type ILIKE '%NGUON%' OR type ILIKE '%NGUỒN%') AND period_type LIKE '%MONTH%' AND period LIKE '%' || $1 || '%' AND (unit_type = 'GENERAL' OR unit_type IS NULL OR unit_type = '')
-        LIMIT 1
-      `, [currentMonthStr]);
-
-      // Doanh thu target (Monthly)
-      const dtTargetMonth = await query(`
-        SELECT COALESCE(target_value, 0) as tv FROM targets
-        WHERE (type = 'DOANH_THU' OR type ILIKE '%DOANH%') AND period_type LIKE '%MONTH%' AND period LIKE '%' || $1 || '%' AND (unit_type = 'GENERAL' OR unit_type IS NULL OR unit_type = '')
-        LIMIT 1
-      `, [currentMonthStr]);
-
-      // Quy đổi đơn vị chỉ tiêu qua _targetUnits — cùng một quy tắc với targets.js.
-      // Bốn query trên đều đã lọc unit_type GENERAL nên isGeneral luôn true.
-      const nvTargetVal = normalizeTargetValue(nvTarget.rows[0]?.tv, 'YEAR');
-      const dtTargetVal = normalizeTargetValue(dtTarget.rows[0]?.tv, 'YEAR');
-      const nvTargetMtdVal = normalizeTargetValue(nvTargetMonth.rows[0]?.tv, 'MONTH');
-      const dtTargetMtdVal = normalizeTargetValue(dtTargetMonth.rows[0]?.tv, 'MONTH');
+      // Card Thu tiền không đọc bảng targets — chỉ tiêu của nó là doanh thu thực
+      // trong kỳ, tính ở chỗ dựng response bên dưới. Dòng type='THU_TIEN' còn sót
+      // trong DB (dữ liệu GAS cũ) vì thế không được dùng ở đây.
 
       // All values in triệu (millions) — round to 2 decimals for consistency
       const round2 = (v) => Math.round(v * 100) / 100;
@@ -151,35 +137,30 @@ router.get('/stats', async (req, res, next) => {
         GROUP BY m ORDER BY m
       `, [bizYear]);
 
-      // Get monthly targets for trends
-      const monthlyNvTargets = await query(`
-        SELECT period, target_value FROM targets
-        WHERE (type = 'NGUON_VIEC' OR type ILIKE '%NGUON%' OR type ILIKE '%NGUỒN%') AND period_type LIKE '%MONTH%' AND ($1::text IS NULL OR period LIKE $1)
-        AND (unit_type = 'GENERAL' OR unit_type IS NULL OR unit_type = '')
-      `, [bizYear ? `${bizYear}-%` : null]);
-
-      const monthlyDtTargets = await query(`
-        SELECT period, target_value FROM targets
-        WHERE (type = 'DOANH_THU' OR type ILIKE '%DOANH%') AND period_type LIKE '%MONTH%' AND ($1::text IS NULL OR period LIKE $1)
-        AND (unit_type = 'GENERAL' OR unit_type IS NULL OR unit_type = '')
-      `, [bizYear ? `${bizYear}-%` : null]);
+      // Chỉ tiêu tháng cho đường "kế hoạch" của biểu đồ trend.
+      // Vẫn cộng dồn vì chế độ ALL (bizYear = null) gộp mọi năm vào 12 ô tháng —
+      // đó là chủ ý. Cái phải tránh là cộng đôi hai dòng TRÙNG trong cùng một kỳ,
+      // và loadTargetIndex đã khử trùng trước khi tới đây.
+      const monthTargetMap = (type) => {
+        const map = {};
+        for (const t of listTargets(targetIndex, {
+          type, periodType: 'MONTH', isGeneral: true, year: bizYear,
+        })) {
+          const m = parseInt(t.norm.period.split('-')[1], 10);
+          // period bẩn cho ra NaN, để lọt sẽ tạo key "NaN" trong map
+          if (m >= 1 && m <= 12) map[m] = (map[m] || 0) + t.value;
+        }
+        return map;
+      };
 
       // Build trend arrays
       const nvTrendMap = {};
       nvTrend.rows.forEach(r => { nvTrendMap[r.m] = parseFloat(r.actual); });
-      const nvMonthTargetMap = {};
-      monthlyNvTargets.rows.forEach(r => {
-        const m = parseInt(r.period.split('-')[1]);
-        nvMonthTargetMap[m] = (nvMonthTargetMap[m] || 0) + parseFloat(r.target_value);
-      });
+      const nvMonthTargetMap = monthTargetMap('NGUON_VIEC');
 
       const dtTrendMap = {};
       dtTrend.rows.forEach(r => { dtTrendMap[r.m] = parseFloat(r.actual); });
-      const dtMonthTargetMap = {};
-      monthlyDtTargets.rows.forEach(r => {
-        const m = parseInt(r.period.split('-')[1]);
-        dtMonthTargetMap[m] = (dtMonthTargetMap[m] || 0) + parseFloat(r.target_value);
-      });
+      const dtMonthTargetMap = monthTargetMap('DOANH_THU');
 
       const nguonViecTrend = [];
       const doanhThuTrend = [];
@@ -200,18 +181,20 @@ router.get('/stats', async (req, res, next) => {
         ORDER BY actual DESC
       `, [bizYear]);
 
-      // Query DOANH_THU branch targets for this year
-      // GAS migration may store period as empty for YEAR targets
-      const branchTargets = await query(`
-        SELECT t.unit_id, b.code as branch_code, b.name as branch_name,
-          COALESCE(t.target_value, 0) as target_value
-        FROM targets t
-        LEFT JOIN branches b ON t.unit_id = b.id OR t.unit_id = b.code
-        WHERE (t.type = 'DOANH_THU' OR t.type ILIKE '%DOANH%')
-          AND (t.period_type ILIKE '%YEAR%' OR t.period_type ILIKE '%NĂM%' OR t.period_type ILIKE '%NAM%')
-          AND ($1::text IS NULL OR t.period LIKE '%' || $1 || '%' OR t.period IS NULL OR t.period = '')
-          AND t.unit_id IS NOT NULL AND t.unit_id != ''
-      `, [bizYear ? String(bizYear) : null]);
+      // Danh bạ chi nhánh — dùng cho cả việc quy unit_id của targets về mã chi
+      // nhánh lẫn việc tra tên cho mã chỉ có trong targets mà không có doanh thu.
+      // targets.unit_id khi thì là id, khi thì là code, nên map cả hai chiều.
+      const allBranches = await query('SELECT id, code, name FROM branches ORDER BY code');
+      const branchCodeByKey = {};
+      const branchInfoMap = {};
+      allBranches.rows.forEach(b => {
+        if (b.id) branchCodeByKey[b.id] = b.code;
+        if (b.code) {
+          branchCodeByKey[b.code] = b.code;
+          branchCodeByKey[b.code.toUpperCase()] = b.code;
+          branchInfoMap[b.code] = b.name;
+        }
+      });
 
       // Build maps
       const branchActualMap = {};
@@ -223,24 +206,24 @@ router.get('/stats', async (req, res, next) => {
         };
       });
 
+      // Chỉ tiêu DOANH_THU theo chi nhánh, lấy từ index đã chuẩn hoá + khử trùng.
+      // Chỉ tiêu chi nhánh vốn đã tính bằng triệu, normalizeTargetValue không quy
+      // đổi cho nhánh BRANCH nên giá trị giữ nguyên.
       const branchTargetMap = {};
-      branchTargets.rows.forEach(r => {
-        const code = r.branch_code || r.unit_id || '';
-        const tv = parseFloat(r.target_value) || 0;
-        // Branch targets are already in triệu — no conversion needed
-        branchTargetMap[code] = (branchTargetMap[code] || 0) + tv;
-      });
+      for (const t of listTargets(targetIndex, {
+        type: 'DOANH_THU', periodType: 'YEAR', isGeneral: false, year: bizYear,
+      })) {
+        const raw = t.norm.unitId;
+        if (!raw) continue;
+        const code = branchCodeByKey[raw] || branchCodeByKey[raw.toUpperCase()] || raw;
+        branchTargetMap[code] = (branchTargetMap[code] || 0) + t.value;
+      }
 
       // Merge: all branches with actuals OR targets
       const allBranchCodes = new Set([
         ...Object.keys(branchActualMap),
         ...Object.keys(branchTargetMap),
       ]);
-
-      // Get all branch info for codes that only exist in targets
-      const allBranches = await query('SELECT code, name FROM branches ORDER BY code');
-      const branchInfoMap = {};
-      allBranches.rows.forEach(r => { branchInfoMap[r.code] = r.name; });
 
       const branchBreakdown = Array.from(allBranchCodes)
         .filter(code => code) // skip empty
@@ -398,16 +381,21 @@ router.get('/stats', async (req, res, next) => {
               yearPct: pct1(dtActual, dtTargetVal),
               mom: dtMom,
             },
-            // Thu tiền cố ý đo theo chỉ tiêu DOANH_THU: hệ thống chỉ có hai loại
-            // chỉ tiêu (NGUON_VIEC, DOANH_THU), không có chỉ tiêu thu tiền riêng.
+            // Thu tiền KHÔNG lấy chỉ tiêu từ bảng targets. Chỉ tiêu của nó là
+            // doanh thu THỰC trong kỳ — tức tổng giá trị hoá đơn đã phát hành —
+            // còn số thực hiện là phần chủ đầu tư đã thanh toán trên chính những
+            // hoá đơn đó (invoices.payment). Nên tỷ lệ ở đây là TỶ LỆ THU HỒI
+            // CÔNG NỢ, không phải mức hoàn thành một chỉ tiêu do người dùng nhập.
+            // Hai vế cùng lọc theo issued_date nên luôn so trên cùng một tập hoá
+            // đơn; invoices không có cột ngày thu tiền để làm khác đi.
             thuTien: {
               value: round2(ttMtdValActual),
               valueYTD: round2(ttActual),
               valueAllTime: round2(parseFloat(ttAllTime.rows[0].total)),
-              target: parseFloat(dtTargetMtdVal),
-              targetYTD: parseFloat(dtTargetVal),
-              achievedPct: pct1(ttMtdValActual, dtTargetMtdVal),
-              yearPct: pct1(ttActual, dtTargetVal),
+              target: dtMtdValActual,
+              targetYTD: dtActual,
+              achievedPct: pct1(ttMtdValActual, dtMtdValActual),
+              yearPct: pct1(ttActual, dtActual),
               mom: ttMom,
             },
             duAn: { ...projectExecution, delayed: 0 },
