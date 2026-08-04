@@ -100,9 +100,12 @@ const InvoiceList: React.FC<InvoiceListProps> = ({ contractId, onStatsChange, on
         return files.split(/[\r\n,]+/).map(f => f.trim()).filter(f => f.length > 0);
     };
 
+    const [pendingValues, setPendingValues] = useState<any>(null);
+
     const handleCreate = () => {
         setEditingInvoice(null);
         setFileList([]);
+        setPendingValues(null);
         form.resetFields();
         setModalVisible(true);
     };
@@ -113,8 +116,14 @@ const InvoiceList: React.FC<InvoiceListProps> = ({ contractId, onStatsChange, on
         // Parse existing files from the record
         const existing = parseFileUrls(record.files);
         setExistingFiles(existing);
-        form.setFieldsValue({
+        // Modal dùng destroyOnHidden nên Form CHƯA mount lúc modal còn đóng: gọi
+        // form.setFieldsValue() ở đây mất sạch giá trị và antd cảnh báo "Instance
+        // created by useForm is not connected to any Form element". Giữ trong state
+        // rồi set ở afterOpenChange.
+        setPendingValues({
             ...record,
+            // Ô nhập là số TRƯỚC thuế; số sau thuế là dẫn xuất, server tự tính lại.
+            taxRate: record.taxRate ?? 5,
             paidAmount: record.paidAmount ?? 0,
             issuedDate: dayjs(record.issuedDate),
         });
@@ -368,6 +377,7 @@ const InvoiceList: React.FC<InvoiceListProps> = ({ contractId, onStatsChange, on
                 cancelButtonProps={{ disabled: uploading }}
                 closable={!uploading}
                 destroyOnHidden
+                afterOpenChange={(open) => { if (open && pendingValues) form.setFieldsValue(pendingValues); }}
             >
                 <Form
                     form={form}
@@ -406,16 +416,41 @@ const InvoiceList: React.FC<InvoiceListProps> = ({ contractId, onStatsChange, on
                             }
                         />
                     </Form.Item>
+                    {/* Ô nhập là số TRƯỚC thuế — đây là số đi vào chỉ tiêu Doanh thu.
+                        Ô sau thuế chỉ hiển thị: nó KHÔNG có prop `name` nên không nằm
+                        trong form values và không được gửi lên; server tự tính lại từ
+                        valueBeforeTax × (1 + taxRate/100). Xem routes/_taxAmounts.js. */}
                     <Form.Item
-                        name="value"
-                        label={t('invoices.formValue')}
-                        rules={[{ required: true, message: t('invoices.formValueRequired') }]}
+                        name="valueBeforeTax"
+                        label={t('invoices.formValueBeforeTax')}
+                        rules={[{ required: true, message: t('invoices.formValueBeforeTaxRequired') }]}
                     >
                         <InputNumber
                             style={{ width: '100%' }}
+                            min={0}
                             formatter={value => `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
-                            parser={value => value?.replace(/\$\s?|(,*)/g, '') as unknown as number}
+                            parser={(value: any) => Number(value?.replace(/\$\s?|(,*)/g, '')) || 0}
                         />
+                    </Form.Item>
+                    <Form.Item name="taxRate" label={t('invoices.formTaxRate')} initialValue={5}>
+                        <InputNumber style={{ width: '100%' }} min={0} max={100} addonAfter="%" />
+                    </Form.Item>
+                    <Form.Item noStyle shouldUpdate={(prev, curr) => prev.valueBeforeTax !== curr.valueBeforeTax || prev.taxRate !== curr.taxRate}>
+                        {({ getFieldValue }) => {
+                            const before = Number(getFieldValue('valueBeforeTax')) || 0;
+                            const rate = Number(getFieldValue('taxRate') ?? 5);
+                            const after = Math.round(before * (1 + rate / 100) * 100) / 100;
+                            return (
+                                <Form.Item label={t('invoices.formValueAfterTax')} tooltip={t('invoices.formValueAfterTaxTooltip')}>
+                                    <InputNumber
+                                        style={{ width: '100%' }}
+                                        disabled
+                                        value={after}
+                                        formatter={value => `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
+                                    />
+                                </Form.Item>
+                            );
+                        }}
                     </Form.Item>
                     <Form.Item
                         name="paidAmount"

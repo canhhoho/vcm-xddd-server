@@ -53,7 +53,11 @@ CREATE TABLE IF NOT EXISTS contracts (
   name           TEXT,
   branch_id      VARCHAR(50) DEFAULT '',
   business_field VARCHAR(50) DEFAULT '',
-  value          NUMERIC(18,2) DEFAULT 0,
+  -- `value` là số ĐÃ GỒM THUẾ (con số trên chứng từ). Chỉ số "Nguồn việc" trên
+  -- Dashboard và trang Chỉ tiêu đọc `value_before_tax`, KHÔNG đọc cột này.
+  value             NUMERIC(18,2) DEFAULT 0,
+  value_before_tax  NUMERIC(18,2) DEFAULT 0,
+  tax_rate          NUMERIC(5,2)  DEFAULT 5.00,  -- PHẦN TRĂM: 5.00 = 5%
   start_date     DATE,
   end_date       DATE,
   status         VARCHAR(50) DEFAULT 'TODO',
@@ -73,7 +77,12 @@ CREATE TABLE IF NOT EXISTS invoices (
   contract_id     VARCHAR(50) REFERENCES contracts(id) ON DELETE CASCADE,
   invoice_number  VARCHAR(500) DEFAULT '',
   installment     VARCHAR(100) DEFAULT '',
-  value           NUMERIC(18,2) DEFAULT 0,
+  -- `value` là số ĐÃ GỒM THUẾ (con số trên hoá đơn). Chỉ số "Doanh thu" trên
+  -- Dashboard và trang Chỉ tiêu đọc `value_before_tax`, KHÔNG đọc cột này.
+  -- `payment` (tiền đã thu) giữ nguyên là số đã gồm thuế.
+  value             NUMERIC(18,2) DEFAULT 0,
+  value_before_tax  NUMERIC(18,2) DEFAULT 0,
+  tax_rate          NUMERIC(5,2)  DEFAULT 5.00,  -- PHẦN TRĂM: 5.00 = 5%
   issued_date     DATE,
   payment         NUMERIC(18,2) DEFAULT 0,
   created_at      TIMESTAMPTZ DEFAULT NOW(),
@@ -323,6 +332,26 @@ DO $$ BEGIN
 
   -- Mốc "đã xem thông báo" — mirror của migrate-add-notifications-read.sql.
   ALTER TABLE users ADD COLUMN IF NOT EXISTS notifications_read_at TIMESTAMPTZ;
+
+  -- Giá trị TRƯỚC THUẾ tách thành cột riêng — mirror của migrate-add-pretax-value.sql.
+  --   value            số ĐÃ GỒM THUẾ, đúng con số trên chứng từ (không đổi)
+  --   value_before_tax số TRƯỚC THUẾ, nguồn DUY NHẤT của Doanh thu và Nguồn việc
+  --   tax_rate         PHẦN TRĂM (5.00 = 5%), không phải phân số
+  -- Quan hệ: value = ROUND(value_before_tax * (1 + tax_rate/100), 2)
+  ALTER TABLE invoices  ADD COLUMN IF NOT EXISTS value_before_tax NUMERIC(18,2) DEFAULT 0;
+  ALTER TABLE invoices  ADD COLUMN IF NOT EXISTS tax_rate         NUMERIC(5,2)  DEFAULT 5.00;
+  ALTER TABLE contracts ADD COLUMN IF NOT EXISTS value_before_tax NUMERIC(18,2) DEFAULT 0;
+  ALTER TABLE contracts ADD COLUMN IF NOT EXISTS tax_rate         NUMERIC(5,2)  DEFAULT 5.00;
+
+  -- Backfill dữ liệu cũ (chỉ có số đã gồm thuế) theo thuế suất mặc định 5%.
+  -- Đây là chỗ DUY NHẤT còn phép chia 1.05 — code chạy đọc thẳng value_before_tax.
+  -- Điều kiện `= 0` để lần boot sau không ghi đè số đã nhập tay qua UI.
+  UPDATE invoices  SET value_before_tax = ROUND(value / 1.05, 2)
+    WHERE COALESCE(value_before_tax, 0) = 0 AND COALESCE(value, 0) <> 0;
+  UPDATE contracts SET value_before_tax = ROUND(value / 1.05, 2)
+    WHERE COALESCE(value_before_tax, 0) = 0 AND COALESCE(value, 0) <> 0;
+  UPDATE invoices  SET tax_rate = 5.00 WHERE tax_rate IS NULL;
+  UPDATE contracts SET tax_rate = 5.00 WHERE tax_rate IS NULL;
 
   -- Thống nhất quy ước NULL cho khoá ngoại mềm của plan items
   -- (weekly trước đây ghi '', monthly ghi NULL -> JOIN và so sánh dễ sai)

@@ -44,7 +44,12 @@ export interface Contract {
     name: string;
     provinceId: string;
     businessField: 'ALL' | 'B2B' | 'B2C';
+    // `value` là số ĐÃ GỒM THUẾ — con số trên hợp đồng. Chỉ tiêu "Nguồn việc" trên
+    // Dashboard và trang Chỉ tiêu đọc `valueBeforeTax`. Server tính `value` từ
+    // `valueBeforeTax` × (1 + taxRate/100), đừng gửi hai số lệch nhau.
     value: number;
+    valueBeforeTax: number;
+    taxRate: number;    // phần trăm: 5 = 5%
     startDate: string;
     endDate: string;
     // IN_PROGRESS là giá trị chuẩn (khớp APP_CONFIG.STATUS ở backend và dữ liệu
@@ -214,8 +219,13 @@ export interface Invoice {
     contractId: string;
     invoiceNumber: string;
     installment: string; // Đợt thanh toán (e.g. "Đợt 1")
+    // `value` là số ĐÃ GỒM THUẾ — con số trên hoá đơn. Chỉ tiêu "Doanh thu" trên
+    // Dashboard và trang Chỉ tiêu đọc `valueBeforeTax`. Server tính `value` từ
+    // `valueBeforeTax` × (1 + taxRate/100), đừng gửi hai số lệch nhau.
     value: number;
-    paidAmount?: number; // Số tiền thực thu (null/undefined = bằng value)
+    valueBeforeTax: number;
+    taxRate: number;     // phần trăm: 5 = 5%
+    paidAmount?: number; // Số tiền thực thu, ĐÃ GỒM THUẾ (null/undefined = bằng value)
     issuedDate: string;
     // KHÔNG có trường `status`: bảng invoices không có cột tương ứng và API không
     // trả về. Trạng thái thanh toán suy ra từ paidAmount so với value.

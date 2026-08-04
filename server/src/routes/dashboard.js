@@ -23,27 +23,33 @@ router.get('/stats', async (req, res, next) => {
       const bizYear = viewMode === 'ALL' ? null : year;
       const bizMonth = (viewMode === 'ALL' || viewMode === 'YEAR') ? null : month;
 
+      // Nguồn việc và Doanh thu đọc cột `value_before_tax` — số TRƯỚC THUẾ.
+      // `value` là số đã gồm thuế, chỉ dùng để hiển thị đúng con số trên chứng từ.
+      // Chỉ tiêu trong bảng `targets` cũng nhập theo số trước thuế nên hai vế của
+      // tỷ lệ đạt cùng đơn vị. Quan hệ hai cột: xem routes/_taxAmounts.js.
+      // Thu tiền (`payment`) KHÔNG đổi — nó là dòng tiền thực tế, đã gồm thuế.
+
       // KPI: Nguồn việc MTD (contracts signed this month)
       const nvMtd = await query(`
-        SELECT COUNT(*) as count, COALESCE(SUM(value), 0) as total
+        SELECT COUNT(*) as count, COALESCE(SUM(value_before_tax), 0) as total
         FROM contracts WHERE EXTRACT(YEAR FROM start_date) = $1 AND EXTRACT(MONTH FROM start_date) = $2
       `, [year, month]);
 
       // KPI: Nguồn việc YTD
       const nvYtd = await query(`
-        SELECT COUNT(*) as count, COALESCE(SUM(value), 0) as total
+        SELECT COUNT(*) as count, COALESCE(SUM(value_before_tax), 0) as total
         FROM contracts WHERE EXTRACT(YEAR FROM start_date) = $1
       `, [year]);
 
       // KPI: Doanh thu YTD (invoice values)
       const dtYtd = await query(`
-        SELECT COALESCE(SUM(value), 0) as total
+        SELECT COALESCE(SUM(value_before_tax), 0) as total
         FROM invoices WHERE EXTRACT(YEAR FROM issued_date) = $1
       `, [year]);
 
       // KPI: Doanh thu MTD
       const dtMtd = await query(`
-        SELECT COALESCE(SUM(value), 0) as total
+        SELECT COALESCE(SUM(value_before_tax), 0) as total
         FROM invoices WHERE EXTRACT(YEAR FROM issued_date) = $1 AND EXTRACT(MONTH FROM issued_date) = $2
       `, [year, month]);
 
@@ -125,14 +131,14 @@ router.get('/stats', async (req, res, next) => {
 
       // Monthly trend: nguồn việc
       const nvTrend = await query(`
-        SELECT EXTRACT(MONTH FROM start_date)::int as m, COALESCE(SUM(value)/1000000, 0) as actual
+        SELECT EXTRACT(MONTH FROM start_date)::int as m, COALESCE(SUM(value_before_tax)/1000000, 0) as actual
         FROM contracts WHERE ($1::int IS NULL OR EXTRACT(YEAR FROM start_date) = $1)
         GROUP BY m ORDER BY m
       `, [bizYear]);
 
       // Monthly trend: doanh thu
       const dtTrend = await query(`
-        SELECT EXTRACT(MONTH FROM issued_date)::int as m, COALESCE(SUM(value)/1000000, 0) as actual
+        SELECT EXTRACT(MONTH FROM issued_date)::int as m, COALESCE(SUM(value_before_tax)/1000000, 0) as actual
         FROM invoices WHERE ($1::int IS NULL OR EXTRACT(YEAR FROM issued_date) = $1)
         GROUP BY m ORDER BY m
       `, [bizYear]);
@@ -172,7 +178,7 @@ router.get('/stats', async (req, res, next) => {
       // Branch breakdown — Doanh thu (Revenue from invoices, not contracts)
       const branchBreak = await query(`
         SELECT c.branch_id, b.code as branch_code, b.name as branch_name,
-          COALESCE(SUM(i.value)/1000000, 0) as actual
+          COALESCE(SUM(i.value_before_tax)/1000000, 0) as actual
         FROM invoices i
         LEFT JOIN contracts c ON i.contract_id = c.id
         LEFT JOIN branches b ON c.branch_id = b.id
@@ -239,14 +245,14 @@ router.get('/stats', async (req, res, next) => {
       // Business structure — 3-Chart System (Nguồn Việc, Doanh Thu, Thu Tiền)
       const [swQuery, revQuery, payQuery] = await Promise.all([
         query(`
-          SELECT UPPER(COALESCE(NULLIF(business_field, ''), 'OTHER')) as field, COALESCE(SUM(value), 0) as total_val
+          SELECT UPPER(COALESCE(NULLIF(business_field, ''), 'OTHER')) as field, COALESCE(SUM(value_before_tax), 0) as total_val
           FROM contracts
           WHERE ($1::int IS NULL OR EXTRACT(YEAR FROM start_date) = $1)
             AND ($2::int IS NULL OR EXTRACT(MONTH FROM start_date) = $2)
           GROUP BY field
         `, [bizYear, bizMonth]),
         query(`
-          SELECT UPPER(COALESCE(NULLIF(c.business_field, ''), 'OTHER')) as field, COALESCE(SUM(i.value), 0) as total_val
+          SELECT UPPER(COALESCE(NULLIF(c.business_field, ''), 'OTHER')) as field, COALESCE(SUM(i.value_before_tax), 0) as total_val
           FROM invoices i
           LEFT JOIN contracts c ON i.contract_id = c.id
           WHERE ($1::int IS NULL OR EXTRACT(YEAR FROM i.issued_date) = $1)
@@ -287,12 +293,12 @@ router.get('/stats', async (req, res, next) => {
       const prevMonth = month === 1 ? 12 : month - 1;
       const prevYear = month === 1 ? year - 1 : year;
       const nvPrevMonth = await query(`
-        SELECT COALESCE(SUM(value)/1000000, 0) as total
+        SELECT COALESCE(SUM(value_before_tax)/1000000, 0) as total
         FROM contracts WHERE EXTRACT(YEAR FROM start_date) = $1 AND EXTRACT(MONTH FROM start_date) = $2
       `, [prevYear, prevMonth]);
 
       const dtPrevMonth = await query(`
-        SELECT COALESCE(SUM(value)/1000000, 0) as total
+        SELECT COALESCE(SUM(value_before_tax)/1000000, 0) as total
         FROM invoices WHERE EXTRACT(YEAR FROM issued_date) = $1 AND EXTRACT(MONTH FROM issued_date) = $2
       `, [prevYear, prevMonth]);
 
@@ -306,8 +312,8 @@ router.get('/stats', async (req, res, next) => {
       // mà EXTRACT của NULL cho NULL nên bản ghi đó rơi khỏi hết các kỳ. Nếu ở đây
       // không lọc, nó vẫn cộng vào all-time và tổng các năm sẽ không bao giờ bằng
       // tổng "Tất cả" — chênh đúng bằng phần dữ liệu mồ côi, không có cảnh báo nào.
-      const nvAllTime = await query(`SELECT COALESCE(SUM(value)/1000000, 0) as total FROM contracts WHERE start_date IS NOT NULL`);
-      const dtAllTime = await query(`SELECT COALESCE(SUM(value)/1000000, 0) as total FROM invoices WHERE issued_date IS NOT NULL`);
+      const nvAllTime = await query(`SELECT COALESCE(SUM(value_before_tax)/1000000, 0) as total FROM contracts WHERE start_date IS NOT NULL`);
+      const dtAllTime = await query(`SELECT COALESCE(SUM(value_before_tax)/1000000, 0) as total FROM invoices WHERE issued_date IS NOT NULL`);
       const ttAllTime = await query(`SELECT COALESCE(SUM(payment)/1000000, 0) as total FROM invoices WHERE issued_date IS NOT NULL`);
 
       const nvMom = Math.round((nvMtdVal - parseFloat(nvPrevMonth.rows[0].total)) * 100) / 100;
@@ -431,13 +437,13 @@ router.get('/branch-performance', async (req, res, next) => {
 
     for (const b of branches.rows) {
       const nvByMonth = await query(`
-        SELECT EXTRACT(MONTH FROM start_date)::int as m, COALESCE(SUM(value)/1000000, 0) as total
+        SELECT EXTRACT(MONTH FROM start_date)::int as m, COALESCE(SUM(value_before_tax)/1000000, 0) as total
         FROM contracts WHERE branch_id = $1 AND EXTRACT(YEAR FROM start_date) = $2
         GROUP BY m
       `, [b.id, y]);
 
       const dtByMonth = await query(`
-        SELECT EXTRACT(MONTH FROM i.issued_date)::int as m, COALESCE(SUM(i.value)/1000000, 0) as total
+        SELECT EXTRACT(MONTH FROM i.issued_date)::int as m, COALESCE(SUM(i.value_before_tax)/1000000, 0) as total
         FROM invoices i JOIN contracts c ON i.contract_id = c.id
         WHERE c.branch_id = $1 AND EXTRACT(YEAR FROM i.issued_date) = $2
         GROUP BY m
@@ -469,12 +475,12 @@ router.get('/general-performance', async (req, res, next) => {
     const y = year || new Date().getFullYear();
 
     const nvByMonth = await query(`
-      SELECT EXTRACT(MONTH FROM start_date)::int as m, COALESCE(SUM(value)/1000000, 0) as total
+      SELECT EXTRACT(MONTH FROM start_date)::int as m, COALESCE(SUM(value_before_tax)/1000000, 0) as total
       FROM contracts WHERE EXTRACT(YEAR FROM start_date) = $1 GROUP BY m
     `, [y]);
 
     const dtByMonth = await query(`
-      SELECT EXTRACT(MONTH FROM issued_date)::int as m, COALESCE(SUM(value)/1000000, 0) as total
+      SELECT EXTRACT(MONTH FROM issued_date)::int as m, COALESCE(SUM(value_before_tax)/1000000, 0) as total
       FROM invoices WHERE EXTRACT(YEAR FROM issued_date) = $1 GROUP BY m
     `, [y]);
 

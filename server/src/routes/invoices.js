@@ -9,7 +9,8 @@ const router = require('express').Router();
 const { query } = require('../config/database');
 const { v4: uuidv4 } = require('uuid');
 const CacheService = require('../services/cacheService');
-const { badRequest, assertRequiredDate } = require('./_planValidators');
+const { badRequest, assertRequiredDate, assertNonNegative } = require('./_planValidators');
+const { resolveAmounts, DEFAULT_TAX_RATE } = require('./_taxAmounts');
 
 async function logActivity(email, action, description) {
   try {
@@ -26,7 +27,13 @@ function toInvoice(r) {
     contractId: r.contract_id,
     invoiceNumber: r.invoice_number,
     installment: r.installment || '',
+    // `value` là số ĐÃ GỒM THUẾ (trên hoá đơn); `valueBeforeTax` là số doanh thu
+    // thực mà Dashboard và trang Chỉ tiêu đọc. Xem _taxAmounts.js.
     value: parseFloat(r.value) || 0,
+    valueBeforeTax: parseFloat(r.value_before_tax) || 0,
+    taxRate: r.tax_rate !== null && r.tax_rate !== undefined
+      ? parseFloat(r.tax_rate)
+      : DEFAULT_TAX_RATE,
     issuedDate: r.issued_date,
     paidAmount: r.payment !== null && r.payment !== undefined ? parseFloat(r.payment) : null,
     createdAt: r.created_at,
@@ -36,15 +43,6 @@ function toInvoice(r) {
     contractName: r.contract_name || '',
     branchCode: r.branch_code || '',
   };
-}
-
-/** Số tiền: phải là số hữu hạn và không âm */
-function assertAmount(value, field) {
-  if (value === undefined || value === null || value === '') return 0;
-  const n = Number(value);
-  if (!Number.isFinite(n)) throw badRequest(`${field} must be a number`);
-  if (n < 0) throw badRequest(`${field} must not be negative`);
-  return n;
 }
 
 // GET /invoices — all invoices
@@ -74,8 +72,10 @@ router.post('/', async (req, res, next) => {
     const exists = await query('SELECT 1 FROM contracts WHERE id = $1', [d.contractId]);
     if (exists.rowCount === 0) throw badRequest('Contract not found');
 
-    const value = assertAmount(d.value, 'value');
-    const paid = assertAmount(d.paidAmount !== undefined ? d.paidAmount : d.payment, 'paidAmount');
+    // Ba cột tiền luôn được tính cùng nhau: client gửi số TRƯỚC thuế, `value`
+    // (số trên hoá đơn) là dẫn xuất. Xem _taxAmounts.js.
+    const { valueBeforeTax, taxRate, value } = resolveAmounts(d);
+    const paid = assertNonNegative(d.paidAmount !== undefined ? d.paidAmount : d.payment, 'paidAmount');
 
     // issued_date là mốc duy nhất để dashboard xếp hoá đơn vào kỳ nào. Bỏ trống thì
     // bản ghi rơi khỏi mọi thống kê theo năm/tháng nhưng vẫn cộng vào tổng all-time,
@@ -85,11 +85,12 @@ router.post('/', async (req, res, next) => {
 
     const id = uuidv4();
     await query(`
-      INSERT INTO invoices (id, contract_id, invoice_number, installment, value, issued_date, payment, files)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      INSERT INTO invoices (id, contract_id, invoice_number, installment,
+                            value, value_before_tax, tax_rate, issued_date, payment, files)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
     `, [
       id, d.contractId, d.invoiceNumber || '', d.installment || '',
-      value, d.issuedDate, paid, d.files || ''
+      value, valueBeforeTax, taxRate, d.issuedDate, paid, d.files || ''
     ]);
 
     // Người thực hiện lấy từ JWT, không lấy d.userId do client gửi (giả mạo được).
@@ -111,15 +112,19 @@ router.put('/:id', async (req, res, next) => {
     // Mỗi cột chỉ nhận MỘT khoá đầu vào. Trước đây map cả `paidAmount` lẫn
     // `payment` về cột `payment`; gửi cả hai sinh "SET payment=$1, payment=$2"
     // → PostgreSQL 42701 multiple assignments to same column.
+    //
+    // `value` CỐ Ý không có trong bảng này: nó là số dẫn xuất từ value_before_tax
+    // và tax_rate, phải tính lại cả cụm ba cột bên dưới. Map thẳng vào đây sẽ cho
+    // phép client ghi `value` lệch khỏi `value_before_tax`, và cũng sinh đúng lỗi
+    // 42701 nói trên khi client gửi kèm `valueBeforeTax`.
     const mapping = {
       contractId: 'contract_id', invoiceNumber: 'invoice_number',
-      installment: 'installment', value: 'value',
+      installment: 'installment',
       issuedDate: 'issued_date', paidAmount: 'payment',
       files: 'files'
     };
 
-    if (d.value !== undefined) assertAmount(d.value, 'value');
-    if (d.paidAmount !== undefined) assertAmount(d.paidAmount, 'paidAmount');
+    if (d.paidAmount !== undefined) assertNonNegative(d.paidAmount, 'paidAmount');
 
     const fields = [];
     const values = [];
@@ -131,6 +136,24 @@ router.put('/:id', async (req, res, next) => {
         values.push(d[jsKey]);
         idx++;
       }
+    }
+
+    // Ba cột tiền đi chung một cụm. Phải đọc bản ghi hiện tại trước: sửa riêng
+    // thuế suất thì value_before_tax giữ nguyên còn `value` phải tính lại theo
+    // suất mới — không có bản ghi cũ thì không biết lấy gì mà nhân.
+    if (d.valueBeforeTax !== undefined || d.taxRate !== undefined || d.value !== undefined) {
+      const cur = await query(
+        'SELECT value, value_before_tax, tax_rate FROM invoices WHERE id = $1', [id]
+      );
+      if (cur.rowCount === 0) {
+        const err = new Error('Invoice not found');
+        err.statusCode = 404;
+        throw err;
+      }
+      const amounts = resolveAmounts(d, cur.rows[0]);
+      fields.push(`value = $${idx}`);            values.push(amounts.value);          idx++;
+      fields.push(`value_before_tax = $${idx}`); values.push(amounts.valueBeforeTax); idx++;
+      fields.push(`tax_rate = $${idx}`);         values.push(amounts.taxRate);        idx++;
     }
 
     if (fields.length === 0) throw badRequest('No fields to update');

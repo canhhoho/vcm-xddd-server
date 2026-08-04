@@ -7,7 +7,7 @@ const { query } = require('../config/database');
 const { v4: uuidv4 } = require('uuid');
 const CacheService = require('../services/cacheService');
 const { normalizeTargetValue } = require('./_targetUnits');
-const { normalizeTargetRow, targetKey } = require('./_targetNormalize');
+const { normalizeTargetRow, targetKey, pickWinner } = require('./_targetNormalize');
 const { conflict } = require('./_planValidators');
 
 /**
@@ -43,8 +43,26 @@ async function logActivity(email, action, description) {
 }
 
 /**
- * Pre-compute ALL actual values in 3 batch queries instead of N per-record queries.
- * Returns a lookup map: key = `${type}|${periodType}|${period}|${unitId}` -> actualValue
+ * Tính sẵn TOÀN BỘ giá trị thực hiện bằng vài query gộp, thay cho N query mỗi bản ghi.
+ * Trả về map tra cứu: khoá = `${type}|${periodType}|${period}|${unitId}` -> actualValue
+ *
+ * ĐƠN VỊ: Doanh thu và Nguồn việc đọc `value_before_tax` (số TRƯỚC THUẾ), cùng đơn vị
+ * với `targets.target_value`. Thu tiền đọc `payment` (đã gồm thuế) — xem _taxAmounts.js.
+ *
+ * VÌ SAO MỖI CHỈ SỐ HAI QUERY, KHÔNG PHẢI MỘT:
+ * Bản cũ chỉ chạy một query gộp theo `c.branch_id` rồi suy số cấp công ty bằng cách
+ * cộng các nhóm chi nhánh lại. Sai hai chỗ, cả hai đều âm thầm:
+ *
+ *   1. Hoá đơn `contract_id` NULL bị JOIN loại khỏi số GENERAL, trong khi
+ *      /dashboard/general-performance và /dashboard/stats vẫn tính chúng. Cùng một kỳ
+ *      ra hai con số, không có cảnh báo nào.
+ *   2. Bản ghi thiếu `branch_id` bị CỘNG ĐÔI: `r.branch_id || ''` cho ra chuỗi rỗng,
+ *      đúng bằng unitId của bucket GENERAL, mà setActual thì cộng dồn — nên hai lời
+ *      gọi liên tiếp ghi vào cùng một khoá.
+ *
+ * Quy tắc thống nhất từ nay: **số cấp công ty tính trên MỌI bản ghi có ngày, không
+ * JOIN; số cấp chi nhánh bắt buộc JOIN và bỏ qua bản ghi không có chi nhánh.**
+ * Đúng cùng quy tắc mà dashboard.js đang dùng.
  */
 async function calcAllActuals() {
   const actuals = {};
@@ -54,91 +72,98 @@ async function calcAllActuals() {
     actuals[key] = (actuals[key] || 0) + value;
   };
 
-  // ── Batch 1: NGUON_VIEC ── contracts grouped by branch + year/month
-  const nvRows = await query(`
-    SELECT
-      c.branch_id,
-      EXTRACT(YEAR FROM c.start_date)::int AS yr,
-      EXTRACT(MONTH FROM c.start_date)::int AS mo,
-      COALESCE(SUM(c.value), 0) / 1000000.0 AS total
-    FROM contracts c
-    WHERE c.start_date IS NOT NULL
-    GROUP BY c.branch_id, yr, mo
-  `);
-  for (const r of nvRows.rows) {
-    const yr = r.yr, mo = String(r.mo).padStart(2, '0');
-    const q = Math.ceil(r.mo / 3);
-    const val = parseFloat(r.total);
-    const branchId = r.branch_id || '';
+  /** Một dòng {yr, mo, total} đóng góp vào cả ba kỳ MONTH/QUARTER/YEAR của một đơn vị */
+  const spread = (type, unitId, rows) => {
+    for (const r of rows) {
+      const yr = r.yr;
+      const mo = String(r.mo).padStart(2, '0');
+      const q = Math.ceil(r.mo / 3);
+      const val = parseFloat(r.total);
+      const unit = unitId === null ? (r.branch_id || '') : unitId;
 
-    // MONTH
-    setActual('NGUON_VIEC', 'MONTH', `${yr}-${mo}`, branchId, val);
-    setActual('NGUON_VIEC', 'MONTH', `${yr}-${mo}`, '', val); // GENERAL
-    // QUARTER
-    setActual('NGUON_VIEC', 'QUARTER', `${yr}-Q${q}`, branchId, val);
-    setActual('NGUON_VIEC', 'QUARTER', `${yr}-Q${q}`, '', val);
-    // YEAR
-    setActual('NGUON_VIEC', 'YEAR', `${yr}`, branchId, val);
-    setActual('NGUON_VIEC', 'YEAR', `${yr}`, '', val);
-  }
+      setActual(type, 'MONTH', `${yr}-${mo}`, unit, val);
+      setActual(type, 'QUARTER', `${yr}-Q${q}`, unit, val);
+      setActual(type, 'YEAR', `${yr}`, unit, val);
+    }
+  };
 
-  // ── Batch 2: DOANH_THU ── invoices grouped by branch + year/month
-  const dtRows = await query(`
-    SELECT
-      c.branch_id,
-      EXTRACT(YEAR FROM i.issued_date)::int AS yr,
-      EXTRACT(MONTH FROM i.issued_date)::int AS mo,
-      COALESCE(SUM(i.value), 0) / 1000000.0 AS total
-    FROM invoices i
-    JOIN contracts c ON i.contract_id = c.id
-    WHERE i.issued_date IS NOT NULL
-    GROUP BY c.branch_id, yr, mo
-  `);
-  for (const r of dtRows.rows) {
-    const yr = r.yr, mo = String(r.mo).padStart(2, '0');
-    const q = Math.ceil(r.mo / 3);
-    const val = parseFloat(r.total);
-    const branchId = r.branch_id || '';
+  const [nvBranch, nvGeneral, dtBranch, dtGeneral, ttBranch, ttGeneral] = await Promise.all([
+    // ── NGUON_VIEC theo chi nhánh ──
+    query(`
+      SELECT c.branch_id,
+             EXTRACT(YEAR FROM c.start_date)::int AS yr,
+             EXTRACT(MONTH FROM c.start_date)::int AS mo,
+             COALESCE(SUM(c.value_before_tax), 0) / 1000000.0 AS total
+      FROM contracts c
+      WHERE c.start_date IS NOT NULL AND COALESCE(c.branch_id, '') <> ''
+      GROUP BY c.branch_id, yr, mo
+    `),
+    // ── NGUON_VIEC cấp công ty ──
+    query(`
+      SELECT EXTRACT(YEAR FROM start_date)::int AS yr,
+             EXTRACT(MONTH FROM start_date)::int AS mo,
+             COALESCE(SUM(value_before_tax), 0) / 1000000.0 AS total
+      FROM contracts
+      WHERE start_date IS NOT NULL
+      GROUP BY yr, mo
+    `),
+    // ── DOANH_THU theo chi nhánh ──
+    query(`
+      SELECT c.branch_id,
+             EXTRACT(YEAR FROM i.issued_date)::int AS yr,
+             EXTRACT(MONTH FROM i.issued_date)::int AS mo,
+             COALESCE(SUM(i.value_before_tax), 0) / 1000000.0 AS total
+      FROM invoices i
+      JOIN contracts c ON i.contract_id = c.id
+      WHERE i.issued_date IS NOT NULL AND COALESCE(c.branch_id, '') <> ''
+      GROUP BY c.branch_id, yr, mo
+    `),
+    // ── DOANH_THU cấp công ty ──
+    query(`
+      SELECT EXTRACT(YEAR FROM issued_date)::int AS yr,
+             EXTRACT(MONTH FROM issued_date)::int AS mo,
+             COALESCE(SUM(value_before_tax), 0) / 1000000.0 AS total
+      FROM invoices
+      WHERE issued_date IS NOT NULL
+      GROUP BY yr, mo
+    `),
+    // ── THU_TIEN theo chi nhánh ── (payment: đã gồm thuế, không đổi cột)
+    query(`
+      SELECT c.branch_id,
+             EXTRACT(YEAR FROM i.issued_date)::int AS yr,
+             EXTRACT(MONTH FROM i.issued_date)::int AS mo,
+             COALESCE(SUM(i.payment), 0) / 1000000.0 AS total
+      FROM invoices i
+      JOIN contracts c ON i.contract_id = c.id
+      WHERE i.issued_date IS NOT NULL AND COALESCE(c.branch_id, '') <> ''
+      GROUP BY c.branch_id, yr, mo
+    `),
+    // ── THU_TIEN cấp công ty ──
+    // Bỏ điều kiện `payment > 0` của bản cũ: dashboard.js không lọc, và
+    // assertNonNegative đã chặn số âm ở đường ghi nên hai bên ra cùng tổng.
+    query(`
+      SELECT EXTRACT(YEAR FROM issued_date)::int AS yr,
+             EXTRACT(MONTH FROM issued_date)::int AS mo,
+             COALESCE(SUM(payment), 0) / 1000000.0 AS total
+      FROM invoices
+      WHERE issued_date IS NOT NULL
+      GROUP BY yr, mo
+    `),
+  ]);
 
-    setActual('DOANH_THU', 'MONTH', `${yr}-${mo}`, branchId, val);
-    setActual('DOANH_THU', 'MONTH', `${yr}-${mo}`, '', val);
-    setActual('DOANH_THU', 'QUARTER', `${yr}-Q${q}`, branchId, val);
-    setActual('DOANH_THU', 'QUARTER', `${yr}-Q${q}`, '', val);
-    setActual('DOANH_THU', 'YEAR', `${yr}`, branchId, val);
-    setActual('DOANH_THU', 'YEAR', `${yr}`, '', val);
-  }
-
-  // ── Batch 3: THU_TIEN ── paid invoices grouped by branch + year/month
-  const ttRows = await query(`
-    SELECT
-      c.branch_id,
-      EXTRACT(YEAR FROM i.issued_date)::int AS yr,
-      EXTRACT(MONTH FROM i.issued_date)::int AS mo,
-      COALESCE(SUM(i.payment), 0) / 1000000.0 AS total
-    FROM invoices i
-    JOIN contracts c ON i.contract_id = c.id
-    WHERE i.payment > 0 AND i.issued_date IS NOT NULL
-    GROUP BY c.branch_id, yr, mo
-  `);
-  for (const r of ttRows.rows) {
-    const yr = r.yr, mo = String(r.mo).padStart(2, '0');
-    const q = Math.ceil(r.mo / 3);
-    const val = parseFloat(r.total);
-    const branchId = r.branch_id || '';
-
-    setActual('THU_TIEN', 'MONTH', `${yr}-${mo}`, branchId, val);
-    setActual('THU_TIEN', 'MONTH', `${yr}-${mo}`, '', val);
-    setActual('THU_TIEN', 'QUARTER', `${yr}-Q${q}`, branchId, val);
-    setActual('THU_TIEN', 'QUARTER', `${yr}-Q${q}`, '', val);
-    setActual('THU_TIEN', 'YEAR', `${yr}`, branchId, val);
-    setActual('THU_TIEN', 'YEAR', `${yr}`, '', val);
-  }
+  // unitId = null nghĩa là lấy từ cột branch_id của từng dòng; '' là bucket GENERAL
+  spread('NGUON_VIEC', null, nvBranch.rows);
+  spread('NGUON_VIEC', '', nvGeneral.rows);
+  spread('DOANH_THU', null, dtBranch.rows);
+  spread('DOANH_THU', '', dtGeneral.rows);
+  spread('THU_TIEN', null, ttBranch.rows);
+  spread('THU_TIEN', '', ttGeneral.rows);
 
   return actuals;
 }
 
-  // GET /targets
-router.get('/', async (req, res) => {
+// GET /targets
+router.get('/', async (req, res, next) => {
   try {
     const data = await CacheService.getOrSet('TARGETS_LIST', async () => {
       const result = await query('SELECT * FROM targets ORDER BY created_at DESC');
@@ -157,72 +182,54 @@ router.get('/', async (req, res) => {
         return Math.round((actualsMap[key] || 0) * 100) / 100;
       };
 
-      const currentYear = new Date().getFullYear().toString();
+      // Chuẩn hoá dùng chung với dashboard.js qua _targetNormalize.js. Trước đây
+      // đoạn này là bản CHÉP TAY của cùng thuật toán; hai bản sửa lệch nhau là cách
+      // Dashboard và trang Chỉ tiêu ra hai số khác nhau cho cùng một kỳ.
+      //
+      // Dữ liệu di cư từ Google Sheets khiến nhiều dòng THÔ khác nhau quy về CÙNG
+      // một chỉ tiêu (period='' và period='2026' đều là YEAR/2026). DB hiện có đúng
+      // ca đó: t-001 (=500) và t-008 (period rỗng, =100).
+      //
+      // Vẫn trả về ĐỦ mọi dòng để admin còn thấy và xoá được dòng trùng qua UI;
+      // dòng thua chỉ bị gắn cờ `isDuplicate` để frontend không cộng/hiển thị nhầm.
+      // Quy tắc chọn dòng thắng nằm ở _targetNormalize.js:pickWinner — cùng quy tắc
+      // mà dashboard.js dùng, nên hai màn hình luôn chọn cùng một dòng.
+      const groups = new Map();
+      for (const r of result.rows) {
+        const norm = normalizeTargetRow(r);
+        const key = targetKey(norm);
+        if (!groups.has(key)) groups.set(key, []);
+        groups.get(key).push(r);
+      }
+      const winnerIds = new Set();
+      for (const rows of groups.values()) winnerIds.add(pickWinner(rows).id);
+
       const targets = [];
       for (const r of result.rows) {
-        const isGeneral = r.unit_type === 'GENERAL' || !r.unit_type;
+        const norm = normalizeTargetRow(r);
         const unitIdStr = (r.unit_id || '').trim();
         const branch = branchMap[unitIdStr] || branchMap[unitIdStr.toUpperCase()];
-
-        let tType = (r.type || '').toUpperCase().trim();
-        if (tType.includes('NGUON') || tType.includes('NGUỒN')) tType = 'NGUON_VIEC';
-        else if (tType.includes('DOANH')) tType = 'DOANH_THU';
-        else if (tType.includes('THU')) tType = 'THU_TIEN';
-
-        let pType = (r.period_type || '').toUpperCase().trim();
-        if (pType.includes('NĂM') || pType.includes('NAM')) pType = 'YEAR';
-        else if (pType.includes('QUÝ') || pType.includes('QUY')) pType = 'QUARTER';
-        else if (pType.includes('THÁNG') || pType.includes('THANG')) pType = 'MONTH';
-
-        let period = String(r.period || '').trim();
-        period = period.replace(/\.0$/, '').replace(/,/g, '');
-        period = period.toUpperCase();
-
-        if (pType === 'YEAR') {
-          if (period.includes('NĂM') || period.includes('NAM') || !period.includes('-')) {
-            period = period.replace(/[^\d]/g, '');
-          }
-          if (!period || period === '0') period = currentYear;
-        } else if (pType === 'QUARTER') {
-          if (!period.includes('-')) {
-            const digits = period.replace(/[^\d]/g, '');
-            const q = digits ? digits.charAt(digits.length - 1) : '1';
-            const yearPart = digits.length > 1 ? digits.slice(0, -1) : currentYear;
-            period = `${yearPart}-Q${q}`;
-          }
-        } else if (pType === 'MONTH') {
-          if (!period.includes('-')) {
-            const digits = period.replace(/[^\d]/g, '');
-            if (digits.length >= 6) {
-              period = `${digits.slice(0, 4)}-${digits.slice(4, 6)}`;
-            } else if (digits.length <= 2) {
-              const m = (digits || '01').padStart(2, '0');
-              period = `${currentYear}-${m}`;
-            } else {
-              period = `${currentYear}-${digits.padStart(2, '0')}`;
-            }
-          }
-        }
-
         const resolvedUnitId = branch ? branch.id : unitIdStr;
 
         // ── Lookup actual from pre-computed map (O(1), no DB call) ──
-        const lookupId = isGeneral ? '' : resolvedUnitId;
-        const actualValue = getActual(tType, pType, period, lookupId);
+        const lookupId = norm.isGeneral ? '' : resolvedUnitId;
+        const actualValue = getActual(norm.type, norm.periodType, norm.period, lookupId);
 
-        const typeLabel = tType === 'NGUON_VIEC' ? 'Nguồn việc' : tType === 'DOANH_THU' ? 'Doanh thu' : 'Thu tiền';
-        const autoName = r.name || `${typeLabel} - ${period}`;
-
-        const targetVal = normalizeTargetValue(r.target_value, pType, isGeneral);
+        const typeLabel = norm.type === 'NGUON_VIEC' ? 'Nguồn việc'
+          : norm.type === 'DOANH_THU' ? 'Doanh thu' : 'Thu tiền';
 
         targets.push({
-          id: r.id, name: autoName, type: tType,
-          periodType: pType, period: period,
-          unitType: isGeneral ? 'GENERAL' : 'BRANCH',
+          id: r.id,
+          name: r.name || `${typeLabel} - ${norm.period}`,
+          type: norm.type,
+          periodType: norm.periodType,
+          period: norm.period,
+          unitType: norm.unitType,
           unitId: resolvedUnitId || '',
-          unitName: branch ? branch.name : (isGeneral ? 'Chung' : unitIdStr),
-          targetValue: targetVal,
+          unitName: branch ? branch.name : (norm.isGeneral ? 'Chung' : unitIdStr),
+          targetValue: normalizeTargetValue(r.target_value, norm.periodType, norm.isGeneral),
           actualValue,
+          isDuplicate: !winnerIds.has(r.id),
           createdAt: r.created_at,
         });
       }
@@ -232,7 +239,10 @@ router.get('/', async (req, res) => {
 
     res.json(data);
   } catch (err) {
-    res.json({ success: false, error: err.message });
+    // next(err) chứ không phải res.json({success:false}) với status 200: status 200
+    // khiến client coi lỗi là thành công, và err.message phơi tên bảng/cột/constraint
+    // PostgreSQL ra ngoài. errorHandler che message khi NODE_ENV=production.
+    next(err);
   }
 });
 

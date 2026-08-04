@@ -166,6 +166,8 @@ const Contracts: React.FC = () => {
         // chưa mount, giá trị sẽ mất và antd cảnh báo "useForm is not connected".
         setPendingValues({
             ...record,
+            // Ô nhập là số TRƯỚC thuế; số sau thuế là dẫn xuất, server tự tính lại.
+            taxRate: record.taxRate ?? 5,
             startDate: record.startDate && dayjs(record.startDate).isValid() ? dayjs(record.startDate) : null,
             endDate: record.endDate && dayjs(record.endDate).isValid() ? dayjs(record.endDate) : null,
         });
@@ -317,12 +319,26 @@ const Contracts: React.FC = () => {
             },
         },
         {
+            // Trước thuế = số đi vào chỉ tiêu Nguồn việc, nên để nổi bật hơn cột sau thuế
+            title: t('contracts.colValueBeforeTax'),
+            dataIndex: 'valueBeforeTax',
+            key: 'valueBeforeTax',
+            width: 150,
+            align: 'right' as const,
+            render: (value: number) => <Text strong>{(value || 0).toLocaleString('vi-VN')}</Text>,
+        },
+        {
             title: t('contracts.colValue'),
             dataIndex: 'value',
             key: 'value',
             width: 150,
             align: 'right' as const,
-            render: (value: number) => <Text strong>{value.toLocaleString('vi-VN')}</Text>,
+            render: (value: number, record: Contract) => (
+                <Text type="secondary">
+                    {(value || 0).toLocaleString('vi-VN')}
+                    <div style={{ fontSize: 11 }}>VAT {record.taxRate ?? 5}%</div>
+                </Text>
+            ),
         },
         {
             title: t('contracts.colProgress'),
@@ -434,6 +450,7 @@ const Contracts: React.FC = () => {
             t('contracts.colName'),
             t('contracts.colBranch'),
             t('contracts.colField'),
+            t('contracts.colValueBeforeTax'),
             t('contracts.colValue'),
             t('contracts.colProgress'),
             t('contracts.colStartDate'),
@@ -456,6 +473,7 @@ const Contracts: React.FC = () => {
                 toCsvCell(c.name),
                 toCsvCell(branchCode),
                 toCsvCell(c.businessField),
+                c.valueBeforeTax,
                 c.value,
                 c.progress || 0,
                 toCsvCell(formatDate(c.startDate)),
@@ -490,6 +508,7 @@ const Contracts: React.FC = () => {
                     t('invoices.exportContractCode'),
                     t('invoices.exportContractName'),
                     t('invoices.exportInstallment'),
+                    t('invoices.exportValueBeforeTax'),
                     t('invoices.exportInvoiceValue'),
                     t('invoices.exportPaymentValue'),
                     t('invoices.exportIssuedDate'),
@@ -505,6 +524,7 @@ const Contracts: React.FC = () => {
                         toCsvCell(contract?.code || ''),
                         toCsvCell(contract?.name || ''),
                         toCsvCell(inv.installment),
+                        Number(inv.valueBeforeTax) || 0,
                         Number(inv.value) || 0,
                         Number(inv.paidAmount) || 0,
                         toCsvCell(formatDate(inv.issuedDate)),
@@ -748,12 +768,16 @@ const Contracts: React.FC = () => {
                         </Col>
                     </Row>
 
+                    {/* Ô nhập là số TRƯỚC thuế — đây là số đi vào chỉ tiêu Nguồn việc.
+                        Ô sau thuế chỉ hiển thị: nó KHÔNG có prop `name` nên không nằm
+                        trong form values và không được gửi lên; server tự tính lại từ
+                        valueBeforeTax × (1 + taxRate/100). Xem routes/_taxAmounts.js. */}
                     <Row gutter={16}>
                         <Col span={12}>
                             <Form.Item
-                                name="value"
-                                label={t('contracts.formValue')}
-                                rules={[{ required: true, message: t('contracts.formValueRequired') }]}
+                                name="valueBeforeTax"
+                                label={t('contracts.formValueBeforeTax')}
+                                rules={[{ required: true, message: t('contracts.formValueBeforeTaxRequired') }]}
                             >
                                 <InputNumber
                                     style={{ width: '100%' }}
@@ -763,6 +787,33 @@ const Contracts: React.FC = () => {
                                 />
                             </Form.Item>
                         </Col>
+                        <Col span={6}>
+                            <Form.Item name="taxRate" label={t('contracts.formTaxRate')} initialValue={5}>
+                                <InputNumber style={{ width: '100%' }} min={0} max={100} addonAfter="%" />
+                            </Form.Item>
+                        </Col>
+                        <Col span={6}>
+                            <Form.Item noStyle shouldUpdate={(prev, curr) => prev.valueBeforeTax !== curr.valueBeforeTax || prev.taxRate !== curr.taxRate}>
+                                {({ getFieldValue }) => {
+                                    const before = Number(getFieldValue('valueBeforeTax')) || 0;
+                                    const rate = Number(getFieldValue('taxRate') ?? 5);
+                                    const after = Math.round(before * (1 + rate / 100) * 100) / 100;
+                                    return (
+                                        <Form.Item label={t('contracts.formValueAfterTax')} tooltip={t('contracts.formValueAfterTaxTooltip')}>
+                                            <InputNumber
+                                                style={{ width: '100%' }}
+                                                disabled
+                                                value={after}
+                                                formatter={(value) => `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
+                                            />
+                                        </Form.Item>
+                                    );
+                                }}
+                            </Form.Item>
+                        </Col>
+                    </Row>
+
+                    <Row gutter={16}>
                         <Col span={12}>
                             <Form.Item
                                 name="status"

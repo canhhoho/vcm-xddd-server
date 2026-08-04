@@ -38,6 +38,10 @@ interface Target {
     unitName?: string;
     targetValue: number;
     actualValue?: number;
+    // Server gắn cờ này cho dòng THUA trong một nhóm chỉ tiêu trùng (nhiều dòng thô
+    // quy về cùng một kỳ sau chuẩn hoá). Dòng trùng vẫn được trả về để admin xoá
+    // được qua UI, nhưng phải loại khỏi mọi phép tính. Xem routes/targets.js.
+    isDuplicate?: boolean;
     createdAt: string;
 }
 
@@ -289,9 +293,15 @@ const Targets: React.FC = () => {
     };
 
     const getGeneralTableData = (targetType: 'NGUON_VIEC' | 'DOANH_THU') => {
+        // Bỏ dòng trùng: dữ liệu di cư từ Google Sheets có nhiều dòng thô quy về
+        // cùng một chỉ tiêu (period='' và period='2026' đều là YEAR/2026). Server
+        // gắn cờ isDuplicate cho dòng thua theo đúng quy tắc mà Dashboard dùng
+        // (_targetNormalize.js:pickWinner) — không lọc ở đây thì find() lấy dòng
+        // đầu theo created_at DESC và hai màn hình ra hai số khác nhau.
         const filtered = targets.filter((t: Target) =>
             (t.unitType === 'GENERAL' || !t.unitType) &&
-            t.type === targetType
+            t.type === targetType &&
+            !t.isDuplicate
         );
 
         const rows: any[] = [];
@@ -304,41 +314,38 @@ const Targets: React.FC = () => {
             4: [10, 11, 12]
         };
 
-        // ── Step 1: Pre-compute monthly targetValues ──────────────────────────
-        const monthTargetValue: { [month: number]: number } = {};
-        for (let m = 1; m <= 12; m++) {
-            const monthPeriod = `${generalYear}-${String(m).padStart(2, '0')}`;
-            const rec = filtered.find((t: Target) => t.periodType === 'MONTH' && t.period === monthPeriod);
-            monthTargetValue[m] = rec?.targetValue || 0;
-        }
-
-        // ── Step 2: Quarter sums from months ────────────────────────────────
-        const quarterSum: { [q: number]: number } = {};
-        [1, 2, 3, 4].forEach(q => {
-            quarterSum[q] = quarterMonths[q].reduce((sum, m) => sum + monthTargetValue[m], 0);
-        });
-
-        // ── Step 3: Year sum from quarters ──────────────────────────────────
-        const yearSum = [1, 2, 3, 4].reduce((sum, q) => sum + quarterSum[q], 0);
-
         // ── Year row ─────────────────────────────────────────────────────────
+        //
+        // QUAN TRỌNG — thứ tự trong object literal: spread `...(xxxTarget || {})`
+        // phải nằm TRƯỚC các field tính toán. Trước đây nó nằm cuối, mà spread sau
+        // thì thắng, nên `targetValue` và `actualValue` vừa tính xong lập tức bị
+        // ghi đè bằng giá trị thô của bản ghi target. Biểu hiện: cột "Thực hiện"
+        // hiện số lấy từ /targets (SQL có JOIN contracts) thay vì từ
+        // /dashboard/general-performance, và hai số chỉ bằng nhau chừng nào chưa
+        // có hoá đơn nào thiếu contract_id.
+        //
+        // Vẫn phải giữ spread: handleEdit(record) cần name/createdAt/unitId… từ
+        // bản ghi gốc.
+        //
+        // Chỉ tiêu NĂM/QUÝ lấy THẲNG từ bản ghi tương ứng trong DB, không cộng dồn
+        // từ các tháng — cùng cách dashboard.js:getGeneralTarget đọc, nên card KPI
+        // và bảng này luôn ra cùng một số. Hệ quả có chủ ý: dòng Năm KHÔNG bắt buộc
+        // bằng tổng 4 dòng Quý; mỗi kỳ là một bản ghi độc lập.
         const yearTarget = filtered.find((t: Target) => t.periodType === 'YEAR' && t.period === generalYear);
         const yearActual = getGeneralActual(targetType, 'YEAR', generalYear, yearTarget?.actualValue || 0);
-        // Use month-derived sum; fallback to DB record only if no monthly data at all
-        const yearDisplayValue = yearSum > 0 ? yearSum : (yearTarget?.targetValue || 0);
         rows.push({
+            ...(yearTarget || {}),
             key: `year-${generalYear}-${targetType}`,
             id: yearTarget?.id,
             rowType: 'year',
             label: `${t('targets.year')} ${generalYear}`,
             periodType: 'YEAR',
             period: generalYear,
-            targetValue: yearDisplayValue,
+            targetValue: yearTarget?.targetValue || 0,
             actualValue: yearActual,
             hasData: !!yearTarget,
             type: targetType,
             unitType: 'GENERAL',
-            ...(yearTarget || {})
         });
 
         // ── Quarter + Month rows ─────────────────────────────────────────────
@@ -346,21 +353,19 @@ const Targets: React.FC = () => {
             const quarterPeriod = `${generalYear}-Q${q}`;
             const quarterTarget = filtered.find((t: Target) => t.periodType === 'QUARTER' && t.period === quarterPeriod);
             const quarterActual = getGeneralActual(targetType, 'QUARTER', quarterPeriod, quarterTarget?.actualValue || 0);
-            // Quarter target = sum of 3 months; fallback to DB record if no monthly data
-            const quarterDisplayValue = quarterSum[q] > 0 ? quarterSum[q] : (quarterTarget?.targetValue || 0);
             rows.push({
+                ...(quarterTarget || {}),
                 key: `quarter-${q}-${targetType}`,
                 id: quarterTarget?.id,
                 rowType: 'quarter',
                 label: `${t('targets.quarter')} ${q}`,
                 periodType: 'QUARTER',
                 period: quarterPeriod,
-                targetValue: quarterDisplayValue,
+                targetValue: quarterTarget?.targetValue || 0,
                 actualValue: quarterActual,
                 hasData: !!quarterTarget,
                 type: targetType,
                 unitType: 'GENERAL',
-                ...(quarterTarget || {})
             });
 
             quarterMonths[q].forEach(m => {
@@ -368,18 +373,18 @@ const Targets: React.FC = () => {
                 const monthTarget = filtered.find((t: Target) => t.periodType === 'MONTH' && t.period === monthPeriod);
                 const monthActual = getGeneralActual(targetType, 'MONTH', monthPeriod, monthTarget?.actualValue || 0);
                 rows.push({
+                    ...(monthTarget || {}),
                     key: `month-${m}-${targetType}`,
                     id: monthTarget?.id,
                     rowType: 'month',
                     label: `${t('targets.month')} ${m}`,
                     periodType: 'MONTH',
                     period: monthPeriod,
-                    targetValue: monthTargetValue[m],
+                    targetValue: monthTarget?.targetValue || 0,
                     actualValue: monthActual,
                     hasData: !!monthTarget,
                     type: targetType,
                     unitType: 'GENERAL',
-                    ...(monthTarget || {})
                 });
             });
         });
@@ -630,8 +635,9 @@ const Targets: React.FC = () => {
         return filteredBranches.map((branch: Branch) => {
             const targetPeriod = branchMonth ? `${branchYear}-${branchMonth}` : branchYear;
 
-            const nvTargets = targets.filter((t: Target) => t.unitType === 'BRANCH' && t.type === 'NGUON_VIEC' && t.period === targetPeriod && t.unitId === branch.id);
-            const dtTargets = targets.filter((t: Target) => t.unitType === 'BRANCH' && t.type === 'DOANH_THU' && t.period === targetPeriod && t.unitId === branch.id);
+            // !isDuplicate: reduce() bên dưới cộng dồn, nên dòng trùng sẽ nhân đôi chỉ tiêu
+            const nvTargets = targets.filter((t: Target) => t.unitType === 'BRANCH' && t.type === 'NGUON_VIEC' && t.period === targetPeriod && t.unitId === branch.id && !t.isDuplicate);
+            const dtTargets = targets.filter((t: Target) => t.unitType === 'BRANCH' && t.type === 'DOANH_THU' && t.period === targetPeriod && t.unitId === branch.id && !t.isDuplicate);
 
             return {
                 key: branch.id,
