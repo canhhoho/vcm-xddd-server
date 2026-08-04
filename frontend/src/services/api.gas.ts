@@ -633,6 +633,18 @@ export class GasApiService implements IApiService {
         return this.runGasFunction('getActivities', {});
     }
 
+    // ==================== PRESENCE (mọi user đã đăng nhập) ====================
+    // Backend GAS không có khái niệm phiên/heartbeat và không có hàm tương ứng.
+    // Trả lỗi tường minh thay vì gọi runGasFunction vào một hàm không tồn tại —
+    // cách đó cho ra lỗi khó lần ra nguyên nhân.
+    async getPresence() {
+        return { success: false, error: 'Trạng thái online không hỗ trợ ở chế độ GAS' };
+    }
+
+    async sendHeartbeat() {
+        return { success: false, error: 'Trạng thái online không hỗ trợ ở chế độ GAS' };
+    }
+
     // ==================== PROSPECTS ====================
     async getProspects(type?: string) {
         return this.runGasFunction('getProspects', type ? { type } : {});

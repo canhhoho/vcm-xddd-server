@@ -16,6 +16,17 @@
         "footer": "Make by Canhhv1@viettel.com.vn",
         "businessMgmt": "Business Management"
     },
+    "presence": {
+        "title": "Online now",
+        "count": "{{count}} user(s) online",
+        "none": "Nobody is online",
+        "online": "Online",
+        "colStatus": "Status",
+        "never": "Never signed in",
+        "justNow": "Just now",
+        "minutesAgo": "{{count}} min ago",
+        "hoursAgo": "{{count}}h ago"
+    },
     "dashboard": {
         "title": "Executive Dashboard",
         "welcome": "Welcome",

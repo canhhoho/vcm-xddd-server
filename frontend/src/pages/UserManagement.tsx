@@ -56,6 +56,8 @@ import {
     usePermissionMutations
 } from '../hooks/useUsers';
 import { useAppConfig } from '../hooks/useAppConfig';
+import { usePresence } from '../hooks/usePresence';
+import { OnlineStatus } from '../components/OnlineUsers';
 
 const { Title, Text } = Typography;
 
@@ -95,6 +97,9 @@ const UserManagement: React.FC = () => {
     const { data: modulePermissions = [], isLoading: permissionsLoading } = useModulePermissions();
     const { data: activities = [], isLoading: activitiesLoading } = useActivities(activeTab === 'activities');
     const { data: appConfig } = useAppConfig();
+    // Chỉ cần khi đang ở tab Người dùng — tránh polling 60s khi xem tab khác.
+    const { data: presence = [] } = usePresence(activeTab === 'users');
+    const presenceById = useMemo(() => new Map(presence.map(p => [p.id, p])), [presence]);
 
     // Mutations
     const { createUser, updateUser, deleteUser } = useUserMutations();
@@ -576,6 +581,19 @@ const UserManagement: React.FC = () => {
             width: 200,
             ellipsis: true,
             render: (text: string) => <Text type="secondary">{text}</Text>
+        },
+        {
+            // Trạng thái lấy từ usePresence (endpoint riêng, không cache), KHÔNG từ
+            // record của bảng users: GET /users cache 5 phút ở server và 15 phút ở
+            // client nên chấm xanh sẽ đứng hình nếu đọc từ đó.
+            title: t('presence.colStatus'),
+            key: 'presence',
+            width: 130,
+            align: 'center' as const,
+            render: (_: unknown, record: User) => {
+                const p = presenceById.get(record.id);
+                return <OnlineStatus online={p?.online ?? false} lastSeenAt={p?.lastSeenAt ?? null} />;
+            }
         },
         {
             title: t('users.colGroup'),

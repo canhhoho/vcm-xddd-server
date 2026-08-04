@@ -22,6 +22,8 @@ import { usePermissions } from '../hooks/usePermissions';
 import { APP_VERSION } from '../styles/brandIdentity';
 import { useTranslation } from 'react-i18next';
 import ChangePasswordModal from '../components/ChangePasswordModal';
+import { OnlineUsersBadge } from '../components/OnlineUsers';
+import { useHeartbeat } from '../hooks/usePresence';
 import './MainLayout.css';
 
 const { Header, Sider, Content } = Layout;
@@ -34,6 +36,9 @@ const MainLayout: React.FC = () => {
     const location = useLocation();
     const { isAdmin, permissions } = usePermissions();
     const { t, i18n } = useTranslation();
+
+    // Layout này bọc mọi route đã đăng nhập nên là chỗ duy nhất cần gắn heartbeat.
+    useHeartbeat();
 
     const toggleLanguage = () => {
         const newLang = i18n.language === 'vi' ? 'en' : 'vi';
@@ -259,6 +264,7 @@ const MainLayout: React.FC = () => {
                                 {i18n.language === 'vi' ? 'EN' : 'VN'}
                             </Button>
                         </Tooltip>
+                        <OnlineUsersBadge />
                         <Badge count={5} className="notification-badge">
                             <BellOutlined className="header-icon" />
                         </Badge>

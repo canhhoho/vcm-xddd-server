@@ -256,6 +256,10 @@ export interface IApiService {
     // ==================== ACTIVITIES (ADMIN) ====================
     getActivities(): Promise<ApiResponse>;
 
+    // ==================== PRESENCE (mọi user đã đăng nhập) ====================
+    getPresence(): Promise<ApiResponse>;
+    sendHeartbeat(): Promise<ApiResponse>;
+
     // ==================== PROSPECTS ====================
     getProspects(type?: string): Promise<ApiResponse>;
     createProspect(data: any): Promise<ApiResponse>;

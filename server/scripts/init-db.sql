@@ -37,6 +37,9 @@ CREATE TABLE IF NOT EXISTS users (
   plans_qs      VARCHAR(20) DEFAULT 'NO_ACCESS',
   plans_des     VARCHAR(20) DEFAULT 'NO_ACCESS',
   plans_pm      VARCHAR(20) DEFAULT 'NO_ACCESS',
+  -- Thời điểm hoạt động cuối (tính năng "user đang online"). NULL = chưa từng
+  -- đăng nhập. Ngưỡng coi là online nằm ở routes/presence.js, không ở schema.
+  last_seen_at  TIMESTAMPTZ,
   created_at    TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -272,6 +275,7 @@ CREATE INDEX IF NOT EXISTS idx_staff_branch ON staff(branch_id);
 CREATE INDEX IF NOT EXISTS idx_targets_type ON targets(type, period_type);
 CREATE INDEX IF NOT EXISTS idx_activities_created ON activities(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
+CREATE INDEX IF NOT EXISTS idx_users_last_seen ON users(last_seen_at);
 CREATE INDEX IF NOT EXISTS idx_prospects_status ON prospects(status);
 CREATE INDEX IF NOT EXISTS idx_prospects_branch ON prospects(branch_id);
 CREATE INDEX IF NOT EXISTS idx_weekly_plans_week ON weekly_plans(week_start, department);
@@ -308,6 +312,11 @@ DO $$ BEGIN
   ALTER TABLE users ADD COLUMN IF NOT EXISTS plans_qs VARCHAR(20) DEFAULT 'NO_ACCESS';
   ALTER TABLE users ADD COLUMN IF NOT EXISTS plans_des VARCHAR(20) DEFAULT 'NO_ACCESS';
   ALTER TABLE users ADD COLUMN IF NOT EXISTS plans_pm VARCHAR(20) DEFAULT 'NO_ACCESS';
+
+  -- Thời điểm hoạt động cuối, phục vụ tính năng "user đang online".
+  -- NULL = chưa bao giờ đăng nhập. Ngưỡng coi là online nằm ở routes/presence.js.
+  -- Mirror của migrate-add-last-seen.sql.
+  ALTER TABLE users ADD COLUMN IF NOT EXISTS last_seen_at TIMESTAMPTZ;
 
   -- Thống nhất quy ước NULL cho khoá ngoại mềm của plan items
   -- (weekly trước đây ghi '', monthly ghi NULL -> JOIN và so sánh dễ sai)

@@ -335,6 +335,15 @@ export class RestApiService implements IApiService {
         return this.request('GET', '/activities');
     }
 
+    // ==================== PRESENCE (mọi user đã đăng nhập) ====================
+    async getPresence() {
+        return this.request('GET', '/presence');
+    }
+
+    async sendHeartbeat() {
+        return this.request('POST', '/presence/heartbeat');
+    }
+
     // ==================== PROSPECTS ====================
     async getProspects(type?: string) {
         return this.request('GET', '/prospects', undefined, type ? { type } : undefined);

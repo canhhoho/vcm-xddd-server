@@ -58,6 +58,9 @@ router.post('/login', async (req, res) => {
     // Log login activity
     await logActivity(user.email, 'LOGIN', `User logged in`);
 
+    // Đánh dấu online ngay, không phải chờ nhịp heartbeat đầu tiên (60s sau).
+    await query('UPDATE users SET last_seen_at = NOW() WHERE id = $1', [user.id]);
+
     // Response (never return password)
     const { password: _, ...safeUser } = user;
 

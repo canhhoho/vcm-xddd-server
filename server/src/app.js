@@ -29,6 +29,7 @@ const branchRoutes = require('./routes/branches');
 const positionRoutes = require('./routes/positions');
 const staffRoutes = require('./routes/staff');
 const dashboardRoutes = require('./routes/dashboard');
+const presenceRoutes = require('./routes/presence');
 const activityRoutes = require('./routes/activities');
 const provinceRoutes = require('./routes/provinces');
 const prospectRoutes = require('./routes/prospects');
@@ -102,6 +103,9 @@ app.use('/api/branches', moduleAccess('branches'), branchRoutes);
 app.use('/api/positions', positionRoutes);
 app.use('/api/staff', moduleAccess('branches'), staffRoutes);
 app.use('/api/dashboard', dashboardRoutes);
+// Trạng thái online: mount TRẦN sau authMiddleware, cố ý không rbac/moduleAccess.
+// Badge trên header hiển thị cho mọi user đã đăng nhập, không chỉ ADMIN như /api/users.
+app.use('/api/presence', presenceRoutes);
 // Nhật ký hoạt động toàn hệ thống -> chỉ ADMIN (chỉ trang User dùng tới).
 app.use('/api/activities', rbac(['ADMIN']), activityRoutes);
 app.use('/api/provinces', provinceRoutes);
