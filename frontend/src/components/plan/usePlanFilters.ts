@@ -3,7 +3,8 @@ import { useCallback, useState } from 'react';
 export interface FilterableItem {
     title: string;
     status: string;
-    assigneeId?: string;
+    /** Người phụ trách — text tự do, lọc bằng chuỗi con chứ không so khớp id */
+    assigneeName?: string;
 }
 
 /**
@@ -20,10 +21,12 @@ export const usePlanFilters = () => {
     const applyFilters = useCallback(<T extends FilterableItem>(items: T[]): T[] => {
         if (!hasActiveFilter) return items;
         const needle = searchText.toLowerCase();
+        const assigneeNeedle = (assigneeFilter || '').trim().toLowerCase();
         return items.filter(item => {
             const matchesSearch = !searchText || item.title.toLowerCase().includes(needle);
             const matchesStatus = !statusFilter || item.status === statusFilter;
-            const matchesAssignee = !assigneeFilter || item.assigneeId === assigneeFilter;
+            const matchesAssignee = !assigneeNeedle
+                || (item.assigneeName || '').toLowerCase().includes(assigneeNeedle);
             return matchesSearch && matchesStatus && matchesAssignee;
         });
     }, [searchText, statusFilter, assigneeFilter, hasActiveFilter]);

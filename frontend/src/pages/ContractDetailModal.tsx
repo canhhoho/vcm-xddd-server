@@ -112,6 +112,9 @@ const ContractDetailModal: React.FC<ContractDetailModalProps> = ({
                                     {contract.businessField}
                                 </Tag>
                             </Descriptions.Item>
+                            <Descriptions.Item label={t('contracts.detailInvestor')} span={2}>
+                                {contract.investor || '—'}
+                            </Descriptions.Item>
                             <Descriptions.Item label={t('contracts.detailDuration')} span={2}>
                                 <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                                     <CalendarOutlined style={{ color: BRAND_COLORS.warning }} />

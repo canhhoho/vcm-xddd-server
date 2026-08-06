@@ -12,6 +12,8 @@ import { apiService } from '../services/api';
 import { VcmFilterBar } from '../components/VcmFilterBar';
 import { VcmActionGroup } from '../components/VcmActionGroup';
 import type { Prospect, Province } from '../types';
+import { exportExcelSheet, excelDateCell } from '../utils/excelExport';
+import type { ExportColumn } from '../utils/excelExport';
 
 const { Option } = Select;
 
@@ -40,6 +42,8 @@ const ProspectList: React.FC<ProspectListProps> = ({ prospectType = 'B2B' }) => 
     const [loading, setLoading] = useState(false);
     const [modalVisible, setModalVisible] = useState(false);
     const [editingRecord, setEditingRecord] = useState<Prospect | null>(null);
+    // Giá trị chờ nạp vào Form — xem handleEdit và afterOpenChange của Modal.
+    const [pendingValues, setPendingValues] = useState<Record<string, unknown> | null>(null);
     const [searchText, setSearchText] = useState('');
     const [filterStatus, setFilterStatus] = useState<string | undefined>(undefined);
     const [filterPriority, setFilterPriority] = useState<string | undefined>(undefined);
@@ -72,13 +76,17 @@ const ProspectList: React.FC<ProspectListProps> = ({ prospectType = 'B2B' }) => 
 
     const handleAdd = () => {
         setEditingRecord(null);
-        form.resetFields();
+        setPendingValues(null);
         setModalVisible(true);
     };
 
     const handleEdit = (record: Prospect) => {
         setEditingRecord(record);
-        form.setFieldsValue({
+        // Modal dùng destroyOnHidden nên Form CHƯA mount lúc bấm "Sửa".
+        // Gọi form.setFieldsValue() ở đây sẽ mất sạch giá trị -> form mở lên trống,
+        // bấm Lưu ghi null đè lên contact_date/expected_date. Đẩy vào state rồi
+        // set trong afterOpenChange. Xem .claude/rules/antd-v6.md.
+        setPendingValues({
             ...record,
             expectedDate: record.expectedDate ? dayjs(record.expectedDate) : null,
             contactDate: record.contactDate ? dayjs(record.contactDate) : null,
@@ -130,39 +138,38 @@ const ProspectList: React.FC<ProspectListProps> = ({ prospectType = 'B2B' }) => 
     };
 
     const handleExportExcel = () => {
-        const XLSX = (window as any).XLSX;
-        if (!XLSX) {
-            message.error('XLSX library not loaded');
-            return;
-        }
+        const branchCodeOf = (p: Prospect): string =>
+            branches.find(br => br.id === p.branchId)?.code || p.branchCode || '';
 
-        const dataToExport = filteredData.map((p, index) => {
-            const branch = branches.find(br => br.id === p.branchId);
-            return {
-                [t('business.prospects.no', '#')]: index + 1,
-                [t('business.prospects.name')]: p.name,
-                [t('business.prospects.client')]: p.client,
-                [t('business.prospects.location')]: p.location,
-                [t('business.prospects.branch')]: branch?.code || p.branchCode || '',
-                [t('business.prospects.estimatedValue')]: p.estimatedValue || 0,
-                [t('business.prospects.contactPerson')]: p.contactPerson,
-                [t('business.prospects.contactPhone', 'Phone')]: p.contactPhone || '',
-                [t('business.prospects.source')]: t(`business.prospects.sourceOptions.${p.source}`),
-                [t('business.prospects.priority')]: t(`business.prospects.priorityOptions.${p.priority}`),
-                [t('business.prospects.status')]: t(`business.prospects.statusOptions.${p.status}`),
-                [t('business.prospects.contactDate')]: p.contactDate ? dayjs(p.contactDate).format('DD/MM/YYYY') : '',
-                [t('business.prospects.expectedDate')]: p.expectedDate ? dayjs(p.expectedDate).format('DD/MM/YYYY') : '',
-                [t('business.prospects.note', 'Note')]: p.note || '',
-            };
-        });
+        const columns: ExportColumn<Prospect>[] = [
+            { header: t('business.prospects.no', '#'), value: (_, i) => i + 1, width: 6 },
+            { header: t('business.prospects.name'), value: p => p.name, width: 34 },
+            { header: t('business.prospects.client'), value: p => p.client, width: 26 },
+            { header: t('business.prospects.location'), value: p => p.location, width: 20 },
+            { header: t('business.prospects.branch'), value: p => branchCodeOf(p), width: 12 },
+            { header: t('business.prospects.estimatedValue'), value: p => p.estimatedValue || 0, width: 18 },
+            { header: t('business.prospects.contactPerson'), value: p => p.contactPerson, width: 20 },
+            { header: t('business.prospects.contactPhone', 'Phone'), value: p => p.contactPhone || '', width: 16 },
+            { header: t('business.prospects.source'), value: p => t(`business.prospects.sourceOptions.${p.source}`), width: 16 },
+            { header: t('business.prospects.priority'), value: p => t(`business.prospects.priorityOptions.${p.priority}`), width: 14 },
+            { header: t('business.prospects.status'), value: p => t(`business.prospects.statusOptions.${p.status}`), width: 16 },
+            // Ô ngày THẬT — ô text thì Excel không lọc/sắp xếp theo ngày được.
+            { header: t('business.prospects.contactDate'), value: p => excelDateCell(p.contactDate), width: 14 },
+            { header: t('business.prospects.expectedDate'), value: p => excelDateCell(p.expectedDate), width: 16 },
+            { header: t('business.prospects.note', 'Note'), value: p => p.note || '', width: 30 },
+        ];
 
-        const ws = XLSX.utils.json_to_sheet(dataToExport);
-        const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, 'Prospects');
-
-        const fileName = `Prospects_${new Date().toISOString().slice(0, 10)}.xlsx`;
-        XLSX.writeFile(wb, fileName);
-        message.success(t('common.exportSuccess', 'Export successfully!'));
+        const ok = exportExcelSheet(
+            filteredData,
+            columns,
+            'Prospects',
+            // dayjs() theo giờ máy; new Date().toISOString() trước đây đóng dấu
+            // NGÀY HÔM QUA trong khoảng 00:00-06:30 giờ Myanmar.
+            `Prospects_${dayjs().format('YYYY-MM-DD')}.xlsx`
+        );
+        message[ok ? 'success' : 'warning'](
+            ok ? t('common.exportSuccess', 'Export successfully!') : t('common.noData')
+        );
     };
 
     const columns: ColumnsType<Prospect> = useMemo(() => [
@@ -308,7 +315,12 @@ const ProspectList: React.FC<ProspectListProps> = ({ prospectType = 'B2B' }) => 
                 onCancel={() => { setModalVisible(false); form.resetFields(); }}
                 onOk={() => form.submit()}
                 width={700}
-                destroyOnClose
+                destroyOnHidden
+                afterOpenChange={open => {
+                    if (!open) return;
+                    form.resetFields();
+                    if (pendingValues) form.setFieldsValue(pendingValues);
+                }}
             >
                 <Form form={form} layout="vertical" onFinish={handleSubmit}>
                     <Form.Item name="name" label={t('business.prospects.name')} rules={[{ required: true }]}>

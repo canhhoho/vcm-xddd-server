@@ -63,6 +63,8 @@ CREATE TABLE IF NOT EXISTS contracts (
   status         VARCHAR(50) DEFAULT 'TODO',
   file_urls      TEXT DEFAULT '',
   note           TEXT DEFAULT '',
+  -- Tên chủ đầu tư, text tự do, không bắt buộc. Trống = '' (không phải NULL).
+  investor       TEXT DEFAULT '',
   -- DEPRECATED: không còn được đọc hay ghi. GET /contracts luôn tính lại tiến độ
   -- từ SUM(invoices.payment)/value. Giữ lại để không mất dữ liệu cũ; sẽ DROP ở
   -- lần dọn schema sau (cùng đợt với users.plans).
@@ -212,7 +214,9 @@ CREATE TABLE IF NOT EXISTS weekly_plan_items (
   title        TEXT NOT NULL,
   description  TEXT DEFAULT '',
   why          TEXT DEFAULT '',
-  assignee_id  VARCHAR(50) DEFAULT '',
+  -- Người phụ trách là TEXT TỰ DO, không phải khoá ngoại tới users. Cột cũ
+  -- `assignee_id` đã bị xoá (migrate-plan-assignee-text.sql) — đừng đưa lại.
+  assignee_name VARCHAR(255) DEFAULT '',
   start_date   DATE,
   end_date     DATE,
   location     TEXT DEFAULT '',
@@ -241,7 +245,9 @@ CREATE TABLE IF NOT EXISTS monthly_plan_items (
   sort_order   INTEGER DEFAULT 1,
   title        TEXT NOT NULL,
   why          TEXT DEFAULT '',
-  assignee_id  VARCHAR(50) DEFAULT '',
+  -- Người phụ trách là TEXT TỰ DO, không phải khoá ngoại tới users. Cột cũ
+  -- `assignee_id` đã bị xoá (migrate-plan-assignee-text.sql) — đừng đưa lại.
+  assignee_name VARCHAR(255) DEFAULT '',
   target       TEXT DEFAULT '',
   method       TEXT DEFAULT '',
   status       VARCHAR(20) DEFAULT 'TODO',
@@ -343,6 +349,10 @@ DO $$ BEGIN
   ALTER TABLE contracts ADD COLUMN IF NOT EXISTS value_before_tax NUMERIC(18,2) DEFAULT 0;
   ALTER TABLE contracts ADD COLUMN IF NOT EXISTS tax_rate         NUMERIC(5,2)  DEFAULT 5.00;
 
+  -- Chủ đầu tư của hợp đồng — mirror của migrate-add-contract-investor.sql.
+  ALTER TABLE contracts ADD COLUMN IF NOT EXISTS investor TEXT DEFAULT '';
+  UPDATE contracts SET investor = '' WHERE investor IS NULL;
+
   -- Backfill dữ liệu cũ (chỉ có số đã gồm thuế) theo thuế suất mặc định 5%.
   -- Đây là chỗ DUY NHẤT còn phép chia 1.05 — code chạy đọc thẳng value_before_tax.
   -- Điều kiện `= 0` để lần boot sau không ghi đè số đã nhập tay qua UI.
@@ -355,10 +365,21 @@ DO $$ BEGIN
 
   -- Thống nhất quy ước NULL cho khoá ngoại mềm của plan items
   -- (weekly trước đây ghi '', monthly ghi NULL -> JOIN và so sánh dễ sai)
-  UPDATE weekly_plan_items SET assignee_id     = NULL WHERE assignee_id = '';
+  --
+  -- assignee_id CỐ Ý không còn ở đây: cột đã bị xoá, người phụ trách giờ là text
+  -- tự do trong assignee_name. Để lại dòng UPDATE cũ thì mỗi lần server boot sẽ
+  -- ném 42703 'column "assignee_id" does not exist' và autoCreateTables() hỏng.
   UPDATE weekly_plan_items SET monthly_item_id = NULL WHERE monthly_item_id = '';
   UPDATE weekly_plan_items SET carried_from    = NULL WHERE carried_from = '';
-  UPDATE monthly_plan_items SET assignee_id    = NULL WHERE assignee_id = '';
+
+  -- Cột "Who" của Kế hoạch: chọn từ danh sách user -> điền tay.
+  -- Mirror của migrate-plan-assignee-text.sql. Bản migration rời có thêm phần
+  -- chuyển dữ liệu cũ từ assignee_id sang; ở đây chỉ cần đảm bảo cột tồn tại vì
+  -- DB cài mới chưa bao giờ có assignee_id.
+  ALTER TABLE weekly_plan_items  ADD COLUMN IF NOT EXISTS assignee_name VARCHAR(255) DEFAULT '';
+  ALTER TABLE monthly_plan_items ADD COLUMN IF NOT EXISTS assignee_name VARCHAR(255) DEFAULT '';
+  UPDATE weekly_plan_items  SET assignee_name = '' WHERE assignee_name IS NULL;
+  UPDATE monthly_plan_items SET assignee_name = '' WHERE assignee_name IS NULL;
 END $$;
 
 -- ============================================================

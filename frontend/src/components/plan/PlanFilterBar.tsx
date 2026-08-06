@@ -5,15 +5,13 @@ import { useTranslation } from 'react-i18next';
 import { BRAND_COLORS } from '../../styles/brandIdentity';
 import { SELECTABLE_STATUSES, STATUS_LABEL_KEY } from './planConstants';
 import type { PlanFiltersState } from './usePlanFilters';
-import type { User } from '../../types';
 
 interface Props {
     filters: PlanFiltersState;
-    users: User[];
 }
 
 /** Thanh lọc dùng chung cho kế hoạch tháng và kế hoạch tuần */
-const PlanFilterBar: React.FC<Props> = ({ filters, users }) => {
+const PlanFilterBar: React.FC<Props> = ({ filters }) => {
     const { t } = useTranslation();
     const {
         searchText, setSearchText,
@@ -44,16 +42,15 @@ const PlanFilterBar: React.FC<Props> = ({ filters, users }) => {
                     label: t(STATUS_LABEL_KEY[s]),
                 }))}
             />
-            <Select
+            {/* Ô nhập chứ không phải Select: người phụ trách là text tự do nên
+                không có tập giá trị cố định để dựng options. Lọc theo chuỗi con. */}
+            <Input
                 size="small"
                 style={{ width: 130, minWidth: 100 }}
                 placeholder={t('plans.fields.who')}
                 allowClear
-                showSearch
-                optionFilterProp="label"
                 value={assigneeFilter}
-                onChange={setAssigneeFilter}
-                options={users.map(u => ({ value: u.id, label: u.name }))}
+                onChange={e => setAssigneeFilter(e.target.value)}
             />
         </>
     );

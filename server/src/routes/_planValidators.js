@@ -113,8 +113,12 @@ function assertIds(ids, max = 200) {
 }
 
 /**
- * Khoá ngoại mềm (assignee_id, monthly_item_id, carried_from):
+ * Khoá ngoại mềm (monthly_item_id, carried_from):
  * chuẩn hoá chuỗi rỗng thành NULL để weekly và monthly cùng một quy ước.
+ *
+ * `assignee_name` KHÔNG dùng hàm này — nó là cột text tự do nên đi qua
+ * `textOrEmpty` ('') như mọi cột mô tả khác. Cột khoá ngoại `assignee_id` cũ đã
+ * bị xoá, xem scripts/migrate-plan-assignee-text.sql.
  */
 function nullIfBlank(value) {
   if (value === undefined || value === null) return null;

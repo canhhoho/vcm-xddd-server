@@ -1,7 +1,18 @@
 /**
  * VCM XDDD - PostgreSQL Database Connection
  */
-const { Pool } = require('pg');
+const pg = require('pg');
+const { Pool } = pg;
+
+// OID 1082 = DATE. Mặc định node-pg dựng thành Date lúc nửa đêm giờ SERVER, rồi
+// res.json() gọi toISOString() — ngày 2026-07-05 đi qua dây thành
+// "2026-07-04T17:30:00.000Z". Trình duyệt khác múi giờ server render lệch một ngày,
+// và file Excel xuất ra cũng lệch theo. Cột DATE là ngày lịch thuần: trả nguyên
+// chuỗi 'YYYY-MM-DD' để không múi giờ nào chen vào được.
+//
+// KHÔNG đụng 1114 (timestamp) / 1184 (timestamptz): đó là mốc thời gian thật,
+// cần giữ nguyên hành vi chuyển đổi múi giờ.
+pg.types.setTypeParser(1082, v => v);
 
 const pool = new Pool({
   host: process.env.DB_HOST || 'localhost',

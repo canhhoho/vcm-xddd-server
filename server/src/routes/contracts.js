@@ -97,6 +97,7 @@ router.get('/', async (req, res, next) => {
           status: r.status,
           fileUrl: r.file_urls || '',
           note: r.note || '',
+          investor: r.investor || '',
           progress,
           createdAt: r.created_at,
           createdBy: r.created_by || '',
@@ -136,13 +137,14 @@ router.post('/', async (req, res, next) => {
     await query(`
       INSERT INTO contracts (id, code, name, branch_id, business_field,
                              value, value_before_tax, tax_rate,
-                             start_date, end_date, status, file_urls, note, created_by)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+                             start_date, end_date, status, file_urls, note, investor, created_by)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
     `, [
       id, code, name, d.provinceId || d.branchId || '',
       d.businessField || '', value, valueBeforeTax, taxRate,
       d.startDate || null, d.endDate || null,
-      normalizeStatus(d.status), d.fileUrls || d.fileUrl || '', d.note || '', userId
+      normalizeStatus(d.status), d.fileUrls || d.fileUrl || '', d.note || '',
+      d.investor || '', userId
     ]);
 
     await logActivity(req.user?.email || userId, 'CONTRACT_CREATE', `Created contract ${code}`);
@@ -181,7 +183,7 @@ router.put('/:id', async (req, res, next) => {
       code: 'code', name: 'name', provinceId: 'branch_id',
       businessField: 'business_field',
       startDate: 'start_date', endDate: 'end_date', status: 'status',
-      fileUrls: 'file_urls', note: 'note'
+      fileUrls: 'file_urls', note: 'note', investor: 'investor'
     };
 
     const fields = [];

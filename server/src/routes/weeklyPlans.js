@@ -36,7 +36,8 @@ function toItem(row) {
     title: row.title,
     description: row.description || '',
     why: row.why || '',
-    assigneeId: row.assignee_id || '',
+    // Người phụ trách là TEXT TỰ DO do người dùng gõ, không tra sang bảng users.
+    // Cột assignee_id cũ đã bị xoá — xem migrate-plan-assignee-text.sql.
     assigneeName: row.assignee_name || '',
     startDate: row.start_date,
     endDate: row.end_date,
@@ -84,9 +85,8 @@ router.get('/', async (req, res, next) => {
     if (includeItems === 'true' && plans.length > 0) {
       const planIds = plans.map(p => p.id);
       const itemsResult = await query(
-        `SELECT wi.*, u.name as assignee_name
+        `SELECT wi.*
          FROM weekly_plan_items wi
-         LEFT JOIN users u ON wi.assignee_id = u.id
          WHERE wi.plan_id = ANY($1)
          ORDER BY wi.plan_id, wi.sort_order`,
         [planIds]
@@ -149,7 +149,7 @@ router.post('/', async (req, res, next) => {
         const placeholders = incomplete.rows.map((item, i) => {
           values.push(
             uuidv4(), id, i + 1, item.title, item.description || '', item.why || '',
-            item.assignee_id, item.start_date, item.end_date, item.location || '',
+            item.assignee_name || '', item.start_date, item.end_date, item.location || '',
             item.method || '', 'TODO', item.progress_pct || 0, item.monthly_item_id, item.id
           );
           const base = i * COLS;
@@ -158,7 +158,7 @@ router.post('/', async (req, res, next) => {
 
         await client.query(
           `INSERT INTO weekly_plan_items
-             (id, plan_id, sort_order, title, description, why, assignee_id, start_date, end_date,
+             (id, plan_id, sort_order, title, description, why, assignee_name, start_date, end_date,
               location, method, status, progress_pct, monthly_item_id, carried_from)
            VALUES ${placeholders.join(',')}`,
           values
@@ -201,9 +201,8 @@ router.delete('/:id', async (req, res, next) => {
 router.get('/:planId/items', async (req, res, next) => {
   try {
     const result = await query(
-      `SELECT wi.*, u.name as assignee_name
+      `SELECT wi.*
        FROM weekly_plan_items wi
-       LEFT JOIN users u ON wi.assignee_id = u.id
        WHERE wi.plan_id=$1 ORDER BY wi.sort_order`,
       [req.params.planId]
     );
@@ -216,18 +215,20 @@ router.get('/:planId/items', async (req, res, next) => {
 // POST /weekly-plans/:planId/items
 router.post('/:planId/items', async (req, res, next) => {
   try {
-    const { sortOrder, title, description, why, assigneeId, startDate, endDate, location, method, status, monthlyItemId } = req.body;
+    const { sortOrder, title, description, why, assigneeName, startDate, endDate, location, method, status, monthlyItemId } = req.body;
     const cleanTitle = assertTitle(title);
     const cleanStatus = assertStatus(status);
     const { start, end } = assertDateRange(startDate, endDate);
 
     const id = uuidv4();
     await query(
-      `INSERT INTO weekly_plan_items (id, plan_id, sort_order, title, description, why, assignee_id, start_date, end_date, location, method, status, monthly_item_id)
+      `INSERT INTO weekly_plan_items (id, plan_id, sort_order, title, description, why, assignee_name, start_date, end_date, location, method, status, monthly_item_id)
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)`,
       [
         id, req.params.planId, parseInt(sortOrder, 10) || 1, cleanTitle,
-        textOrEmpty(description), textOrEmpty(why), nullIfBlank(assigneeId),
+        // assignee_name là cột TEXT nên dùng textOrEmpty (''), không phải
+        // nullIfBlank (NULL) như hồi nó còn là khoá ngoại mềm assignee_id.
+        textOrEmpty(description), textOrEmpty(why), textOrEmpty(assigneeName).trim(),
         start, end, textOrEmpty(location), textOrEmpty(method), cleanStatus,
         nullIfBlank(monthlyItemId),
       ]
@@ -255,19 +256,19 @@ router.put('/items/batch-status', async (req, res, next) => {
 // PUT /weekly-plans/items/:id
 router.put('/items/:id', async (req, res, next) => {
   try {
-    const { sortOrder, title, description, why, assigneeId, startDate, endDate, location, method, status, result, progressPct, monthlyItemId } = req.body;
+    const { sortOrder, title, description, why, assigneeName, startDate, endDate, location, method, status, result, progressPct, monthlyItemId } = req.body;
     const cleanTitle = assertTitle(title);
     const cleanStatus = assertStatus(status);
     const { start, end } = assertDateRange(startDate, endDate);
 
     await query(
       `UPDATE weekly_plan_items
-       SET sort_order=$1, title=$2, description=$3, why=$4, assignee_id=$5, start_date=$6, end_date=$7,
+       SET sort_order=$1, title=$2, description=$3, why=$4, assignee_name=$5, start_date=$6, end_date=$7,
            location=$8, method=$9, status=$10, result=$11, progress_pct=$12, monthly_item_id=$13
        WHERE id=$14`,
       [
         parseInt(sortOrder, 10) || 1, cleanTitle, textOrEmpty(description), textOrEmpty(why),
-        nullIfBlank(assigneeId), start, end, textOrEmpty(location), textOrEmpty(method),
+        textOrEmpty(assigneeName).trim(), start, end, textOrEmpty(location), textOrEmpty(method),
         cleanStatus, textOrEmpty(result), clampPct(progressPct), nullIfBlank(monthlyItemId),
         req.params.id,
       ]

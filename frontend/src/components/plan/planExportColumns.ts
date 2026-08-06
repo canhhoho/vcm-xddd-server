@@ -1,30 +1,27 @@
 import dayjs from 'dayjs';
 import type { TFunction } from 'i18next';
-import type { Department, MonthlyPlanItem, User, WeeklyPlanItem } from '../../types';
-import type { ExportColumn } from './exportPlanExcel';
+import type { Department, MonthlyPlanItem, WeeklyPlanItem } from '../../types';
+import type { ExportColumn } from '../../utils/excelExport';
+import { excelDateCell } from '../../utils/excelExport';
 import { DATE_FORMAT } from './planConstants';
-import { resolveAssigneeName, statusLabel } from './planColumns';
+import { statusLabel } from './planColumns';
 
 /**
  * Định nghĩa cột export dùng chung cho nút xuất từng bảng và nút xuất cả tháng.
  * Để hai chỗ tự dựng cột riêng là cách cũ đã sinh ra file Excel lệch nhau.
  */
 
-const formatRange = (start?: string, end?: string): string => {
-    const s = start ? dayjs(start).format(DATE_FORMAT) : '';
-    const e = end ? dayjs(end).format(DATE_FORMAT) : '';
-    if (s && e) return `${s} - ${e}`;
-    return s || e || '';
-};
-
 export const weeklyExportColumns = (
-    t: TFunction, users: User[]
+    t: TFunction
 ): ExportColumn<WeeklyPlanItem>[] => [
     { header: t('common.index'), value: (_, i) => i + 1, width: 6 },
     { header: t('plans.fields.what'), value: item => item.title, width: 34 },
     { header: t('plans.fields.why'), value: item => item.why || '', width: 26 },
-    { header: t('plans.fields.who'), value: item => resolveAssigneeName(item, users), width: 18 },
-    { header: t('plans.fields.when'), value: item => formatRange(item.startDate, item.endDate), width: 24 },
+    { header: t('plans.fields.who'), value: item => item.assigneeName || '', width: 18 },
+    // Tách "When" thành hai cột ngày THẬT thay vì một ô text "06/07 - 12/07":
+    // một ô chỉ chứa được một ngày, mà ô text thì Excel không lọc/sắp xếp theo ngày được.
+    { header: t('plans.fields.whenStart'), value: item => excelDateCell(item.startDate), width: 14 },
+    { header: t('plans.fields.whenEnd'), value: item => excelDateCell(item.endDate), width: 14 },
     { header: t('plans.fields.where'), value: item => item.location || '', width: 18 },
     { header: t('plans.fields.how'), value: item => item.method || '', width: 26 },
     { header: t('plans.fields.status'), value: item => statusLabel(item.status, t), width: 16 },
@@ -33,13 +30,13 @@ export const weeklyExportColumns = (
 ];
 
 export const monthlyExportColumns = (
-    t: TFunction, users: User[]
+    t: TFunction
 ): ExportColumn<MonthlyPlanItem>[] => [
     { header: t('common.index'), value: (_, i) => i + 1, width: 6 },
     { header: t('plans.fields.what'), value: item => item.title, width: 34 },
     { header: t('plans.monthly.target'), value: item => item.target || '', width: 28 },
     { header: t('plans.fields.why'), value: item => item.why || '', width: 26 },
-    { header: t('plans.fields.who'), value: item => resolveAssigneeName(item, users), width: 18 },
+    { header: t('plans.fields.who'), value: item => item.assigneeName || '', width: 18 },
     { header: t('plans.fields.how'), value: item => item.method || '', width: 26 },
     { header: t('plans.fields.status'), value: item => statusLabel(item.status, t), width: 16 },
     { header: t('plans.fields.result'), value: item => item.result || '', width: 26 },

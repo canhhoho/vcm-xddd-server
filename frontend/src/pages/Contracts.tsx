@@ -37,7 +37,7 @@ import {
 import type { ColumnsType } from 'antd/es/table';
 import dayjs from 'dayjs';
 import { apiService } from '../services/api';
-import type { Contract, Province } from '../types';
+import type { Contract, Invoice, Province } from '../types';
 import './Contracts.css';
 
 
@@ -52,7 +52,9 @@ import { FilterChips } from '../components/FilterChips';
 import { useTranslation } from 'react-i18next';
 import { VcmFilterBar } from '../components/VcmFilterBar';
 import { VcmActionGroup } from '../components/VcmActionGroup';
-import { normalizeId, toCsvCell } from '../utils/common';
+import { normalizeId } from '../utils/common';
+import { exportExcelSheet, excelDateCell, excelDateTimeCell } from '../utils/excelExport';
+import type { ExportColumn } from '../utils/excelExport';
 import { BRAND_COLORS } from '../styles/brandIdentity';
 
 const { Option } = Select;
@@ -444,53 +446,42 @@ const Contracts: React.FC = () => {
         return dayjs(b.startDate).valueOf() - dayjs(a.startDate).valueOf();
     }), [contracts, searchText, selectedProvince, branches, selectedField, selectedMonth]);
 
+    const branchCodeOf = (c: Contract): string => {
+        const contractProvId = normalizeId(c.provinceId);
+        const branch = branches.find((p: Province) =>
+            normalizeId(p.id) === contractProvId ||
+            normalizeId(p.code) === contractProvId
+        );
+        return branch?.code || contractProvId;
+    };
+
+    const statusTextOf = (c: Contract): string =>
+        (appConfig?.STATUS && appConfig.STATUS[c.status === 'INPROCESS' ? 'IN_PROGRESS' : c.status]) || c.status;
+
     const handleExport = () => {
-        const headers = [
-            t('contracts.colCode'),
-            t('contracts.colName'),
-            t('contracts.colBranch'),
-            t('contracts.colField'),
-            t('contracts.colValueBeforeTax'),
-            t('contracts.colValue'),
-            t('contracts.colProgress'),
-            t('contracts.colStartDate'),
-            t('contracts.colEndDate'),
-            t('contracts.colStatus')
+        const columns: ExportColumn<Contract>[] = [
+            { header: t('contracts.colCode'), value: c => c.code, width: 18 },
+            { header: t('contracts.colName'), value: c => c.name, width: 40 },
+            { header: t('contracts.colInvestor'), value: c => c.investor || '', width: 24 },
+            { header: t('contracts.colBranch'), value: c => branchCodeOf(c), width: 12 },
+            { header: t('contracts.colField'), value: c => c.businessField, width: 18 },
+            { header: t('contracts.colValueBeforeTax'), value: c => c.valueBeforeTax, width: 18 },
+            { header: t('contracts.colValue'), value: c => c.value, width: 18 },
+            { header: t('contracts.colProgress'), value: c => c.progress || 0, width: 10 },
+            // Ô ngày THẬT của Excel, không phải chuỗi "05/07/2026" — chuỗi sẽ bị
+            // Excel đọc lại theo vùng miền của máy và đảo ngày/tháng.
+            { header: t('contracts.colStartDate'), value: c => excelDateCell(c.startDate), width: 14 },
+            { header: t('contracts.colEndDate'), value: c => excelDateCell(c.endDate), width: 14 },
+            { header: t('contracts.colStatus'), value: c => statusTextOf(c), width: 16 },
         ];
 
-        const csvContent = filteredContracts.map((c: Contract) => {
-            const contractProvId = normalizeId(c.provinceId);
-            const branch = branches.find((p: Province) =>
-                normalizeId(p.id) === contractProvId ||
-                normalizeId(p.code) === contractProvId
-            );
-            const branchCode = branch?.code || contractProvId;
-
-            const statusText = (appConfig?.STATUS && appConfig.STATUS[c.status === 'INPROCESS' ? 'IN_PROGRESS' : c.status]) || c.status;
-
-            return [
-                toCsvCell(c.code),
-                toCsvCell(c.name),
-                toCsvCell(branchCode),
-                toCsvCell(c.businessField),
-                c.valueBeforeTax,
-                c.value,
-                c.progress || 0,
-                toCsvCell(formatDate(c.startDate)),
-                toCsvCell(formatDate(c.endDate)),
-                toCsvCell(statusText)
-            ].join(',');
-        });
-
-        const csvString = '\uFEFF' + [headers.join(','), ...csvContent].join('\n');
-        const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.setAttribute('download', `DS_HopDong_${dayjs().format('DDMMYYYY')}.csv`);
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+        const ok = exportExcelSheet(
+            filteredContracts,
+            columns,
+            t('contracts.exportContracts'),
+            `DS_HopDong_${dayjs().format('DDMMYYYY')}.xlsx`
+        );
+        if (!ok) message.warning(t('common.noData'));
     };
 
     const handleExportInvoices = async () => {
@@ -503,44 +494,28 @@ const Contracts: React.FC = () => {
                 const filteredContractIds = new Set(filteredContracts.map(c => String(c.id)));
                 const filteredInvoices = allInvoices.filter(inv => filteredContractIds.has(String(inv.contractId)));
 
-                const headers = [
-                    t('invoices.exportInvoiceNumber'),
-                    t('invoices.exportContractCode'),
-                    t('invoices.exportContractName'),
-                    t('invoices.exportInstallment'),
-                    t('invoices.exportValueBeforeTax'),
-                    t('invoices.exportInvoiceValue'),
-                    t('invoices.exportPaymentValue'),
-                    t('invoices.exportIssuedDate'),
-                    t('invoices.exportCreatedDate')
-                ];
-
                 const contractMap = new Map(filteredContracts.map(c => [String(c.id), c]));
 
-                const csvContent = filteredInvoices.map((inv: any) => {
-                    const contract = contractMap.get(String(inv.contractId));
-                    return [
-                        toCsvCell(inv.invoiceNumber),
-                        toCsvCell(contract?.code || ''),
-                        toCsvCell(contract?.name || ''),
-                        toCsvCell(inv.installment),
-                        Number(inv.valueBeforeTax) || 0,
-                        Number(inv.value) || 0,
-                        Number(inv.paidAmount) || 0,
-                        toCsvCell(formatDate(inv.issuedDate)),
-                        toCsvCell(formatDate(inv.createdAt))
-                    ].join(',');
-                });
+                const columns: ExportColumn<Invoice>[] = [
+                    { header: t('invoices.exportInvoiceNumber'), value: inv => inv.invoiceNumber, width: 18 },
+                    { header: t('invoices.exportContractCode'), value: inv => contractMap.get(String(inv.contractId))?.code || '', width: 18 },
+                    { header: t('invoices.exportContractName'), value: inv => contractMap.get(String(inv.contractId))?.name || '', width: 40 },
+                    { header: t('invoices.exportInstallment'), value: inv => inv.installment, width: 14 },
+                    { header: t('invoices.exportValueBeforeTax'), value: inv => Number(inv.valueBeforeTax) || 0, width: 18 },
+                    { header: t('invoices.exportInvoiceValue'), value: inv => Number(inv.value) || 0, width: 18 },
+                    { header: t('invoices.exportPaymentValue'), value: inv => Number(inv.paidAmount) || 0, width: 18 },
+                    { header: t('invoices.exportIssuedDate'), value: inv => excelDateCell(inv.issuedDate), width: 14 },
+                    // createdAt là TIMESTAMPTZ thật — giữ cả giờ:phút, trước đây bị cắt mất.
+                    { header: t('invoices.exportCreatedDate'), value: inv => excelDateTimeCell(inv.createdAt), width: 18 },
+                ];
 
-                const csvString = '\uFEFF' + [headers.join(','), ...csvContent].join('\n');
-                const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
-                const url = URL.createObjectURL(blob);
-                const link = document.createElement('a');
-                link.href = url;
-                link.setAttribute('download', `DS_HoaDon_${dayjs().format('DDMMYYYY')}.csv`);
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
+                const ok = exportExcelSheet(
+                    filteredInvoices,
+                    columns,
+                    t('contracts.exportInvoices'),
+                    `DS_HoaDon_${dayjs().format('DDMMYYYY')}.xlsx`
+                );
+                if (!ok) message.warning(t('common.noData'));
             } else {
                 message.error(t('contracts.loadError'));
             }
@@ -825,6 +800,12 @@ const Contracts: React.FC = () => {
                                     <Option value="IN_PROGRESS">{t('contracts.statusInProgress')}</Option>
                                     <Option value="DONE">{t('contracts.statusDone')}</Option>
                                 </Select>
+                            </Form.Item>
+                        </Col>
+                        <Col span={12}>
+                            {/* Không bắt buộc: không đặt `rules` ở đây. */}
+                            <Form.Item name="investor" label={t('contracts.formInvestor')}>
+                                <Input placeholder={t('contracts.formInvestorPlaceholder')} />
                             </Form.Item>
                         </Col>
                     </Row>

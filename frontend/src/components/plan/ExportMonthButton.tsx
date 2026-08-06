@@ -4,11 +4,10 @@ import { FileExcelOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import dayjs from 'dayjs';
 import type { Dayjs } from 'dayjs';
-import type { Department, MonthlyPlanItem, User, WeeklyPlan, WeeklyPlanItem } from '../../types';
+import type { Department, MonthlyPlanItem, WeeklyPlan, WeeklyPlanItem } from '../../types';
 import { useMonthlyPlans, useWeeklyPlans } from '../../hooks/usePlans';
-import { useUsers } from '../../hooks/useUsers';
-import { exportPlanWorkbook } from './exportPlanExcel';
-import type { PlanSheetSpec } from './exportPlanExcel';
+import { exportExcelWorkbook } from '../../utils/excelExport';
+import type { ExcelSheetSpec } from '../../utils/excelExport';
 import { buildPlanHeaderRows, monthlyExportColumns, weeklyExportColumns } from './planExportColumns';
 import { DATE_FORMAT } from './planConstants';
 
@@ -35,8 +34,6 @@ const ExportMonthButton: React.FC<Props> = ({ department, selectedMonth }) => {
 
     const { data: monthlyPlans = [] } = useMonthlyPlans({ department, monthStart });
     const { data: weeklyPlans = [] } = useWeeklyPlans({ department, ...weekRange });
-    const { data: users = [] } = useUsers();
-    const userList = users as User[];
 
     const monthlyItems: MonthlyPlanItem[] = monthlyPlans[0]?.items || [];
     const weekPlans = useMemo(
@@ -50,26 +47,26 @@ const ExportMonthButton: React.FC<Props> = ({ department, selectedMonth }) => {
     const handleExport = () => {
         const period = selectedMonth.format('MM/YYYY');
 
-        // Sheet rỗng được exportPlanWorkbook tự loại nên không cần kiểm ở đây
-        const monthSheet: PlanSheetSpec<MonthlyPlanItem> = {
+        // Sheet rỗng được exportExcelWorkbook tự loại nên không cần kiểm ở đây
+        const monthSheet: ExcelSheetSpec<MonthlyPlanItem> = {
             sheetName: t('plans.export.monthSheet'),
             headerRows: buildPlanHeaderRows({ t, department, period, items: monthlyItems }),
-            columns: monthlyExportColumns(t, userList),
+            columns: monthlyExportColumns(t),
             items: monthlyItems,
         };
 
-        const weekSheets: PlanSheetSpec<WeeklyPlanItem>[] = weekPlans.map((plan: WeeklyPlan) => {
+        const weekSheets: ExcelSheetSpec<WeeklyPlanItem>[] = weekPlans.map((plan: WeeklyPlan) => {
             const items = plan.items || [];
             const weekPeriod = `${dayjs(plan.weekStart).format(DATE_FORMAT)} - ${dayjs(plan.weekEnd).format(DATE_FORMAT)}`;
             return {
                 sheetName: t('plans.export.weekSheet', { range: dayjs(plan.weekStart).format('DD-MM') }),
                 headerRows: buildPlanHeaderRows({ t, department, period: weekPeriod, items }),
-                columns: weeklyExportColumns(t, userList),
+                columns: weeklyExportColumns(t),
                 items,
             };
         });
 
-        const ok = exportPlanWorkbook(
+        const ok = exportExcelWorkbook(
             [monthSheet, ...weekSheets],
             `KeHoach_${department}_${selectedMonth.format('MM_YYYY')}.xlsx`
         );

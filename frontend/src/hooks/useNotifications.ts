@@ -6,9 +6,10 @@ export const NOTIFICATION_KEYS = {
     list: () => [...NOTIFICATION_KEYS.all, 'list'] as const,
 };
 
+// MY_PLAN_ITEM đã bị bỏ: cột "Who" của Kế hoạch giờ là text tự do nên server
+// không còn biết đầu việc thuộc về user nào. Xem routes/notifications.js.
 export type NotificationType =
     | 'MY_TASK'
-    | 'MY_PLAN_ITEM'
     | 'INVOICE_UNPAID'
     | 'CONTRACT_ENDING'
     | 'PROJECT_ENDING'

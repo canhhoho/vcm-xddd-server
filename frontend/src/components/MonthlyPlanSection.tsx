@@ -12,10 +12,10 @@ import { useUsers } from '../hooks/useUsers';
 import { BRAND_COLORS } from '../styles/brandIdentity';
 import PlanFilterBar from './plan/PlanFilterBar';
 import { usePlanFilters } from './plan/usePlanFilters';
-import { exportPlanExcel } from './plan/exportPlanExcel';
+import { exportExcelSheet } from '../utils/excelExport';
 import { buildPlanHeaderRows, monthlyExportColumns } from './plan/planExportColumns';
 import { WRAP } from './plan/planConstants';
-import { AssigneeSelect, SortOrderSelect, StatusSelect } from './plan/PlanFormFields';
+import { AssigneeInput, SortOrderSelect, StatusSelect } from './plan/PlanFormFields';
 import {
     assigneeColumn, indexColumn, methodColumn,
     resultColumn, statusColumn, titleColumn, whyColumn,
@@ -65,9 +65,9 @@ const MonthlyPlanSection: React.FC<Props> = ({ department, selectedMonth, canEdi
 
     const handleExportExcel = () => {
         const period = selectedMonth.format('MM/YYYY');
-        const ok = exportPlanExcel(
+        const ok = exportExcelSheet(
             filteredItems,
-            monthlyExportColumns(t, userList),
+            monthlyExportColumns(t),
             t('plans.export.monthSheet'),
             `MonthlyPlan_${department}_${selectedMonth.format('MM_YYYY')}.xlsx`,
             buildPlanHeaderRows({ t, department, period, items: filteredItems })
@@ -139,7 +139,7 @@ const MonthlyPlanSection: React.FC<Props> = ({ department, selectedMonth, canEdi
         titleColumn<MonthlyPlanItem>(t),
         { title: t('plans.monthly.target'), dataIndex: 'target', key: 'target', width: 180, className: WRAP },
         whyColumn<MonthlyPlanItem>(t, 150),
-        assigneeColumn<MonthlyPlanItem>(t, userList, 130),
+        assigneeColumn<MonthlyPlanItem>(t, 130),
         methodColumn<MonthlyPlanItem>(t, 150),
         statusColumn<MonthlyPlanItem>(t, 130),
         resultColumn<MonthlyPlanItem>(t),
@@ -185,7 +185,7 @@ const MonthlyPlanSection: React.FC<Props> = ({ department, selectedMonth, canEdi
                 </div>
 
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                    {plan && <PlanFilterBar filters={filters} users={userList} />}
+                    {plan && <PlanFilterBar filters={filters} />}
 
                     {plan && canEdit && (
                         <>
@@ -273,8 +273,8 @@ const MonthlyPlanSection: React.FC<Props> = ({ department, selectedMonth, canEdi
                     <Form.Item name="why" label={t('plans.fields.why')}>
                         <TextArea autoSize={{ minRows: 2, maxRows: 6 }} placeholder={t('plans.fields.whyPlaceholder')} />
                     </Form.Item>
-                    <Form.Item name="assigneeId" label={t('plans.fields.who')}>
-                        <AssigneeSelect users={userList} />
+                    <Form.Item name="assigneeName" label={t('plans.fields.who')}>
+                        <AssigneeInput />
                     </Form.Item>
                     <Form.Item name="method" label={t('plans.fields.how')}>
                         <TextArea autoSize={{ minRows: 2, maxRows: 6 }} placeholder={t('plans.fields.howPlaceholder')} />

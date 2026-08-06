@@ -1,8 +1,7 @@
 import React from 'react';
-import { Select } from 'antd';
+import { Input, Select } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { SELECTABLE_STATUSES, STATUS_LABEL_KEY, buildSortOrderOptions } from './planConstants';
-import type { User } from '../../types';
 
 /**
  * Các control dùng chung trong form đầu việc.
@@ -36,19 +35,26 @@ export const SortOrderSelect: React.FC<ControlProps<number> & { itemCount: numbe
     />
 );
 
-export const AssigneeSelect: React.FC<ControlProps<string> & { users: User[] }> = ({
-    value, onChange, users,
-}) => {
+/**
+ * Người phụ trách: ô nhập TỰ DO, không phải dropdown chọn từ bảng users.
+ *
+ * Trước đây là Select đổ từ danh sách nhân viên và lưu users.id vào assignee_id.
+ * Nay lưu thẳng chuỗi tên vào assignee_name — người lập kế hoạch thường ghi tên
+ * người ngoài hệ thống, tổ/nhóm, hoặc nhiều người cùng lúc.
+ *
+ * Đánh đổi đã được chấp nhận: hệ thống không còn biết đầu việc thuộc về user nào,
+ * nên thông báo "đầu việc kế hoạch được giao cho tôi" đã bị bỏ khỏi chuông
+ * (routes/notifications.js).
+ */
+export const AssigneeInput: React.FC<ControlProps<string>> = ({ value, onChange }) => {
     const { t } = useTranslation();
     return (
-        <Select
+        <Input
             value={value}
-            onChange={onChange}
+            onChange={e => onChange?.(e.target.value)}
             allowClear
-            showSearch
-            optionFilterProp="label"
+            maxLength={255}
             placeholder={t('plans.fields.whoPlaceholder')}
-            options={users.map(u => ({ value: u.id, label: u.name }))}
         />
     );
 };

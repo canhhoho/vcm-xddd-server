@@ -44,8 +44,11 @@ function toProject(r) {
   // Calculate time progress
   let timeProgress = 0;
   if (r.start_date && r.end_date) {
-    const start = new Date(r.start_date); start.setHours(0,0,0,0);
-    const end = new Date(r.end_date); end.setHours(0,0,0,0);
+    // start_date/end_date la chuoi 'YYYY-MM-DD' (xem setTypeParser 1082 trong
+    // config/database.js). new Date('2026-07-05') thuan tuy la UTC midnight, nen
+    // phai them 'T00:00:00' de parse theo gio dia phuong, khong lech ngay.
+    const start = new Date(`${r.start_date}T00:00:00`); start.setHours(0,0,0,0);
+    const end = new Date(`${r.end_date}T00:00:00`); end.setHours(0,0,0,0);
     const now = new Date(); now.setHours(0,0,0,0);
     const totalDays = (end - start) / 86400000 + 1;
     const daysToCurrent = (now - start) / 86400000 + 1;

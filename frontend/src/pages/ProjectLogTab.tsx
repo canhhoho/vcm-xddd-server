@@ -31,6 +31,8 @@ import {
 import dayjs from 'dayjs';
 import { useTranslation } from 'react-i18next';
 import * as XLSX from 'xlsx';
+import { excelDateCell } from '../utils/excelExport';
+import type { ExcelCell } from '../utils/excelExport';
 import { useProjectLogs, useProjectLogMutations } from '../hooks/useProjectLogs';
 import ProjectLogForm from '../components/ProjectLogForm';
 import type { Project, ProjectLog, ProjectLogPayload } from '../types';
@@ -126,7 +128,7 @@ const ProjectLogTab: React.FC<ProjectLogTabProps> = ({ project, canEdit }) => {
             return;
         }
 
-        const sheetData: (string | number | undefined)[][] = [
+        const sheetData: ExcelCell[][] = [
             [t('projectLog.export.reportTitle')],
             [t('projectLog.export.projectName'), project?.name || 'N/A'],
             [t('projectLog.export.projectCode'), project?.code || 'N/A'],
@@ -154,7 +156,8 @@ const ProjectLogTab: React.FC<ProjectLogTabProps> = ({ project, canEdit }) => {
             const weatherText = log.weather ? getWeatherLabel(log.weather) : '';
             sheetData.push([
                 index + 1,
-                dayjs(log.logDate).format('DD/MM/YYYY'),
+                // Ô ngày THẬT — ô text thì Excel không lọc/sắp xếp theo ngày được.
+                excelDateCell(log.logDate),
                 weatherText,
                 log.workersCount || 0,
                 `${log.progressPct || 0}%`,

@@ -22,11 +22,11 @@ import { useUsers } from '../hooks/useUsers';
 import { BRAND_COLORS } from '../styles/brandIdentity';
 import PlanFilterBar from '../components/plan/PlanFilterBar';
 import { usePlanFilters } from '../components/plan/usePlanFilters';
-import { exportPlanExcel } from '../components/plan/exportPlanExcel';
+import { exportExcelSheet } from '../utils/excelExport';
 import { buildPlanHeaderRows, weeklyExportColumns } from '../components/plan/planExportColumns';
 import { DATE_FORMAT, DATE_FORMAT_SHORT, WRAP } from '../components/plan/planConstants';
 import {
-    AssigneeSelect, ProgressSelect, SortOrderSelect, StatusSelect,
+    AssigneeInput, ProgressSelect, SortOrderSelect, StatusSelect,
 } from '../components/plan/PlanFormFields';
 import {
     assigneeColumn, indexColumn, methodColumn,
@@ -216,9 +216,9 @@ const DepartmentPlan: React.FC<DepartmentPlanProps> = ({ department, selectedMon
     const handleExportExcel = (plan: WeeklyPlan) => {
         const items = filters.applyFilters(plan.items || []);
         const period = `${dayjs(plan.weekStart).format(DATE_FORMAT)} - ${dayjs(plan.weekEnd).format(DATE_FORMAT)}`;
-        const ok = exportPlanExcel(
+        const ok = exportExcelSheet(
             items,
-            weeklyExportColumns(t, userList),
+            weeklyExportColumns(t),
             t('plans.export.weekSheet', { range: dayjs(plan.weekStart).format('DD-MM') }),
             `WeeklyPlan_${department}_${dayjs(plan.weekStart).format('DD_MM_YYYY')}.xlsx`,
             buildPlanHeaderRows({ t, department, period, items })
@@ -250,7 +250,7 @@ const DepartmentPlan: React.FC<DepartmentPlanProps> = ({ department, selectedMon
             },
         },
         whyColumn<WeeklyPlanItem>(t, 130),
-        assigneeColumn<WeeklyPlanItem>(t, userList, 110),
+        assigneeColumn<WeeklyPlanItem>(t, 110),
         {
             title: t('plans.fields.when'), key: 'when', width: 120, align: 'center',
             render: (_: unknown, r: WeeklyPlanItem) => {
@@ -365,7 +365,7 @@ const DepartmentPlan: React.FC<DepartmentPlanProps> = ({ department, selectedMon
                 </div>
 
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-                    <PlanFilterBar filters={filters} users={userList} />
+                    <PlanFilterBar filters={filters} />
                 </div>
             </div>
 
@@ -539,8 +539,8 @@ const DepartmentPlan: React.FC<DepartmentPlanProps> = ({ department, selectedMon
                     <Form.Item name="why" label={t('plans.fields.why')}>
                         <TextArea autoSize={{ minRows: 2, maxRows: 6 }} placeholder={t('plans.fields.whyPlaceholder')} />
                     </Form.Item>
-                    <Form.Item name="assigneeId" label={t('plans.fields.who')}>
-                        <AssigneeSelect users={userList} />
+                    <Form.Item name="assigneeName" label={t('plans.fields.who')}>
+                        <AssigneeInput />
                     </Form.Item>
                     <Row gutter={16}>
                         <Col xs={24} sm={12}>

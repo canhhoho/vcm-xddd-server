@@ -22,20 +22,8 @@ export const normalizeId = (id: unknown): string => {
     return str;
 };
 
-// Excel coi ô bắt đầu bằng các ký tự này là công thức và sẽ thực thi.
-const FORMULA_PREFIX = /^[=+\-@\t\r]/;
-
-/**
- * Bọc một giá trị thành ô CSV an toàn.
- *
- * Hai vấn đề được xử lý:
- * 1. Dấu ngoặc kép trong dữ liệu phải nhân đôi, nếu không cột bị vỡ khi mở bằng Excel.
- * 2. Ô bắt đầu bằng `=`, `+`, `-`, `@` bị Excel thực thi như công thức
- *    (CSV injection). Thêm dấu nháy đơn ở đầu để ép về text.
- */
-export const toCsvCell = (value: unknown): string => {
-    if (value === null || value === undefined) return '""';
-    const str = String(value);
-    const safe = FORMULA_PREFIX.test(str) ? `'${str}` : str;
-    return `"${safe.replace(/"/g, '""')}"`;
-};
+// `toCsvCell` từng nằm ở đây để bọc ô CSV an toàn (nhân đôi dấu nháy kép + chặn
+// CSV injection). Đã xoá khi export Hợp đồng/Hoá đơn chuyển sang .xlsx thật:
+// aoa_to_sheet sinh cell string trơ (muốn thành công thức phải có `cell.f`), nên
+// không còn rủi ro nào để chặn. Đừng dựng lại CSV — Excel sẽ đọc lại ngày tháng
+// theo vùng miền của máy và đảo ngày/tháng. Xem utils/excelExport.ts.

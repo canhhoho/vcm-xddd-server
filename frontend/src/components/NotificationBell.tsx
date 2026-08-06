@@ -3,7 +3,6 @@ import { Badge, Popover, Empty } from 'antd';
 import {
     BellOutlined,
     CheckSquareOutlined,
-    ScheduleOutlined,
     DollarOutlined,
     FileTextOutlined,
     ProjectOutlined,
@@ -12,6 +11,7 @@ import {
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import dayjs from 'dayjs';
 import { BRAND_COLORS } from '../styles/brandIdentity';
 import {
     useNotifications,
@@ -22,7 +22,6 @@ import {
 
 const TYPE_ICONS: Record<NotificationType, React.ReactNode> = {
     MY_TASK: <CheckSquareOutlined />,
-    MY_PLAN_ITEM: <ScheduleOutlined />,
     INVOICE_UNPAID: <DollarOutlined />,
     CONTRACT_ENDING: <FileTextOutlined />,
     PROJECT_ENDING: <ProjectOutlined />,
@@ -32,10 +31,11 @@ const TYPE_ICONS: Record<NotificationType, React.ReactNode> = {
 
 const formatDue = (iso: string | null): string => {
     if (!iso) return '';
-    const d = new Date(iso);
-    if (Number.isNaN(d.getTime())) return '';
-    const pad = (n: number) => String(n).padStart(2, '0');
-    return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}`;
+    // dayjs parse 'YYYY-MM-DD' theo nua dem GIO DIA PHUONG, con new Date() thuan
+    // tuy parse theo UTC -> lech mot ngay o cac mui gio am. Xem setTypeParser 1082
+    // trong server/src/config/database.js.
+    const d = dayjs(iso);
+    return d.isValid() ? d.format('DD/MM/YYYY') : '';
 };
 
 const Row: React.FC<{ item: NotificationItem; onClick: () => void }> = ({ item, onClick }) => {

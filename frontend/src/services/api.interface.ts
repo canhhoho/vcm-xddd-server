@@ -37,6 +37,7 @@ export interface ContractInput {
     status?: Contract['status'];
     fileUrls?: string;
     note?: string;
+    investor?: string;
 }
 
 /**

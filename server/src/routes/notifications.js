@@ -43,8 +43,8 @@ const MAX_ITEMS = 30;
 const ACTIVITY_LIMIT = 8;
 const ACTIVITY_WINDOW_DAYS = 7;
 
-const DEPARTMENTS = ['BD', 'MKT', 'QS', 'DES', 'PM'];
-const PLAN_COLUMNS = DEPARTMENTS.map(d => `plans_${d.toLowerCase()}`);
+// Không còn đọc cột quyền plans_*: từ khi nhánh MY_PLAN_ITEM bị bỏ, không thông
+// báo nào lấy dữ liệu từ bảng kế hoạch nữa nên không có gì để lọc theo phòng ban.
 const MODULE_COLUMNS = ['contracts', 'projects', 'business'];
 
 /** Có quyền đọc không: ADMIN, hoặc cột quyền là VIEW/EDIT */
@@ -56,7 +56,7 @@ const canRead = (level) => level === 'VIEW' || level === 'EDIT' || level === 'AD
  * đọc thẳng từ bảng users mỗi request nên admin đổi quyền có hiệu lực ngay.
  */
 async function loadPermissions(userId) {
-  const cols = [...MODULE_COLUMNS, ...PLAN_COLUMNS].join(', ');
+  const cols = MODULE_COLUMNS.join(', ');
   const { rows } = await query(`SELECT role, ${cols} FROM users WHERE id = $1`, [userId]);
   if (rows.length === 0) return null;
 
@@ -69,8 +69,6 @@ async function loadPermissions(userId) {
     contracts: level('contracts'),
     projects: level('projects'),
     business: level('business'),
-    // Danh sách phòng ban user được xem kế hoạch; dùng để lọc đầu việc kế hoạch.
-    allowedDepartments: DEPARTMENTS.filter(d => canRead(level(`plans_${d.toLowerCase()}`))),
   };
 }
 
@@ -79,15 +77,15 @@ async function loadPermissions(userId) {
  * id, type, title, detail, occurred_at, due_date, link.
  *
  * Tham số, thứ tự cố định:
- *   $1 userId, $2 DUE_SOON_DAYS, $3 INVOICE_OVERDUE_DAYS, $4 allowedDepartments,
- *   $5 xem được contracts, $6 projects, $7 business, $8 là ADMIN,
- *   $9 ACTIVITY_WINDOW_DAYS
+ *   $1 userId, $2 DUE_SOON_DAYS, $3 INVOICE_OVERDUE_DAYS,
+ *   $4 xem được contracts, $5 projects, $6 business, $7 là ADMIN,
+ *   $8 ACTIVITY_WINDOW_DAYS
  *
  * Quyền được gate bằng THAM SỐ BOOLEAN trong WHERE chứ không phải bằng cách bỏ
  * bớt nhánh lúc ghép chuỗi. Bỏ nhánh khiến một số $n không còn được tham chiếu
  * và Postgres từ chối cả câu lệnh ("bind message supplies N parameters, but
  * prepared statement requires M") — user NO_ACCESS mọi module nhận 500.
- * Với `AND $5::boolean` = false, planner cắt nhánh bằng one-time filter nên
+ * Với `AND $4::boolean` = false, planner cắt nhánh bằng one-time filter nên
  * không hề quét bảng; kết quả vẫn là không có dòng nào lọt ra.
  */
 function buildBranches() {
@@ -107,23 +105,14 @@ function buildBranches() {
       AND t.end_date <= CURRENT_DATE + ($2 || ' days')::interval
   `);
 
-  // ── Đầu việc kế hoạch tuần được giao cho tôi ──
-  // Vẫn phải lọc theo phòng ban dù item được giao cho chính user: không lọc thì
-  // tiêu đề đầu việc của phòng ban user bị NO_ACCESS sẽ lộ ra qua chuông.
-  // allowedDepartments rỗng -> = ANY('{}') không khớp gì, nhánh tự vô hiệu.
-  branches.push(`
-    SELECT wi.id, 'MY_PLAN_ITEM' AS type, wi.title AS title,
-           wp.department AS detail,
-           (wi.end_date - ($2 || ' days')::interval) AS occurred_at,
-           wi.end_date AS due_date, '#/plans?tab=' || wp.department AS link
-    FROM weekly_plan_items wi
-    JOIN weekly_plans wp ON wi.plan_id = wp.id
-    WHERE wi.assignee_id = $1
-      AND wi.end_date IS NOT NULL
-      AND UPPER(COALESCE(wi.status, '')) <> 'DONE'
-      AND wp.department = ANY($4)
-      AND wi.end_date <= CURRENT_DATE + ($2 || ' days')::interval
-  `);
+  // ── ĐÃ BỎ: nhánh MY_PLAN_ITEM ("đầu việc kế hoạch tuần được giao cho tôi") ──
+  // Cột "Who" của Kế hoạch giờ là TEXT TỰ DO (weekly_plan_items.assignee_name),
+  // không còn khoá ngoại tới users. Nhánh cũ lọc bằng `wi.assignee_id = $1` nên
+  // không thể xác định đầu việc thuộc về ai nữa. Xem migrate-plan-assignee-text.sql.
+  //
+  // Bỏ nhánh này cũng là chỗ duy nhất tham chiếu $4 (allowedDepartments), nên toàn
+  // bộ tham số sau đó đã được ĐÁNH SỐ LẠI ($5..$9 -> $4..$8). Bắt buộc, vì tham số
+  // không được tham chiếu khiến Postgres từ chối cả câu lệnh — xem chú thích trên.
 
   // ── Hoá đơn phát hành lâu mà chưa thu đủ + hợp đồng sắp hết hạn ──
   branches.push(`
@@ -134,7 +123,7 @@ function buildBranches() {
            i.issued_date AS due_date, '#/contracts' AS link
     FROM invoices i
     LEFT JOIN contracts c ON i.contract_id = c.id
-    WHERE $5::boolean
+    WHERE $4::boolean
       AND i.issued_date IS NOT NULL
       AND COALESCE(i.payment, 0) < COALESCE(i.value, 0)
       AND i.issued_date + ($3 || ' days')::interval <= NOW()
@@ -145,7 +134,7 @@ function buildBranches() {
            (c.end_date - ($2 || ' days')::interval) AS occurred_at,
            c.end_date AS due_date, '#/contracts' AS link
     FROM contracts c
-    WHERE $5::boolean
+    WHERE $4::boolean
       AND c.end_date IS NOT NULL
       AND UPPER(COALESCE(c.status, '')) <> 'DONE'
       AND c.end_date <= CURRENT_DATE + ($2 || ' days')::interval
@@ -158,7 +147,7 @@ function buildBranches() {
            (p.end_date - ($2 || ' days')::interval) AS occurred_at,
            p.end_date AS due_date, '#/projects' AS link
     FROM projects p
-    WHERE $6::boolean
+    WHERE $5::boolean
       AND p.end_date IS NOT NULL
       AND UPPER(COALESCE(p.status, '')) <> 'DONE'
       AND p.end_date <= CURRENT_DATE + ($2 || ' days')::interval
@@ -171,7 +160,7 @@ function buildBranches() {
            pr.expected_date::timestamptz AS occurred_at,
            pr.expected_date AS due_date, '#/business' AS link
     FROM prospects pr
-    WHERE $7::boolean
+    WHERE $6::boolean
       AND pr.expected_date IS NOT NULL
       AND UPPER(COALESCE(pr.status, '')) NOT IN ('WON', 'LOST')
       AND pr.expected_date < CURRENT_DATE
@@ -189,8 +178,8 @@ function buildBranches() {
              a.created_at AS occurred_at,
              NULL::date AS due_date, '#/users?tab=activities' AS link
       FROM activities a
-      WHERE $8::boolean
-        AND a.created_at >= NOW() - ($9 || ' days')::interval
+      WHERE $7::boolean
+        AND a.created_at >= NOW() - ($8 || ' days')::interval
       ORDER BY a.created_at DESC
       LIMIT ${ACTIVITY_LIMIT}
     ) act
@@ -215,7 +204,6 @@ router.get('/', async (req, res, next) => {
         req.user.id,
         String(DUE_SOON_DAYS),
         String(INVOICE_OVERDUE_DAYS),
-        perms.allowedDepartments,
         canRead(perms.contracts),
         canRead(perms.projects),
         canRead(perms.business),
@@ -237,7 +225,12 @@ router.get('/', async (req, res, next) => {
       detail: r.detail || '',
       occurredAt: r.occurred_at,
       dueDate: r.due_date,
-      severity: r.due_date && new Date(r.due_date).getTime() < today ? 'overdue' : 'soon',
+      // due_date la cot DATE -> ve dang chuoi 'YYYY-MM-DD' (setTypeParser 1082 trong
+      // config/database.js). new Date('2026-01-15') thuan tuy parse theo UTC midnight,
+      // trong khi `today` o tren la nua dem GIO DIA PHUONG -> hai moc lech nhau dung
+      // bang offset, va tren server offset AM thi moi viec den han HOM NAY bi gan
+      // 'overdue'. Them 'T00:00:00' de parse theo gio dia phuong cho khop voi `today`.
+      severity: r.due_date && new Date(`${r.due_date}T00:00:00`).getTime() < today ? 'overdue' : 'soon',
       link: r.link,
     }));
 

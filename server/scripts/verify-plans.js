@@ -167,7 +167,7 @@ async function run() {
     for (const [i, title] of ['Item A', 'Item B', 'Item C'].entries()) {
         r = await api('POST', `/weekly-plans/${planId}/items`, {
             token: editor,
-            body: { sortOrder: i + 1, title, status: 'TODO', assigneeId: '', monthlyItemId: '' },
+            body: { sortOrder: i + 1, title, status: 'TODO', assigneeName: '', monthlyItemId: '' },
         });
         itemIds.push(r.body?.data?.id);
     }
@@ -178,10 +178,27 @@ async function run() {
     check('progressPct=500 bị kẹp về 100', db.rows[0].progress_pct === 100, `got ${db.rows[0].progress_pct}`);
 
     // ------------------------------------------------------- 3.8 quy ước NULL
-    group('3.8', 'Quy ước NULL cho khoá ngoại mềm');
-    db = await pool.query('SELECT assignee_id, monthly_item_id FROM weekly_plan_items WHERE id=$1', [itemIds[0]]);
-    check('assigneeId rỗng lưu NULL (không phải chuỗi rỗng)',
-        db.rows[0].assignee_id === null && db.rows[0].monthly_item_id === null,
+    group('3.8', 'Quy ước NULL cho khoá ngoại mềm / "" cho cột text');
+    db = await pool.query('SELECT assignee_name, monthly_item_id FROM weekly_plan_items WHERE id=$1', [itemIds[0]]);
+    check('monthlyItemId rỗng lưu NULL (khoá ngoại mềm)',
+        db.rows[0].monthly_item_id === null,
+        JSON.stringify(db.rows[0]));
+    // assignee_name là cột TEXT TỰ DO (không còn là khoá ngoại assignee_id), nên
+    // quy ước ngược lại: chuỗi rỗng chứ KHÔNG phải NULL.
+    check('assigneeName rỗng lưu "" (không phải NULL)',
+        db.rows[0].assignee_name === '',
+        JSON.stringify(db.rows[0]));
+
+    // PUT ở API này là REPLACE toàn phần: field không gửi sẽ bị ghi đè bằng mặc
+    // định (sortOrder thiếu -> 1, status thiếu -> TODO). Phải gửi đủ, nếu không
+    // item này nhảy lên sort_order=1 và làm sai thứ tự của test batch-status bên dưới.
+    r = await api('PUT', `/weekly-plans/items/${itemIds[2]}`, {
+        token: editor,
+        body: { sortOrder: 3, title: 'Item C', status: 'TODO', assigneeName: '  Nguyễn Văn A  ' },
+    });
+    db = await pool.query('SELECT assignee_name FROM weekly_plan_items WHERE id=$1', [itemIds[2]]);
+    check('assigneeName lưu đúng chuỗi tự do (đã trim)',
+        db.rows[0].assignee_name === 'Nguyễn Văn A',
         JSON.stringify(db.rows[0]));
 
     // ------------------------------------------------------- 1.1 batch-status

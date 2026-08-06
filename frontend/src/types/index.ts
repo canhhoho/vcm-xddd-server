@@ -57,6 +57,8 @@ export interface Contract {
     status: 'TODO' | 'IN_PROGRESS' | 'INPROCESS' | 'DONE';
     fileUrl?: string;
     note?: string;
+    // Tên chủ đầu tư, không bắt buộc. Server luôn trả '' khi trống.
+    investor?: string;
     progress?: number;
     invoicedAmount?: number;
     createdAt: string;
@@ -280,8 +282,9 @@ export interface WeeklyPlanItem {
     title: string;
     description: string;
     why: string;
-    assigneeId: string;
-    assigneeName?: string;
+    // Người phụ trách là TEXT TỰ DO người dùng gõ, không phải khoá ngoại tới users.
+    // Cột assignee_id cũ đã bị xoá — xem server/scripts/migrate-plan-assignee-text.sql.
+    assigneeName: string;
     startDate: string;
     endDate: string;
     location: string;
@@ -309,7 +312,7 @@ export interface MonthlyPlanItem {
     sortOrder: number;
     title: string;
     why?: string;
-    assigneeId?: string;
+    // Text tự do, không phải khoá ngoại — xem chú thích ở WeeklyPlanItem.
     assigneeName?: string;
     target?: string;
     method?: string;

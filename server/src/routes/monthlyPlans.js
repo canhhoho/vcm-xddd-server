@@ -13,8 +13,10 @@ const {
 
 const mapItem = (r) => ({
     id: r.id, planId: r.plan_id, sortOrder: r.sort_order,
-    title: r.title, why: r.why, assigneeId: r.assignee_id,
-    assigneeName: r.assignee_name || null, target: r.target,
+    title: r.title, why: r.why,
+    // Người phụ trách là TEXT TỰ DO do người dùng gõ, không tra sang bảng users.
+    // Cột assignee_id cũ đã bị xoá — xem migrate-plan-assignee-text.sql.
+    assigneeName: r.assignee_name || '', target: r.target,
     method: r.method, status: r.status, result: r.result,
     createdAt: r.created_at,
 });
@@ -45,8 +47,7 @@ router.get('/', async (req, res, next) => {
         if (includeItems === 'true' && plans.length > 0) {
             const planIds = plans.map(p => p.id);
             const itemsResult = await query(
-                `SELECT i.*, u.name as assignee_name FROM monthly_plan_items i
-                 LEFT JOIN users u ON i.assignee_id = u.id
+                `SELECT i.* FROM monthly_plan_items i
                  WHERE i.plan_id = ANY($1) ORDER BY i.plan_id, i.sort_order`,
                 [planIds]
             );
@@ -101,8 +102,7 @@ router.delete('/:id', async (req, res, next) => {
 router.get('/:planId/items', async (req, res, next) => {
     try {
         const result = await query(
-            `SELECT i.*, u.name as assignee_name FROM monthly_plan_items i
-             LEFT JOIN users u ON i.assignee_id = u.id
+            `SELECT i.* FROM monthly_plan_items i
              WHERE i.plan_id = $1 ORDER BY i.sort_order`,
             [req.params.planId]
         );
@@ -115,23 +115,25 @@ router.get('/:planId/items', async (req, res, next) => {
 // POST /monthly-plans/:planId/items
 router.post('/:planId/items', async (req, res, next) => {
     try {
-        const { sortOrder, title, why, assigneeId, target, method, status } = req.body;
+        const { sortOrder, title, why, assigneeName, target, method, status } = req.body;
         const cleanTitle = assertTitle(title);
         // Kế hoạch tháng không có khái niệm "chuyển sang kỳ sau"
         const cleanStatus = assertStatus(status, { allowCarriedOver: false });
 
         const id = uuidv4();
         await query(
-            `INSERT INTO monthly_plan_items (id, plan_id, sort_order, title, why, assignee_id, target, method, status)
+            `INSERT INTO monthly_plan_items (id, plan_id, sort_order, title, why, assignee_name, target, method, status)
              VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
             [
                 id, req.params.planId, parseInt(sortOrder, 10) || 1, cleanTitle,
-                textOrEmpty(why), nullIfBlank(assigneeId), textOrEmpty(target),
+                // assignee_name là cột TEXT nên dùng textOrEmpty (''), không phải
+                // nullIfBlank (NULL) như hồi nó còn là khoá ngoại mềm assignee_id.
+                textOrEmpty(why), textOrEmpty(assigneeName).trim(), textOrEmpty(target),
                 textOrEmpty(method), cleanStatus,
             ]
         );
         const result = await query(
-            'SELECT i.*, u.name as assignee_name FROM monthly_plan_items i LEFT JOIN users u ON i.assignee_id = u.id WHERE i.id = $1', [id]
+            'SELECT i.* FROM monthly_plan_items i WHERE i.id = $1', [id]
         );
         res.json({ success: true, data: mapItem(result.rows[0]) });
     } catch (err) {
@@ -142,15 +144,15 @@ router.post('/:planId/items', async (req, res, next) => {
 // PUT /monthly-plans/items/:id
 router.put('/items/:id', async (req, res, next) => {
     try {
-        const { sortOrder, title, why, assigneeId, target, method, status, result: itemResult } = req.body;
+        const { sortOrder, title, why, assigneeName, target, method, status, result: itemResult } = req.body;
         const cleanTitle = assertTitle(title);
         const cleanStatus = assertStatus(status, { allowCarriedOver: false });
 
         await query(
-            `UPDATE monthly_plan_items SET sort_order=$1, title=$2, why=$3, assignee_id=$4,
+            `UPDATE monthly_plan_items SET sort_order=$1, title=$2, why=$3, assignee_name=$4,
              target=$5, method=$6, status=$7, result=$8 WHERE id=$9`,
             [
-                parseInt(sortOrder, 10) || 1, cleanTitle, textOrEmpty(why), nullIfBlank(assigneeId),
+                parseInt(sortOrder, 10) || 1, cleanTitle, textOrEmpty(why), textOrEmpty(assigneeName).trim(),
                 textOrEmpty(target), textOrEmpty(method), cleanStatus, textOrEmpty(itemResult),
                 req.params.id,
             ]

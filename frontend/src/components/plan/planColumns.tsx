@@ -3,24 +3,18 @@ import { Tag, Typography } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import type { TFunction } from 'i18next';
 import { STATUS_COLORS, STATUS_LABEL_KEY, WRAP } from './planConstants';
-import type { PlanItemStatus, User } from '../../types';
+import type { PlanItemStatus } from '../../types';
 
 const { Text } = Typography;
 
 /** Item tối thiểu mà các cột dùng chung cần */
 export interface BasePlanItem {
     status: PlanItemStatus | 'TODO' | 'IN_PROGRESS' | 'DONE';
-    assigneeId?: string;
+    /** Người phụ trách — text tự do người dùng gõ, không tra sang bảng users */
     assigneeName?: string;
     method?: string;
     result?: string;
 }
-
-/** Tên người phụ trách: ưu tiên tên backend JOIN sẵn, fallback tra trong danh sách users */
-export const resolveAssigneeName = (
-    item: { assigneeId?: string; assigneeName?: string },
-    users: User[]
-): string => item.assigneeName || users.find(u => u.id === item.assigneeId)?.name || '';
 
 /** Nhãn trạng thái đã dịch — dùng chung cho cả bảng lẫn export Excel */
 export const statusLabel = (status: string, t: TFunction): string => {
@@ -29,12 +23,13 @@ export const statusLabel = (status: string, t: TFunction): string => {
 };
 
 export const assigneeColumn = <T extends BasePlanItem>(
-    t: TFunction, users: User[], width = 120
+    t: TFunction, width = 120
 ): ColumnsType<T>[number] => ({
     title: t('plans.fields.who'),
-    key: 'assignee',
+    dataIndex: 'assigneeName',
+    key: 'assigneeName',
     width,
-    render: (_: unknown, r: T) => resolveAssigneeName(r, users) || '-',
+    render: (name: string) => name || '-',
 });
 
 export const methodColumn = <T extends BasePlanItem>(
