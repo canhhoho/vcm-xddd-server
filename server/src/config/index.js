@@ -4,7 +4,9 @@
  */
 
 const APP_CONFIG = {
-  VERSION: '1.0.0-server',
+  // Đọc thẳng từ server/package.json. Trước đây là chuỗi cứng '1.0.0-server' và
+  // chưa bao giờ được bump, nên /api/meta/app trả số lệch hẳn với UI.
+  VERSION: require('../../package.json').version,
 
   // Business Types
   BUSINESS_TYPES: ['B2B', 'B2C'],

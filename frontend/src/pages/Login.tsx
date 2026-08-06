@@ -82,7 +82,7 @@ const Login: React.FC = () => {
                     </Form.Item>
                 </Form>
                 <div style={{ textAlign: 'center', marginTop: 10, fontSize: 11, color: '#aaa' }}>
-                    v{__APP_VERSION__} - {new Date().toLocaleString()}
+                    v{__APP_VERSION__} - {new Date(__BUILD_TIME__).toLocaleString()}
                 </div>
             </Card>
         </div>

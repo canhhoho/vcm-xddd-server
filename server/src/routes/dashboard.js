@@ -5,6 +5,7 @@
 const router = require('express').Router();
 const { query } = require('../config/database');
 const CacheService = require('../services/cacheService');
+const APP_CONFIG = require('../config');
 const { loadTargetIndex, getGeneralTarget, listTargets } = require('./_targetLookup');
 
 // GET /dashboard/stats
@@ -415,7 +416,7 @@ router.get('/stats', async (req, res, next) => {
           pipelineDataB2C,
           totalContracts: parseInt(nvYtd.rows[0].count),
           totalValue: parseFloat(nvYtd.rows[0].total),
-          VERSION: require('../../package.json').version || '1.0.0',
+          VERSION: APP_CONFIG.VERSION,
         }
       };
     }, CacheService.TTL.SHORT);

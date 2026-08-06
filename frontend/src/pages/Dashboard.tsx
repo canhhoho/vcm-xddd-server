@@ -20,6 +20,7 @@ import CustomColumnChart from '../components/CustomColumnChart';
 import SalesFunnelCard from '../components/dashboard/SalesFunnelCard';
 import { useTranslation } from 'react-i18next';
 import { useDashboardStats } from '../hooks/useDashboardStats';
+import { APP_VERSION } from '../styles/brandIdentity';
 import './Dashboard.css';
 
 const Dashboard: React.FC = () => {
@@ -28,7 +29,6 @@ const Dashboard: React.FC = () => {
     const currentYear = dayjs().year();
     const [viewMode, setViewMode] = useState<'MONTH' | 'YEAR' | 'ALL'>('MONTH');
     const [selectedYear, setSelectedYear] = useState<number>(currentYear);
-    const [appVersion] = useState<string>(typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : '2.6.7');
 
     // Use React Query Hook
     const dateStr = targetDate.format('YYYY-MM-DD');
@@ -255,7 +255,10 @@ const Dashboard: React.FC = () => {
         <div className="dash-container">
             <div className="dashboard-header">
                 <div className="dash-header-left">
-                    <h2>{t('dashboard.title')} <span style={{ fontSize: '0.6em', color: '#888', fontWeight: 'normal' }}>v{stats?.VERSION || appVersion}</span></h2>
+                    {/* Đọc cùng nguồn với sidebar và trang Login. Trước đây ưu tiên
+                        stats.VERSION (số của server) nên tiêu đề có thể lệch số ở
+                        sidebar. API vẫn trả VERSION, chỉ là UI không đọc nữa. */}
+                    <h2>{t('dashboard.title')} <span style={{ fontSize: '0.6em', color: '#888', fontWeight: 'normal' }}>v{APP_VERSION}</span></h2>
                     <p>{t('dashboard.welcome')}, {userName}!</p>
                 </div>
                 <div className="dash-header-actions">

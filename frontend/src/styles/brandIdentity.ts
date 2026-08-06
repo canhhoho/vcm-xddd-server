@@ -3,12 +3,12 @@
  * =========================================
  * File này định nghĩa các quy chuẩn thiết kế cho toàn bộ ứng dụng.
  * Khi phát triển các chức năng mới, PHẢI tuân thủ các quy định này.
- * 
- * Version: 1.0.5
- * Last Updated: 2026-02-13
  */
 
-export const APP_VERSION = '1.1.2';
+// Lấy thẳng từ frontend/package.json qua `define` của vite.config.ts.
+// Trước đây đây là chuỗi hardcode và đã lệch khỏi package.json: sidebar hiện
+// v1.1.2 trong khi trang Login hiện v1.2.0. Đừng đưa lại số cứng vào đây.
+export const APP_VERSION = __APP_VERSION__;
 
 
 // ============================================

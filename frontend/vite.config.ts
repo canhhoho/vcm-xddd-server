@@ -41,7 +41,12 @@ export default defineConfig(({ mode }) => {
     },
     define: {
       'process.env': {},
-      __APP_VERSION__: JSON.stringify(packageJson.version)
+      // Nguồn chuẩn DUY NHẤT của số version hiển thị: frontend/package.json.
+      // Ra bản mới chỉ sửa trường `version` ở đó (và ở server/package.json).
+      __APP_VERSION__: JSON.stringify(packageJson.version),
+      // Thời điểm build, KHÔNG phải giờ máy người xem — dùng để biết bản
+      // frontend đang chạy được build lúc nào.
+      __BUILD_TIME__: JSON.stringify(new Date().toISOString())
     }
   }
 })
