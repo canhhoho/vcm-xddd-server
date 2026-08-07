@@ -7,6 +7,7 @@ const { query } = require('../config/database');
 const CacheService = require('../services/cacheService');
 const APP_CONFIG = require('../config');
 const { loadTargetIndex, getGeneralTarget, listTargets } = require('./_targetLookup');
+const { round2, rollupMonths, rollupMonthsFlat } = require('./_monthlyRollup');
 
 // GET /dashboard/stats
 router.get('/stats', async (req, res, next) => {
@@ -36,16 +37,28 @@ router.get('/stats', async (req, res, next) => {
         FROM contracts WHERE EXTRACT(YEAR FROM start_date) = $1 AND EXTRACT(MONTH FROM start_date) = $2
       `, [year, month]);
 
-      // KPI: Nguồn việc YTD
+      // KPI: Nguồn việc / Doanh thu / Thu tiền YTD.
+      //
+      // GROUP BY tháng chứ không phải một SUM cả năm: số YTD ở đây phải bằng ĐÚNG
+      // dòng "Năm" của bảng trên page Chỉ tiêu, mà dòng đó là tổng các tháng ĐÃ LÀM
+      // TRÒN (xem _monthlyRollup.js). Một SUM cả năm rồi làm tròn một lần cho ra số
+      // lệch tới 0,06 triệu so với bảng đó — hai màn hình hai con số, không cảnh báo.
+      // `total_raw` giữ nguyên đơn vị ĐỒNG cho `totalValue` ở cuối response — trường
+      // đó vốn trả về số thô, đổi đơn vị ở đây sẽ làm sai client đang đọc nó.
       const nvYtd = await query(`
-        SELECT COUNT(*) as count, COALESCE(SUM(value_before_tax), 0) as total
+        SELECT EXTRACT(MONTH FROM start_date)::int as m,
+               COUNT(*) as count,
+               COALESCE(SUM(value_before_tax), 0) as total_raw,
+               COALESCE(SUM(value_before_tax)/1000000, 0) as total
         FROM contracts WHERE EXTRACT(YEAR FROM start_date) = $1
+        GROUP BY m
       `, [year]);
 
-      // KPI: Doanh thu YTD (invoice values)
       const dtYtd = await query(`
-        SELECT COALESCE(SUM(value_before_tax), 0) as total
+        SELECT EXTRACT(MONTH FROM issued_date)::int as m,
+               COALESCE(SUM(value_before_tax)/1000000, 0) as total
         FROM invoices WHERE EXTRACT(YEAR FROM issued_date) = $1
+        GROUP BY m
       `, [year]);
 
       // KPI: Doanh thu MTD
@@ -59,8 +72,10 @@ router.get('/stats', async (req, res, next) => {
       // "đã thu được bao nhiêu trên các hoá đơn PHÁT HÀNH trong kỳ", không phải dòng
       // tiền thực tế của kỳ đó.
       const ttYtd = await query(`
-        SELECT COALESCE(SUM(payment), 0) as total
+        SELECT EXTRACT(MONTH FROM issued_date)::int as m,
+               COALESCE(SUM(payment)/1000000, 0) as total
         FROM invoices WHERE EXTRACT(YEAR FROM issued_date) = $1
+        GROUP BY m
       `, [year]);
 
       // KPI: Thu tiền MTD
@@ -111,9 +126,6 @@ router.get('/stats', async (req, res, next) => {
       // trong kỳ, tính ở chỗ dựng response bên dưới. Dòng type='THU_TIEN' còn sót
       // trong DB (dữ liệu GAS cũ) vì thế không được dùng ở đây.
 
-      // All values in triệu (millions) — round to 2 decimals for consistency
-      const round2 = (v) => Math.round(v * 100) / 100;
-
       // Tỷ lệ đạt (%) — một chữ số thập phân, dùng chung cho cả ba thẻ KPI.
       // Frontend đổ achievedPct (tháng) và yearPct (năm) vào cùng một ô tuỳ viewMode,
       // nên hai giá trị phải cùng độ chính xác, nếu không ô đó lúc "88.7%" lúc "71%".
@@ -122,9 +134,11 @@ router.get('/stats', async (req, res, next) => {
         const t = parseFloat(target) || 0;
         return t > 0 ? Math.round((actual / t) * 1000) / 10 : 0;
       };
-      const nvActual = round2(parseFloat(nvYtd.rows[0].total) / 1000000);
-      const dtActual = round2(parseFloat(dtYtd.rows[0].total) / 1000000);
-      const ttActual = round2(parseFloat(ttYtd.rows[0].total) / 1000000);
+      // Đơn vị triệu — query đã chia 1000000. `.year` là tổng các THÁNG đã làm tròn,
+      // nên số này bằng ĐÚNG dòng "Năm" của /general-performance và của page Chỉ tiêu.
+      const nvActual = rollupMonths(nvYtd.rows).year;
+      const dtActual = rollupMonths(dtYtd.rows).year;
+      const ttActual = rollupMonths(ttYtd.rows).year;
 
       const nvMtdVal = round2(parseFloat(nvMtd.rows[0].total) / 1000000);
       const dtMtdValActual = round2(parseFloat(dtMtd.rows[0].total) / 1000000);
@@ -414,8 +428,10 @@ router.get('/stats', async (req, res, next) => {
           projectExecution: { ...projectExecution, delayed: 0 },
           pipelineData,
           pipelineDataB2C,
-          totalContracts: parseInt(nvYtd.rows[0].count),
-          totalValue: parseFloat(nvYtd.rows[0].total),
+          // nvYtd giờ GROUP BY tháng nên phải cộng các nhóm lại; `rows[0]` chỉ là
+          // một tháng. `totalValue` giữ nguyên đơn vị ĐỒNG như trước.
+          totalContracts: nvYtd.rows.reduce((s, r) => s + parseInt(r.count, 10), 0),
+          totalValue: nvYtd.rows.reduce((s, r) => s + parseFloat(r.total_raw), 0),
           VERSION: APP_CONFIG.VERSION,
         }
       };
@@ -450,15 +466,10 @@ router.get('/branch-performance', async (req, res, next) => {
         GROUP BY m
       `, [b.id, y]);
 
-      // All values in triệu — round to 2 decimals for consistency
-      const round2 = (v) => Math.round(v * 100) / 100;
-      const sourceWork = { total: 0, months: {} };
-      nvByMonth.rows.forEach(r => { const v = parseFloat(r.total); sourceWork.months[r.m] = round2(v); sourceWork.total += v; });
-      sourceWork.total = round2(sourceWork.total);
-
-      const revenue = { total: 0, months: {} };
-      dtByMonth.rows.forEach(r => { const v = parseFloat(r.total); revenue.months[r.m] = round2(v); revenue.total += v; });
-      revenue.total = round2(revenue.total);
+      // Đơn vị triệu. `total` = tổng các THÁNG ĐÃ LÀM TRÒN, không phải làm tròn của
+      // tổng thô — xem _monthlyRollup.js để biết vì sao.
+      const sourceWork = rollupMonthsFlat(nvByMonth.rows);
+      const revenue = rollupMonthsFlat(dtByMonth.rows);
 
       result[b.id] = { id: b.id, name: b.name, code: b.code, sourceWork, revenue };
     }
@@ -485,24 +496,14 @@ router.get('/general-performance', async (req, res, next) => {
       FROM invoices WHERE EXTRACT(YEAR FROM issued_date) = $1 GROUP BY m
     `, [y]);
 
-    // All values in triệu (millions) — round to 2 decimals for consistency with calcActualValue
-    const round2 = (v) => Math.round(v * 100) / 100;
-    const buildPerf = (rows) => {
-      const months = {}; const quarters = { 1: 0, 2: 0, 3: 0, 4: 0 }; let yearTotal = 0;
-      rows.forEach(r => {
-        const m = r.m; const v = parseFloat(r.total);
-        months[m] = round2(v); quarters[Math.ceil(m / 3)] += v; yearTotal += v;
-      });
-      // Round quarters and year total to 2 decimal places
-      for (const q of [1,2,3,4]) quarters[q] = round2(quarters[q]);
-      return { year: round2(yearTotal), quarters, months };
-    };
-
+    // Đơn vị triệu. rollupMonths bảo đảm year = Σ quarters = Σ months và
+    // quarters[q] = Σ 3 tháng của quý q — đúng bất biến mà bảng Năm/Quý/Tháng của
+    // page Chỉ tiêu hiển thị. Xem _monthlyRollup.js.
     res.json({
       success: true,
       data: {
-        nguonViec: buildPerf(nvByMonth.rows),
-        doanhThu: buildPerf(dtByMonth.rows),
+        nguonViec: rollupMonths(nvByMonth.rows),
+        doanhThu: rollupMonths(dtByMonth.rows),
       }
     });
   } catch (err) {

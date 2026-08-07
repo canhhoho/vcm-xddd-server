@@ -99,12 +99,14 @@ const Targets: React.FC = () => {
     const branches = appConfig?.BRANCHES || [];
 
     // General Performance (actual values by year, independent of target records)
-    const { data: generalPerformance } = useGeneralPerformance(generalYear, canView);
+    const { data: generalPerformance, isLoading: loadingPerf } = useGeneralPerformance(generalYear, canView);
 
     // Branch Performance (Only fetch if tab is branch)
     const { data: branchActuals = {} } = useBranchPerformance(branchYear, activeTab === 'branch');
 
-    const loading = loadingTargets;
+    // Phải gồm loadingPerf: cột "Thực hiện" chỉ đọc generalPerformance, thiếu nó thì
+    // trong lúc query đang chạy bảng hiện một cột số 0 rồi mới nhảy sang số thật.
+    const loading = loadingTargets || loadingPerf;
 
     // Mutations
     const { createTarget, updateTarget, deleteTarget } = useTargetMutations();
@@ -273,23 +275,31 @@ const Targets: React.FC = () => {
     };
 
     // ========== GENERAL TARGETS DATA ==========
-    // Helper: lấy actualValue từ generalPerformance (hoặc từ target record nếu không có)
-    const getGeneralActual = (targetType: 'NGUON_VIEC' | 'DOANH_THU', periodType: 'YEAR' | 'QUARTER' | 'MONTH', period: string, fallbackFromTarget: number) => {
+    // Cột "Thực hiện" chỉ có MỘT nguồn: /dashboard/general-performance. Không rơi về
+    // `actualValue` của bản ghi chỉ tiêu nữa — chỉ kỳ nào CÓ bản ghi trong DB mới có số
+    // ở đó, nên trộn hai nguồn làm dòng Quý hiện 0 trong khi các dòng Tháng của chính
+    // quý đó hiện số thật (DB hiện không có bản ghi DOANH_THU/QUARTER nào). Endpoint
+    // lỗi thì tình trạng đó kéo dài mãi mà không có dấu hiệu gì.
+    // Lúc chưa có dữ liệu, `loading` của Table (gồm cả loadingPerf) hiện spinner.
+    //
+    // `metric.months[m]` là nguồn DUY NHẤT có thể undefined — buildPerf chỉ trả về
+    // tháng có dữ liệu; `quarters` luôn đủ 4 khoá và `year` luôn là số.
+    const getGeneralActual = (targetType: 'NGUON_VIEC' | 'DOANH_THU', periodType: 'YEAR' | 'QUARTER' | 'MONTH', period: string) => {
         const perf = generalPerformance;
-        if (!perf) return fallbackFromTarget;
+        if (!perf) return 0;
         const metric = targetType === 'NGUON_VIEC' ? perf.nguonViec : perf.doanhThu;
-        if (periodType === 'YEAR') return metric.year ?? fallbackFromTarget;
+        if (periodType === 'YEAR') return metric.year ?? 0;
         if (periodType === 'QUARTER') {
             // period format: '2025-Q1'
             const qMatch = period.match(/Q(\d)/);
-            if (qMatch) return metric.quarters[parseInt(qMatch[1])] ?? fallbackFromTarget;
+            if (qMatch) return metric.quarters[parseInt(qMatch[1])] ?? 0;
         }
         if (periodType === 'MONTH') {
             // period format: '2025-01'
             const mMatch = period.match(/-(\d{2})$/);
-            if (mMatch) return metric.months[parseInt(mMatch[1])] ?? fallbackFromTarget;
+            if (mMatch) return metric.months[parseInt(mMatch[1])] ?? 0;
         }
-        return fallbackFromTarget;
+        return 0;
     };
 
     const getGeneralTableData = (targetType: 'NGUON_VIEC' | 'DOANH_THU') => {
@@ -332,7 +342,7 @@ const Targets: React.FC = () => {
         // và bảng này luôn ra cùng một số. Hệ quả có chủ ý: dòng Năm KHÔNG bắt buộc
         // bằng tổng 4 dòng Quý; mỗi kỳ là một bản ghi độc lập.
         const yearTarget = filtered.find((t: Target) => t.periodType === 'YEAR' && t.period === generalYear);
-        const yearActual = getGeneralActual(targetType, 'YEAR', generalYear, yearTarget?.actualValue || 0);
+        const yearActual = getGeneralActual(targetType, 'YEAR', generalYear);
         rows.push({
             ...(yearTarget || {}),
             key: `year-${generalYear}-${targetType}`,
@@ -352,7 +362,7 @@ const Targets: React.FC = () => {
         [1, 2, 3, 4].forEach(q => {
             const quarterPeriod = `${generalYear}-Q${q}`;
             const quarterTarget = filtered.find((t: Target) => t.periodType === 'QUARTER' && t.period === quarterPeriod);
-            const quarterActual = getGeneralActual(targetType, 'QUARTER', quarterPeriod, quarterTarget?.actualValue || 0);
+            const quarterActual = getGeneralActual(targetType, 'QUARTER', quarterPeriod);
             rows.push({
                 ...(quarterTarget || {}),
                 key: `quarter-${q}-${targetType}`,
@@ -371,7 +381,7 @@ const Targets: React.FC = () => {
             quarterMonths[q].forEach(m => {
                 const monthPeriod = `${generalYear}-${String(m).padStart(2, '0')}`;
                 const monthTarget = filtered.find((t: Target) => t.periodType === 'MONTH' && t.period === monthPeriod);
-                const monthActual = getGeneralActual(targetType, 'MONTH', monthPeriod, monthTarget?.actualValue || 0);
+                const monthActual = getGeneralActual(targetType, 'MONTH', monthPeriod);
                 rows.push({
                     ...(monthTarget || {}),
                     key: `month-${m}-${targetType}`,

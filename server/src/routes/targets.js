@@ -8,6 +8,7 @@ const { v4: uuidv4 } = require('uuid');
 const CacheService = require('../services/cacheService');
 const { normalizeTargetValue } = require('./_targetUnits');
 const { normalizeTargetRow, targetKey, pickWinner } = require('./_targetNormalize');
+const { round2 } = require('./_monthlyRollup');
 const { conflict } = require('./_planValidators');
 
 /**
@@ -72,13 +73,20 @@ async function calcAllActuals() {
     actuals[key] = (actuals[key] || 0) + value;
   };
 
-  /** Một dòng {yr, mo, total} đóng góp vào cả ba kỳ MONTH/QUARTER/YEAR của một đơn vị */
+  /**
+   * Một dòng {yr, mo, total} đóng góp vào cả ba kỳ MONTH/QUARTER/YEAR của một đơn vị.
+   *
+   * `val` làm tròn NGAY ở cấp tháng, trước khi cộng lên quý và năm — cùng quy tắc với
+   * _monthlyRollup.js, để `actualValue` của kỳ QUARTER bằng đúng tổng ba kỳ MONTH của
+   * nó. Bản cũ cộng số thô rồi mới làm tròn lúc tra cứu (getActual), nên quý lệch tổng
+   * ba tháng ±0,01 triệu ở khoảng 1/3 số quý.
+   */
   const spread = (type, unitId, rows) => {
     for (const r of rows) {
       const yr = r.yr;
       const mo = String(r.mo).padStart(2, '0');
       const q = Math.ceil(r.mo / 3);
-      const val = parseFloat(r.total);
+      const val = round2(parseFloat(r.total));
       const unit = unitId === null ? (r.branch_id || '') : unitId;
 
       setActual(type, 'MONTH', `${yr}-${mo}`, unit, val);
@@ -179,7 +187,9 @@ router.get('/', async (req, res, next) => {
       const actualsMap = await calcAllActuals();
       const getActual = (type, periodType, period, unitId) => {
         const key = `${type}|${periodType}|${period}|${unitId || ''}`;
-        return Math.round((actualsMap[key] || 0) * 100) / 100;
+        // round2 ở đây chỉ dọn nhiễu dấu phẩy động của phép cộng dồn trong spread();
+        // các số cộng vào đã là bội của 0,01 nên nó không làm tròn thật.
+        return round2(actualsMap[key] || 0);
       };
 
       // Chuẩn hoá dùng chung với dashboard.js qua _targetNormalize.js. Trước đây
