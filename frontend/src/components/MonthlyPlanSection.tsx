@@ -1,9 +1,10 @@
 import React, { useMemo, useState } from 'react';
 import { Button, Table, Modal, Form, Input, message, Empty, Popconfirm, Typography } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
-import { PlusOutlined, DeleteOutlined, QuestionCircleOutlined, FileExcelOutlined } from '@ant-design/icons';
+import { PlusOutlined, DeleteOutlined, QuestionCircleOutlined, FileExcelOutlined, CopyOutlined } from '@ant-design/icons';
 import PlanGuideModal from './PlanGuideModal';
 import { useTranslation } from 'react-i18next';
+import dayjs from 'dayjs';
 import type { Dayjs } from 'dayjs';
 import { VcmActionGroup } from './VcmActionGroup';
 import type { Department, MonthlyPlanItem, User } from '../types';
@@ -43,9 +44,17 @@ const MonthlyPlanSection: React.FC<Props> = ({ department, selectedMonth, canEdi
     const monthStart = selectedMonth.format('YYYY-MM-DD');
 
     const { data: plans = [], isLoading: loading } = useMonthlyPlans({ department, monthStart });
+    // Kế hoạch tháng gần nhất TRƯỚC tháng đang xem — nguồn cho nút "Copy từ tháng trước".
+    // Hook luôn gắn includeItems=true nên đếm được số mục tiêu chưa xong ngay tại client,
+    // khỏi phải gọi API rồi mới biết là không có gì để copy.
+    const { data: prevPlans = [] } = useMonthlyPlans(
+        { department, monthBefore: monthStart, limit: 1 },
+        canEdit
+    );
     const { data: users = [] } = useUsers();
     const {
         createMonthlyPlan,
+        copyMonthlyPlanFromPrevious,
         deleteMonthlyPlan,
         createMonthlyPlanItem,
         updateMonthlyPlanItem,
@@ -54,6 +63,10 @@ const MonthlyPlanSection: React.FC<Props> = ({ department, selectedMonth, canEdi
 
     const plan = plans.length > 0 ? plans[0] : null;
     const rawItems: MonthlyPlanItem[] = plan?.items || [];
+
+    const sourcePlan = prevPlans.length > 0 ? prevPlans[0] : null;
+    const copyableCount = (sourcePlan?.items || []).filter(i => i.status !== 'DONE').length;
+    const sourceMonthLabel = sourcePlan ? dayjs(sourcePlan.monthStart).format('MM/YYYY') : '';
     const userList = users as User[];
 
     const showError = (e: Error) => message.error(e.message || t('common.saveError'));
@@ -80,6 +93,15 @@ const MonthlyPlanSection: React.FC<Props> = ({ department, selectedMonth, canEdi
     const handleCreatePlan = () => {
         createMonthlyPlan.mutate({ monthStart, department }, {
             onSuccess: () => message.success(t('common.saveSuccess')),
+            onError: showError,
+        });
+    };
+
+    const handleCopyPrevious = () => {
+        copyMonthlyPlanFromPrevious.mutate({ monthStart, department }, {
+            onSuccess: data => message.success(
+                t('plans.monthly.copySuccess', { count: data.copiedCount })
+            ),
             onError: showError,
         });
     };
@@ -186,6 +208,26 @@ const MonthlyPlanSection: React.FC<Props> = ({ department, selectedMonth, canEdi
 
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                     {plan && <PlanFilterBar filters={filters} />}
+
+                    {/* Hiện ở cả hai trạng thái (đã có / chưa có kế hoạch tháng): khi đã có
+                        thì item copy được nối vào cuối bảng. Tự ẩn khi tháng trước không còn
+                        mục tiêu nào chưa xong. */}
+                    {canEdit && copyableCount > 0 && (
+                        <Popconfirm
+                            title={t('plans.monthly.copyConfirm', { count: copyableCount, month: sourceMonthLabel })}
+                            onConfirm={handleCopyPrevious}
+                            okText={t('common.confirm')}
+                            cancelText={t('common.cancel')}
+                            okButtonProps={{ loading: copyMonthlyPlanFromPrevious.isPending }}
+                        >
+                            <Button
+                                size="small" icon={<CopyOutlined />}
+                                loading={copyMonthlyPlanFromPrevious.isPending}
+                            >
+                                {t('plans.monthly.copyPrev')}
+                            </Button>
+                        </Popconfirm>
+                    )}
 
                     {plan && canEdit && (
                         <>

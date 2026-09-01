@@ -714,6 +714,10 @@ export class GasApiService implements IApiService {
         return this.runGasFunction('createMonthlyPlan', data);
     }
 
+    async copyMonthlyPlanFromPrevious(data: any) {
+        return this.runGasFunction('copyMonthlyPlanFromPrevious', data);
+    }
+
     async deleteMonthlyPlan(id: string) {
         return this.runGasFunction('deleteMonthlyPlan', { id });
     }

@@ -1,5 +1,5 @@
 const router = require('express').Router();
-const { query } = require('../config/database');
+const { query, getClient } = require('../config/database');
 const { v4: uuidv4 } = require('uuid');
 const {
   assertTitle,
@@ -24,7 +24,7 @@ const mapItem = (r) => ({
 // GET /monthly-plans?department=BD&monthStart=2026-04-01
 router.get('/', async (req, res, next) => {
     try {
-        const { department, monthStart, includeItems } = req.query;
+        const { department, monthStart, monthBefore, includeItems, limit } = req.query;
         let sql = 'SELECT * FROM monthly_plans WHERE 1=1';
         const params = [];
 
@@ -36,7 +36,16 @@ router.get('/', async (req, res, next) => {
             sql += ` AND department = ANY($${params.length})`;
         }
         if (monthStart) { params.push(monthStart); sql += ` AND month_start = $${params.length}`; }
+        // monthBefore + limit=1: lấy kế hoạch tháng gần nhất TRƯỚC một mốc, dùng cho
+        // nút "Copy từ tháng trước". Mirror weekFrom/weekTo/limit của weeklyPlans.js.
+        if (monthBefore) { params.push(monthBefore); sql += ` AND month_start < $${params.length}`; }
         sql += ' ORDER BY month_start DESC, department';
+
+        const parsedLimit = parseInt(limit, 10);
+        if (Number.isInteger(parsedLimit) && parsedLimit > 0) {
+            params.push(Math.min(parsedLimit, 500));
+            sql += ` LIMIT $${params.length}`;
+        }
 
         const result = await query(sql, params);
         const plans = result.rows.map(r => ({
@@ -85,6 +94,106 @@ router.post('/', async (req, res, next) => {
             return next(conflict('Plan already exists for this month/department'));
         }
         next(err);
+    }
+});
+
+// POST /monthly-plans/copy-previous
+// Copy các mục tiêu CHƯA HOÀN THÀNH của kế hoạch tháng gần nhất trước tháng đích
+// sang tháng đích (tạo kế hoạch tháng đích nếu chưa có, nối tiếp nếu đã có).
+//
+// LƯU Ý 1: segment tĩnh phải đăng ký TRƯỚC mọi route '/:param' cùng cấp bên dưới,
+//   nếu không Express sẽ match 'copy-previous' như một id. Xem .claude/rules/route-ordering.md.
+// LƯU Ý 2: plan nguồn được suy ra ở SERVER từ department + month_start, KHÔNG nhận
+//   id từ client. planAccess chỉ kiểm req.body.department nên nếu cho client chọn
+//   plan nguồn thì user có EDIT ở một phòng ban sẽ kéo được item của phòng ban khác.
+router.post('/copy-previous', async (req, res, next) => {
+    let client;
+    try {
+        const { monthStart, department } = req.body;
+        const cleanMonth = assertRequiredDate(monthStart, 'monthStart');
+        if (!department) throw badRequest('department is required');
+
+        client = await getClient();
+        await client.query('BEGIN');
+
+        // 1. Kế hoạch tháng gần nhất TRƯỚC tháng đích, cùng phòng ban
+        const src = await client.query(
+            `SELECT id, month_start FROM monthly_plans
+             WHERE department = $1 AND month_start < $2
+             ORDER BY month_start DESC LIMIT 1`,
+            [department, cleanMonth]
+        );
+        if (src.rows.length === 0) throw badRequest('No previous monthly plan to copy from');
+
+        // 2. Chỉ mục tiêu chưa hoàn thành. Khác weekly: KHÔNG đánh dấu item nguồn,
+        //    vì monthly không có status CARRIED_OVER.
+        const items = await client.query(
+            `SELECT * FROM monthly_plan_items
+             WHERE plan_id = $1 AND status != 'DONE'
+             ORDER BY sort_order, created_at`,
+            [src.rows[0].id]
+        );
+        if (items.rows.length === 0) throw badRequest('Previous monthly plan has no unfinished goals');
+
+        // 3. Plan đích: dùng lại nếu có, tạo mới nếu chưa
+        const existing = await client.query(
+            'SELECT id FROM monthly_plans WHERE month_start = $1 AND department = $2',
+            [cleanMonth, department]
+        );
+        let targetId = existing.rows[0] && existing.rows[0].id;
+        if (!targetId) {
+            targetId = uuidv4();
+            await client.query(
+                'INSERT INTO monthly_plans (id, month_start, department, created_by) VALUES ($1,$2,$3,$4)',
+                [targetId, cleanMonth, department, req.user?.id || '']
+            );
+        }
+
+        // 4. Nối tiếp sort_order sau item đang có
+        const maxRow = await client.query(
+            'SELECT COALESCE(MAX(sort_order), 0) AS m FROM monthly_plan_items WHERE plan_id = $1',
+            [targetId]
+        );
+        const base = parseInt(maxRow.rows[0].m, 10) || 0;
+
+        // 5. Bulk insert một câu thay vì N round-trip. Bỏ qua cột status/result để
+        //    DEFAULT của schema ('TODO' / '') tự áp dụng.
+        const COLS = 8;
+        const values = [];
+        const placeholders = items.rows.map((it, i) => {
+            values.push(
+                uuidv4(), targetId, base + i + 1, it.title, it.why || '',
+                it.assignee_name || '', it.target || '', it.method || ''
+            );
+            const b = i * COLS;
+            return `(${Array.from({ length: COLS }, (_, c) => `$${b + c + 1}`).join(',')})`;
+        });
+        await client.query(
+            `INSERT INTO monthly_plan_items
+               (id, plan_id, sort_order, title, why, assignee_name, target, method)
+             VALUES ${placeholders.join(',')}`,
+            values
+        );
+
+        await client.query('COMMIT');
+        res.json({
+            success: true,
+            data: {
+                planId: targetId,
+                copiedCount: items.rows.length,
+                sourceMonthStart: src.rows[0].month_start,
+            },
+        });
+    } catch (err) {
+        if (client) {
+            try { await client.query('ROLLBACK'); } catch { /* ignore */ }
+        }
+        if (err.code === '23505') {
+            return next(conflict('Plan already exists for this month/department'));
+        }
+        next(err);
+    } finally {
+        if (client) client.release();
     }
 });
 

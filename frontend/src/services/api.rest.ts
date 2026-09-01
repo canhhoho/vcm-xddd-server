@@ -449,6 +449,10 @@ export class RestApiService implements IApiService {
         return this.request('POST', '/monthly-plans', data);
     }
 
+    async copyMonthlyPlanFromPrevious(data: any) {
+        return this.request('POST', '/monthly-plans/copy-previous', data);
+    }
+
     async deleteMonthlyPlan(id: string) {
         return this.request('DELETE', `/monthly-plans/${id}`);
     }

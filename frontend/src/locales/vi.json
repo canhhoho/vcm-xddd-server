@@ -659,7 +659,10 @@
             "editItem": "Sửa mục tiêu",
             "target": "Mục tiêu (KPI)",
             "targetPlaceholder": "VD: Đạt 500 triệu doanh số trong tháng 04",
-            "deleteConfirm": "Xóa kế hoạch tháng này và toàn bộ mục tiêu?"
+            "deleteConfirm": "Xóa kế hoạch tháng này và toàn bộ mục tiêu?",
+            "copyPrev": "Copy từ tháng trước",
+            "copyConfirm": "Copy {{count}} mục tiêu chưa hoàn thành từ tháng {{month}} sang tháng này?",
+            "copySuccess": "Đã copy {{count}} mục tiêu"
         },
         "weekly": {
             "sectionTitle": "Kế hoạch tuần",

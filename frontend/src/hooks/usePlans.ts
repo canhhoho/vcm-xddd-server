@@ -3,7 +3,7 @@ import { apiService } from '../services/api';
 import { unwrap } from '../services/unwrap';
 import type {
     WeeklyPlanQuery, MonthlyPlanQuery,
-    CreateWeeklyPlanInput, CreateMonthlyPlanInput,
+    CreateWeeklyPlanInput, CreateMonthlyPlanInput, CopyMonthlyPlanInput,
     WeeklyPlanItemInput, MonthlyPlanItemInput,
 } from '../services/api.interface';
 import type { WeeklyPlan, MonthlyPlan, PlanItemStatus } from '../types';
@@ -55,6 +55,14 @@ export const usePlanMutations = () => {
     const createMonthlyPlan = useMutation({
         mutationFn: (data: CreateMonthlyPlanInput) =>
             unwrap(apiService.createMonthlyPlan(data), 'Failed to create monthly plan'),
+        onSuccess: invalidateMonthly,
+    });
+
+    // Copy mục tiêu chưa xong từ kế hoạch tháng gần nhất trước đó sang tháng đang xem.
+    // invalidateMonthly quét cả prefix nên query tháng đích lẫn query tháng nguồn đều refetch.
+    const copyMonthlyPlanFromPrevious = useMutation({
+        mutationFn: (data: CopyMonthlyPlanInput) =>
+            unwrap(apiService.copyMonthlyPlanFromPrevious(data), 'Failed to copy monthly plan'),
         onSuccess: invalidateMonthly,
     });
 
@@ -122,6 +130,7 @@ export const usePlanMutations = () => {
 
     return {
         createMonthlyPlan,
+        copyMonthlyPlanFromPrevious,
         updateMonthlyPlanItem,
         createMonthlyPlanItem,
         deleteMonthlyPlanItem,

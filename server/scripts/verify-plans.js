@@ -248,6 +248,73 @@ async function run() {
     db = await pool.query('SELECT status FROM weekly_plan_items WHERE id=$1', [itemIds[2]]);
     check('item nguồn được đánh dấu CARRIED_OVER', db.rows[0].status === 'CARRIED_OVER', db.rows[0].status);
 
+    // ------------------------------------------- 1.7 copy kế hoạch tháng
+    group('1.7', 'Copy kế hoạch tháng từ tháng trước');
+    const M1 = '2030-01-01', M2 = '2030-02-01';
+    const monthItems = () => pool.query(
+        `SELECT i.title, i.sort_order, i.status, i.result, i.target, i.why, i.assignee_name, i.method
+         FROM monthly_plan_items i JOIN monthly_plans p ON i.plan_id = p.id
+         WHERE p.month_start = $1 AND p.department = 'BD' ORDER BY i.sort_order`,
+        [M2]
+    );
+
+    // Chưa có tháng nào trước M2: phải 400 và KHÔNG để lại kế hoạch tháng rỗng
+    // (bước tạo plan đích nằm trong cùng transaction nên bị rollback).
+    r = await api('POST', '/monthly-plans/copy-previous', { token: editor, body: { monthStart: M2, department: 'BD' } });
+    check('không có kế hoạch tháng trước -> 400', r.status === 400, `got ${r.status} ${JSON.stringify(r.body)}`);
+    db = await pool.query("SELECT count(*)::int AS c FROM monthly_plans WHERE month_start=$1 AND department='BD'", [M2]);
+    check('copy thất bại không để lại kế hoạch tháng rỗng', db.rows[0].c === 0, `got ${db.rows[0].c}`);
+
+    // Dựng nguồn: tháng 2030-01 với 2 mục tiêu, 1 DONE + 1 IN_PROGRESS
+    r = await api('POST', '/monthly-plans', { token: editor, body: { monthStart: M1, department: 'BD' } });
+    const mPlan1 = r.body?.data?.id;
+    check('tạo kế hoạch tháng nguồn', Boolean(mPlan1), JSON.stringify(r.body));
+
+    r = await api('POST', `/monthly-plans/${mPlan1}/items`, {
+        token: editor,
+        body: { sortOrder: 1, title: 'Goal DONE', target: 'T1', why: 'W1', assigneeName: 'An', method: 'M1', status: 'DONE' },
+    });
+    const mDone = r.body?.data?.id;
+    await api('POST', `/monthly-plans/${mPlan1}/items`, {
+        token: editor,
+        body: { sortOrder: 2, title: 'Goal TODO', target: 'T2', why: 'W2', assigneeName: 'Binh', method: 'M2', status: 'IN_PROGRESS' },
+    });
+
+    r = await api('POST', '/monthly-plans/copy-previous', { token: editor, body: { monthStart: M2, department: 'BD' } });
+    check('copy sang tháng chưa có kế hoạch -> 200', r.status === 200 && r.body.success, `got ${r.status} ${JSON.stringify(r.body)}`);
+    check('copiedCount = 1 (bỏ qua item DONE)', r.body?.data?.copiedCount === 1, JSON.stringify(r.body?.data));
+    check('sourceMonthStart = 2030-01-01', r.body?.data?.sourceMonthStart === M1, JSON.stringify(r.body?.data));
+
+    db = await monthItems();
+    check('chỉ copy mục tiêu chưa DONE (1 dòng: Goal TODO)',
+        db.rows.length === 1 && db.rows[0].title === 'Goal TODO', JSON.stringify(db.rows));
+    check('reset status=TODO và result rỗng',
+        db.rows[0]?.status === 'TODO' && db.rows[0]?.result === '', JSON.stringify(db.rows[0]));
+    check('giữ nguyên target/why/assignee_name/method',
+        db.rows[0]?.target === 'T2' && db.rows[0]?.why === 'W2'
+        && db.rows[0]?.assignee_name === 'Binh' && db.rows[0]?.method === 'M2',
+        JSON.stringify(db.rows[0]));
+
+    // Khác weekly: monthly không có status CARRIED_OVER nên item nguồn phải nguyên vẹn
+    db = await pool.query('SELECT status FROM monthly_plan_items WHERE id=$1', [mDone]);
+    check('item nguồn KHÔNG bị đổi status (khác weekly)', db.rows[0].status === 'DONE', db.rows[0].status);
+
+    r = await api('POST', '/monthly-plans/copy-previous', { token: editor, body: { monthStart: M2, department: 'BD' } });
+    check('copy lần hai vào tháng đã có kế hoạch -> 200 (không 409)',
+        r.status === 200 && r.body.success, `got ${r.status} ${JSON.stringify(r.body)}`);
+    db = await monthItems();
+    check('item copy nối vào cuối, sort_order = 1,2',
+        db.rows.length === 2 && db.rows[0].sort_order === 1 && db.rows[1].sort_order === 2,
+        JSON.stringify(db.rows.map(x => x.sort_order)));
+
+    r = await api('POST', '/monthly-plans/copy-previous', { token: viewer, body: { monthStart: M2, department: 'BD' } });
+    check('viewer (plans_bd=VIEW) copy -> 403', r.status === 403, `got ${r.status} ${JSON.stringify(r.body)}`);
+
+    r = await api('GET', `/monthly-plans?department=BD&monthBefore=${M2}&limit=1`, { token: editor });
+    const months = (r.body?.data || []).map(x => x.monthStart);
+    check('monthBefore + limit=1 trả đúng kế hoạch tháng gần nhất trước đó',
+        months.length === 1 && months[0] === M1, `got ${JSON.stringify(months)}`);
+
     // --------------------------------------------------------- 1.3 error handling
     group('1.3', 'Error handling');
     r = await api('GET', '/daily-logs', { token: editor });

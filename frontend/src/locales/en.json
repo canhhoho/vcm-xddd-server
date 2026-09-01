@@ -659,7 +659,10 @@
             "editItem": "Edit Goal",
             "target": "Target (KPI)",
             "targetPlaceholder": "Specific target to achieve this month",
-            "deleteConfirm": "Delete this monthly plan and all its goals?"
+            "deleteConfirm": "Delete this monthly plan and all its goals?",
+            "copyPrev": "Copy from previous month",
+            "copyConfirm": "Copy {{count}} unfinished goals from {{month}} into this month?",
+            "copySuccess": "Copied {{count}} goals"
         },
         "weekly": {
             "sectionTitle": "Weekly Plans",

@@ -108,7 +108,10 @@ export interface WeeklyPlanQuery {
 export interface MonthlyPlanQuery {
     department?: Department;
     monthStart?: string;
+    /** Chỉ lấy kế hoạch của các tháng TRƯỚC mốc này (month_start < monthBefore) */
+    monthBefore?: string;
     includeItems?: 'true';
+    limit?: number;
 }
 
 export interface CreateWeeklyPlanInput {
@@ -122,6 +125,22 @@ export interface CreateWeeklyPlanInput {
 export interface CreateMonthlyPlanInput {
     monthStart: string;
     department: Department;
+}
+
+/**
+ * Copy mục tiêu chưa hoàn thành từ kế hoạch tháng gần nhất trước monthStart.
+ * Không có trường chọn plan nguồn: server tự suy ra từ department + monthStart,
+ * nếu để client truyền id thì planAccess không kiểm được phòng ban của plan đó.
+ */
+export interface CopyMonthlyPlanInput {
+    monthStart: string;
+    department: Department;
+}
+
+export interface CopyMonthlyPlanResult {
+    planId: string;
+    copiedCount: number;
+    sourceMonthStart: string;
 }
 
 export interface WeeklyPlanItemInput {
@@ -297,6 +316,7 @@ export interface IApiService {
     // ==================== MONTHLY PLANS ====================
     getMonthlyPlans(params?: MonthlyPlanQuery): Promise<ApiResponse<MonthlyPlan[]>>;
     createMonthlyPlan(data: CreateMonthlyPlanInput): Promise<ApiResponse<MonthlyPlan>>;
+    copyMonthlyPlanFromPrevious(data: CopyMonthlyPlanInput): Promise<ApiResponse<CopyMonthlyPlanResult>>;
     deleteMonthlyPlan(id: string): Promise<ApiResponse>;
     getMonthlyPlanItems(planId: string): Promise<ApiResponse<MonthlyPlanItem[]>>;
     createMonthlyPlanItem(planId: string, data: MonthlyPlanItemInput): Promise<ApiResponse<MonthlyPlanItem>>;
