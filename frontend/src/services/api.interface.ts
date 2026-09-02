@@ -10,6 +10,7 @@ import type {
     WeeklyPlan, WeeklyPlanItem, MonthlyPlan, MonthlyPlanItem, DailyLog,
     Contract, Invoice, Project, ProjectMember, Task, ProjectItemType,
     ProjectLog, ProjectLogPayload,
+    ProjectWorkItem, WorkItemLog, WorkItemSheetInput,
 } from '../types';
 
 // ==================== CONTRACT / INVOICE PAYLOADS ====================
@@ -331,4 +332,12 @@ export interface IApiService {
     getProjectLogs(params: { projectId: string; month?: string }): Promise<ApiResponse<ProjectLog[]>>;
     upsertProjectLog(data: ProjectLogPayload): Promise<ApiResponse<{ id: string }>>;
     deleteProjectLog(id: string): Promise<ApiResponse>;
+
+    // ============ PROJECT WORK ITEMS (Tien do hang muc cong viec) ============
+    getProjectWorkItems(params: { projectId: string; date?: string }): Promise<ApiResponse<ProjectWorkItem[]>>;
+    importProjectWorkItems(data: { projectId: string; sheets: WorkItemSheetInput[] }): Promise<ApiResponse<{ count: number; sheets: number }>>;
+    updateWorkItemProgress(id: string, data: { logDate: string; completedQty: number; note?: string }): Promise<ApiResponse<ProjectWorkItem>>;
+    updateWorkItemDates(id: string, data: { targetDate?: string | null; actualDate?: string | null }): Promise<ApiResponse<ProjectWorkItem>>;
+    getWorkItemLogs(params: { id: string }): Promise<ApiResponse<WorkItemLog[]>>;
+    deleteWorkItemLog(params: { id: string; logId: string }): Promise<ApiResponse>;
 }

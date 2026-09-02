@@ -13,6 +13,7 @@ const authMiddleware = require('./middleware/auth');
 const errorHandler = require('./middleware/errorHandler');
 const planAccess = require('./middleware/planAccess');
 const moduleAccess = require('./middleware/moduleAccess');
+const projectMemberAccess = require('./middleware/projectMemberAccess');
 const rbac = require('./middleware/rbac');
 
 // Route modules
@@ -38,6 +39,7 @@ const weeklyPlanRoutes = require('./routes/weeklyPlans');
 const monthlyPlanRoutes = require('./routes/monthlyPlans');
 const dailyLogRoutes = require('./routes/dailyLogs');
 const projectLogRoutes = require('./routes/projectLogs');
+const projectWorkItemRoutes = require('./routes/projectWorkItems');
 const collaboratorRoutes = require('./routes/collaborators');
 const partnerRoutes = require('./routes/partners');
 
@@ -122,6 +124,10 @@ app.use('/api/weekly-plans', planAccess('weekly'), weeklyPlanRoutes);
 app.use('/api/monthly-plans', planAccess('monthly'), monthlyPlanRoutes);
 app.use('/api/daily-logs', planAccess('daily'), dailyLogRoutes);
 app.use('/api/project-logs', moduleAccess('projects'), projectLogRoutes);
+// KHÔNG dùng moduleAccess('projects') ở đây: nó chặn thẳng mọi request ghi khi
+// quyền chỉ là VIEW, nên middleware sau không bao giờ nới được cho thành viên dự
+// án. projectMemberAccess tự đọc quyền và quyết định — xem comment đầu file đó.
+app.use('/api/project-work-items', projectMemberAccess(), projectWorkItemRoutes);
 app.use('/api/collaborators', moduleAccess('branches'), collaboratorRoutes);
 app.use('/api/partners', moduleAccess('branches'), partnerRoutes);
 

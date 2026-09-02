@@ -108,6 +108,69 @@ export interface ProjectMember {
     avatar?: string;    // Enriched from Users
 }
 
+export type WorkItemStatus = 'NOT_STARTED' | 'IN_PROGRESS' | 'DONE';
+
+/**
+ * Một dòng trong danh mục hạng mục công việc, import từ Excel.
+ * level: 0 = nhóm ('E'), 1 = nhóm con ('E.2'), 2 = hạng mục lá (mới có khối lượng).
+ * progressPct/status do server tính từ completedQty/plannedQty, không lưu trong DB.
+ */
+export interface ProjectWorkItem {
+    id: string;
+    projectId: string;
+    sheetName: string;      // tên sheet = hạng mục lớn, thành tab con trên web
+    sheetOrder: number;
+    sortOrder: number;
+    level: 0 | 1 | 2;
+    code: string;
+    nameVi: string;
+    nameEn: string;
+    unitVi: string;
+    unitEn: string;
+    plannedQty: number;
+    completedQty: number;   // luỹ kế, lấy từ log có logDate mới nhất
+    progressPct: number;
+    status: WorkItemStatus;
+    note: string;
+    /** Ngày cam kết hoàn thành — từ file Excel, chỉ projects=EDIT sửa được */
+    targetDate?: string | null;
+    /** Ngày thực sự hoàn thành — tự điền khi đạt đủ khối lượng, sửa tay được */
+    actualDate?: string | null;
+    updatedBy?: string;
+    updatedAt?: string;
+    /** Chỉ có khi GET kèm ?date= — khối lượng đã ghi đúng ngày đó, null nếu chưa ghi */
+    dayQty?: number | null;
+    dayNote?: string;
+}
+
+export interface WorkItemLog {
+    id: string;
+    itemId: string;
+    logDate: string;
+    completedQty: number;
+    note: string;
+    createdBy: string;
+    createdByName: string;
+    createdAt: string;
+    updatedAt?: string;
+}
+
+/** Payload import — một phần tử mỗi sheet trong file Excel */
+export interface WorkItemSheetInput {
+    sheetName: string;
+    items: Array<{
+        level: number;
+        code: string;
+        nameVi: string;
+        nameEn: string;
+        unitVi: string;
+        unitEn: string;
+        plannedQty: number;
+        targetDate: string | null;
+        note: string;
+    }>;
+}
+
 export interface Task {
     id: string;
     projectId: string;

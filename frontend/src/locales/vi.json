@@ -458,7 +458,8 @@
         "updateSuccess": "Cập nhật dự án thành công",
         "saveFailed": "Lưu thất bại: ",
         "deleteFailed": "Xóa thất bại: ",
-        "deleteError": "Có lỗi xảy ra khi xóa"
+        "deleteError": "Có lỗi xảy ra khi xóa",
+        "tabWorkItems": "Tiến độ hạng mục"
     },
     "branches": {
         "title": "Quản lý Chi nhánh",
@@ -1050,5 +1051,49 @@
             "materialLabel": "Vật tư:",
             "equipmentLabel": "Thiết bị:"
         }
+    },
+    "projectWorkItems": {
+        "import": "Import Excel",
+        "importOk": "Import",
+        "exportExcel": "Xuất Excel",
+        "exportNoData": "Chưa có hạng mục nào để xuất",
+        "importParseError": "Không đọc được file Excel",
+        "importNoLeaf": "File không có hạng mục chi tiết nào",
+        "importSuccess": "Đã import {{count}} hạng mục",
+        "logDate": "Ngày ghi",
+        "saveSuccess": "Đã lưu khối lượng",
+        "history": "Lịch sử cập nhật",
+        "noLogs": "Chưa có lần cập nhật nào",
+        "deleteLogConfirm": "Xoá lần ghi này?",
+        "rows": "dòng",
+        "row": "dòng",
+        "emptyHint": "Chưa có danh mục hạng mục. Bấm Import Excel để nạp từ file.",
+        "emptyReadOnly": "Dự án chưa có danh mục hạng mục công việc.",
+        "readOnlyHint": "Bạn chỉ có quyền xem. Để cập nhật khối lượng, cần được thêm vào tab Nhân sự của dự án.",
+        "previewTitle": "Kiểm tra trước khi import",
+        "previewSummary": "Đọc được {{sheets}} sheet, {{total}} dòng, trong đó {{leaf}} hạng mục chi tiết.",
+        "warningsTitle": "{{count}} cảnh báo",
+        "replaceTitle": "Thay thế toàn bộ danh mục?",
+        "replaceWarning": "Dự án đang có {{count}} hạng mục. Import sẽ XOÁ HẾT chúng cùng toàn bộ lịch sử cập nhật khối lượng, rồi nạp lại từ file mới. Thao tác này không hoàn tác được.",
+        "replaceOk": "Xoá và nạp lại",
+        "colNo": "STT",
+        "colName": "Hạng mục công việc",
+        "colUnit": "Đơn vị",
+        "colPlanned": "KL kế hoạch",
+        "colCompleted": "KL đã thực hiện",
+        "colProgress": "% Hoàn thành",
+        "colStatus": "Trạng thái",
+        "colNote": "Ghi chú",
+        "status": {
+            "NOT_STARTED": "Chưa thực hiện",
+            "IN_PROGRESS": "Đang thực hiện",
+            "DONE": "Hoàn thành"
+        },
+        "colTargetDate": "Ngày hoàn thành mục tiêu",
+        "colActualDate": "Ngày hoàn thành thực tế",
+        "overdue": "Trễ {{count}} ngày",
+        "filterOverdue": "Chỉ xem hạng mục trễ",
+        "noOverdue": "Không có hạng mục nào trễ hạn trong mục này.",
+        "dateSaveSuccess": "Đã lưu ngày"
     }
 }

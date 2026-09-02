@@ -748,6 +748,30 @@ export class GasApiService implements IApiService {
     }
 
     // ==================== PROJECT LOGS (Nhat ky Thi cong) ====================
+    async getProjectWorkItems(params: { projectId: string; date?: string }) {
+        return this.runGasFunction('getProjectWorkItems', params);
+    }
+
+    async importProjectWorkItems(data: any) {
+        return this.runGasFunction('importProjectWorkItems', data);
+    }
+
+    async updateWorkItemProgress(id: string, data: any) {
+        return this.runGasFunction('updateWorkItemProgress', { id, ...data });
+    }
+
+    async updateWorkItemDates(id: string, data: any) {
+        return this.runGasFunction('updateWorkItemDates', { id, ...data });
+    }
+
+    async getWorkItemLogs(params: { id: string }) {
+        return this.runGasFunction('getWorkItemLogs', params);
+    }
+
+    async deleteWorkItemLog(params: { id: string; logId: string }) {
+        return this.runGasFunction('deleteWorkItemLog', params);
+    }
+
     async getProjectLogs(params: { projectId: string; month?: string }) {
         return this.runGasFunction('getProjectLogs', params);
     }

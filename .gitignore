@@ -58,11 +58,14 @@
 !server/scripts/migrate-plan-assignee-text.sql
 !server/scripts/migrate-add-contract-investor.sql
 !server/scripts/migrate-target-allocation.js
+!server/scripts/migrate-add-project-work-items.sql
+!server/scripts/migrate-add-work-item-dates.sql
 !server/scripts/fix-position-uuid.sql
 
 # Script verify (chạy assertion trên API + DB local)
 !server/scripts/verify-plans.js
 !server/scripts/verify-contracts.js
+!server/scripts/verify-work-items.js
 
 # Script chẩn đoán (chỉ đọc, chạy được trên production)
 !server/scripts/report-duplicate-targets.js

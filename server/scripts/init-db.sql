@@ -458,3 +458,58 @@ CREATE TABLE IF NOT EXISTS project_logs (
   UNIQUE(project_id, log_date)
 );
 CREATE INDEX IF NOT EXISTS idx_project_logs_project_date ON project_logs(project_id, log_date DESC);
+
+-- ============================================================
+-- 20. project_work_items + project_work_item_logs
+-- Tiến độ theo TỪNG hạng mục có khối lượng, import từ Excel nhiều sheet.
+-- Khác project_logs (nhật ký thi công: văn bản tự do, 1 progress_pct/dự án).
+-- ============================================================
+CREATE TABLE IF NOT EXISTS project_work_items (
+  id            VARCHAR(50) PRIMARY KEY,
+  project_id    VARCHAR(50) REFERENCES projects(id) ON DELETE CASCADE,
+  -- Tên sheet = một hạng mục lớn (PCCC, Điện, Nước...), thành tab con trên web
+  sheet_name    VARCHAR(255) DEFAULT '',
+  sheet_order   INTEGER DEFAULT 0,
+  sort_order    INTEGER DEFAULT 0,
+  -- 0 = nhóm ('E'), 1 = nhóm con ('E.2'), 2 = hạng mục lá (cột STT để trống)
+  level         INTEGER DEFAULT 0,
+  code          VARCHAR(50) DEFAULT '',
+  name_vi       TEXT NOT NULL,
+  name_en       TEXT DEFAULT '',
+  unit_vi       VARCHAR(50) DEFAULT '',
+  unit_en       VARCHAR(50) DEFAULT '',
+  planned_qty   NUMERIC(18,3) DEFAULT 0,
+  -- LUỸ KẾ, đồng bộ từ log có log_date mới nhất. Không cộng dồn.
+  completed_qty NUMERIC(18,3) DEFAULT 0,
+  note          TEXT DEFAULT '',
+  -- Ngày cam kết hoàn thành (từ file Excel, chỉ projects=EDIT sửa được)
+  target_date   DATE,
+  -- Ngày thực sự hoàn thành: tự điền khi khối lượng đạt đủ, vẫn sửa tay được
+  actual_date   DATE,
+  updated_by    VARCHAR(50) DEFAULT '',
+  updated_at    TIMESTAMPTZ,
+  created_at    TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS project_work_item_logs (
+  id            VARCHAR(50) PRIMARY KEY,
+  item_id       VARCHAR(50) REFERENCES project_work_items(id) ON DELETE CASCADE,
+  log_date      DATE NOT NULL,
+  -- LUỸ KẾ tại ngày đó, KHÔNG phải khối lượng phát sinh
+  completed_qty NUMERIC(18,3) DEFAULT 0,
+  note          TEXT DEFAULT '',
+  created_by    VARCHAR(50) DEFAULT '',
+  created_at    TIMESTAMPTZ DEFAULT NOW(),
+  updated_at    TIMESTAMPTZ
+);
+
+CREATE INDEX IF NOT EXISTS idx_pwi_project ON project_work_items(project_id, sheet_order, sort_order);
+CREATE INDEX IF NOT EXISTS idx_pwil_item   ON project_work_item_logs(item_id, log_date);
+-- Bắt buộc cho INSERT ... ON CONFLICT (item_id, log_date)
+CREATE UNIQUE INDEX IF NOT EXISTS uq_pwil_item_date ON project_work_item_logs(item_id, log_date);
+
+-- CREATE TABLE IF NOT EXISTS ở trên KHÔNG thêm cột vào bảng đã tồn tại, nên DB
+-- đang chạy chỉ có hai cột ngày nhờ hai câu ALTER này. Đừng xoá.
+ALTER TABLE project_work_items ADD COLUMN IF NOT EXISTS target_date DATE;
+ALTER TABLE project_work_items ADD COLUMN IF NOT EXISTS actual_date DATE;
+CREATE INDEX IF NOT EXISTS idx_pwi_target_date ON project_work_items(project_id, target_date);

@@ -458,7 +458,8 @@
         "updateSuccess": "Project updated successfully",
         "saveFailed": "Save failed: ",
         "deleteFailed": "Delete failed: ",
-        "deleteError": "Error occurred while deleting"
+        "deleteError": "Error occurred while deleting",
+        "tabWorkItems": "Work Progress"
     },
     "branches": {
         "title": "Branch Management",
@@ -1050,5 +1051,49 @@
             "materialLabel": "Materials:",
             "equipmentLabel": "Equipment:"
         }
+    },
+    "projectWorkItems": {
+        "import": "Import Excel",
+        "importOk": "Import",
+        "exportExcel": "Export Excel",
+        "exportNoData": "No work items to export",
+        "importParseError": "Could not read the Excel file",
+        "importNoLeaf": "The file has no detailed work items",
+        "importSuccess": "Imported {{count}} work items",
+        "logDate": "Log date",
+        "saveSuccess": "Quantity saved",
+        "history": "Update history",
+        "noLogs": "No updates yet",
+        "deleteLogConfirm": "Delete this entry?",
+        "rows": "rows",
+        "row": "row",
+        "emptyHint": "No work items yet. Click Import Excel to load them from a file.",
+        "emptyReadOnly": "This project has no work item list yet.",
+        "readOnlyHint": "You have read-only access. To update quantities you must be added to the project Team tab.",
+        "previewTitle": "Review before importing",
+        "previewSummary": "Read {{sheets}} sheets, {{total}} rows, including {{leaf}} detailed work items.",
+        "warningsTitle": "{{count}} warnings",
+        "replaceTitle": "Replace the entire work item list?",
+        "replaceWarning": "This project has {{count}} work items. Importing will DELETE all of them along with the full quantity update history, then load the new file. This cannot be undone.",
+        "replaceOk": "Delete and reload",
+        "colNo": "No",
+        "colName": "Work items",
+        "colUnit": "Unit",
+        "colPlanned": "Planned Qty",
+        "colCompleted": "Completed Qty",
+        "colProgress": "% Complete",
+        "colStatus": "Status",
+        "colNote": "Note",
+        "status": {
+            "NOT_STARTED": "Not started",
+            "IN_PROGRESS": "In progress",
+            "DONE": "Completed"
+        },
+        "colTargetDate": "Target date",
+        "colActualDate": "Actual date",
+        "overdue": "{{count}} days late",
+        "filterOverdue": "Overdue only",
+        "noOverdue": "No overdue work items in this section.",
+        "dateSaveSuccess": "Date saved"
     }
 }

@@ -32,6 +32,7 @@ import { useTasks, useTaskMutations } from '../hooks/useTasks';
 // Shared utils
 import { normalizeId } from '../utils/projectUtils';
 import ProjectLogTab from './ProjectLogTab';
+import ProjectWorkItemsTab from './ProjectWorkItemsTab';
 import type { Project, ProjectMember, Province, Task } from '../types';
 import type { TaskInput } from '../services/api.interface';
 
@@ -207,6 +208,11 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, onBack }) => {
             key: 'team',
             label: t('projects.tabTeam'),
             children: <TeamTab projectId={project.id} members={projectMembers} users={users} canEdit={canEdit} />
+        },
+        {
+            key: 'workItems',
+            label: t('projects.tabWorkItems'),
+            children: <ProjectWorkItemsTab project={project} canEdit={canEdit} />
         },
         {
             key: 'logs',

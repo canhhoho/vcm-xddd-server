@@ -900,3 +900,22 @@
         padding-right: 80px; /* Make space for action buttons */
     }
 }
+
+/* Tiến độ hạng mục: tô nền dòng nhóm cho khớp file Excel gốc */
+.vcm-wi-level-0 > td {
+    background: #F4A460 !important;
+    font-weight: 700;
+}
+.vcm-wi-level-1 > td {
+    background: #F8CBA6 !important;
+    font-weight: 700;
+}
+
+/* Hạng mục quá hạn: nền đỏ nhạt. Đặt SAU .vcm-wi-level-* để thắng khi một dòng
+   vừa là nhóm vừa quá hạn (thực tế chỉ dòng lá mới tính trễ, nhưng giữ cho chắc). */
+.vcm-wi-overdue > td {
+    background: #FEF2F2 !important;
+}
+.vcm-wi-overdue:hover > td {
+    background: #FEE2E2 !important;
+}

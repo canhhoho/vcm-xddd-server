@@ -483,6 +483,32 @@ export class RestApiService implements IApiService {
     }
 
     // ==================== PROJECT LOGS (Nhat ky Thi cong) ====================
+    async getProjectWorkItems(params: { projectId: string; date?: string }) {
+        const query: Record<string, string> = { projectId: params.projectId };
+        if (params.date) query.date = params.date;
+        return this.request('GET', '/project-work-items', undefined, query);
+    }
+
+    async importProjectWorkItems(data: any) {
+        return this.request('POST', '/project-work-items/import', data);
+    }
+
+    async updateWorkItemProgress(id: string, data: any) {
+        return this.request('PUT', `/project-work-items/${id}/progress`, data);
+    }
+
+    async updateWorkItemDates(id: string, data: any) {
+        return this.request('PUT', `/project-work-items/${id}/dates`, data);
+    }
+
+    async getWorkItemLogs(params: { id: string }) {
+        return this.request('GET', `/project-work-items/${params.id}/logs`);
+    }
+
+    async deleteWorkItemLog(params: { id: string; logId: string }) {
+        return this.request('DELETE', `/project-work-items/${params.id}/logs/${params.logId}`);
+    }
+
     async getProjectLogs(params: { projectId: string; month?: string }) {
         const query: Record<string, string> = { projectId: params.projectId };
         if (params.month) query.month = params.month;
