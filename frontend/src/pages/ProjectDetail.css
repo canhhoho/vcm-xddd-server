@@ -919,3 +919,20 @@
 .vcm-wi-overdue:hover > td {
     background: #FEE2E2 !important;
 }
+
+/* Thông tin dự án gọn trong header (thay cho tab Tổng quan đã bỏ) */
+.project-header-info {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 16px;
+    margin-top: 4px;
+    font-size: 13px;
+    color: #6B7280;
+}
+.project-header-info .header-info-label {
+    font-weight: 600;
+    color: #9CA3AF;
+    /* Các key i18n tái dùng có kiểu chữ khác nhau (formInvestor thường,
+       expectedTime HOA) — ép về một kiểu để header không lệch. */
+    text-transform: uppercase;
+}

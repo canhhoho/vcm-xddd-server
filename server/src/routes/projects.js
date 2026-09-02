@@ -69,9 +69,10 @@ function toProject(r) {
     description: r.description || '',
     fileUrls: r.file_urls || '',
     members, timeProgress,
-    // `progress` là GIÁ TRỊ DẪN XUẤT từ AVG(tasks.progress) — bảng projects
-    // KHÔNG có cột `progress`. Đừng thêm câu `UPDATE projects SET progress`
-    // ở bất kỳ đâu: nó ném PostgreSQL 42703 (đã từng xảy ra ở projectLogs.js).
+    // `progress` là GIÁ TRỊ DẪN XUẤT từ khối lượng hạng mục công việc — bảng
+    // projects KHÔNG có cột `progress`. Đừng thêm câu `UPDATE projects SET
+    // progress` ở bất kỳ đâu: nó ném PostgreSQL 42703 (đã xảy ra ở projectLogs.js).
+    // Trước đây tính bằng AVG(tasks.progress); đổi khi tab Công việc bị bỏ khỏi UI.
     progress: r.avg_progress !== undefined ? parseInt(r.avg_progress) || 0 : 0,
     createdAt: r.created_at,
   };
@@ -109,7 +110,17 @@ router.get('/', async (req, res, next) => {
     const data = await CacheService.getOrSet('PROJECTS_LIST', async () => {
       const result = await query(`
         SELECT p.*,
-          COALESCE((SELECT ROUND(AVG(t.progress)) FROM tasks t WHERE t.project_id = p.id), 0) as avg_progress
+          -- Tiến độ theo KHỐI LƯỢNG hạng mục, phải khớp đúng công thức sheetPct
+          -- ở frontend/src/pages/ProjectWorkItemsTab.tsx để hai chỗ không lệch nhau.
+          --   level = 2        : chỉ dòng lá mới có khối lượng (dòng nhóm planned_qty = 0)
+          --   LEAST(...)       : nhập vượt kế hoạch không đẩy dự án lên trên 100%
+          --   NULLIF(SUM(),0)  : dự án chưa import hạng mục -> tránh chia cho 0
+          COALESCE((
+            SELECT ROUND(SUM(LEAST(wi.completed_qty, wi.planned_qty)) * 100.0
+                         / NULLIF(SUM(wi.planned_qty), 0))
+            FROM project_work_items wi
+            WHERE wi.project_id = p.id AND wi.level = 2
+          ), 0) as avg_progress
         FROM projects p
         ORDER BY p.created_at DESC
       `);

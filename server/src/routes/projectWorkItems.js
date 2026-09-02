@@ -15,6 +15,7 @@
 const router = require('express').Router();
 const { query, getClient } = require('../config/database');
 const { v4: uuidv4 } = require('uuid');
+const CacheService = require('../services/cacheService');
 const {
   badRequest,
   forbidden,
@@ -248,6 +249,10 @@ router.post('/import', async (req, res, next) => {
     }
 
     await client.query('COMMIT');
+    // % trên thẻ dự án (GET /projects) tính từ chính bảng này và được cache
+    // PROJECTS_LIST. Không xoá cache thì thẻ hiện số cũ tới hết TTL — không lỗi,
+    // không log, rất khó lần ra. Cùng cái bẫy đã ghi ở cacheService.js.
+    CacheService.clear(['PROJECTS_LIST']);
     res.json({ success: true, data: { count: flat.length, sheets: sheets.length } });
   } catch (err) {
     if (client) {
@@ -296,6 +301,7 @@ router.put('/:id/progress', async (req, res, next) => {
     const updated = await client.query('SELECT * FROM project_work_items WHERE id = $1', [req.params.id]);
     await client.query('COMMIT');
 
+    CacheService.clear(['PROJECTS_LIST']);
     res.json({ success: true, data: mapItem(updated.rows[0]) });
   } catch (err) {
     if (client) {
@@ -389,6 +395,7 @@ router.delete('/:id/logs/:logId', async (req, res, next) => {
     // Xoá log mới nhất thì con số hiện tại phải lùi về log còn lại gần nhất.
     await syncCompletedQty(client, req.params.id, req.user?.id);
     await client.query('COMMIT');
+    CacheService.clear(['PROJECTS_LIST']);
     res.json({ success: true });
   } catch (err) {
     if (client) {

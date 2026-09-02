@@ -459,7 +459,7 @@
         "saveFailed": "Lưu thất bại: ",
         "deleteFailed": "Xóa thất bại: ",
         "deleteError": "Có lỗi xảy ra khi xóa",
-        "tabWorkItems": "Tiến độ hạng mục"
+        "tabWorkItems": "TIẾN ĐỘ HẠNG MỤC"
     },
     "branches": {
         "title": "Quản lý Chi nhánh",
@@ -1094,6 +1094,10 @@
         "overdue": "Trễ {{count}} ngày",
         "filterOverdue": "Chỉ xem hạng mục trễ",
         "noOverdue": "Không có hạng mục nào trễ hạn trong mục này.",
-        "dateSaveSuccess": "Đã lưu ngày"
+        "dateSaveSuccess": "Đã lưu ngày",
+        "statTotal": "Tổng hạng mục",
+        "statDone": "Đã hoàn thành",
+        "statPending": "Chưa hoàn thành",
+        "statOverdue": "Trễ hạn"
     }
 }

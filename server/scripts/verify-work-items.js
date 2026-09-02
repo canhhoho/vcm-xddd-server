@@ -192,6 +192,9 @@ async function run() {
     const itemsFull = await pool.query('SELECT id, name_vi, level FROM project_work_items WHERE project_id=$1', [PROJECT_ID]);
     const pipeId = itemsFull.rows.find(x => x.name_vi.startsWith('Ống thép')).id;
     const groupId = itemsFull.rows.find(x => x.level === 0).id;
+    // Hạng mục phụ dành riêng cho check cache — ghi vào pipeId sẽ làm lệch lịch
+    // sử log mà các nhóm 1.4/1.7 phía sau dựa vào.
+    const elbowId = itemsFull.rows.find(x => x.name_vi.startsWith('Co hàn')).id;
     void pipeItem; void groupItem;
 
     // -------------------------------------------------- 1.2 phân quyền ghi tiến độ
@@ -248,6 +251,34 @@ async function run() {
     const pipe = (r.body?.data || []).find(x => x.id === pipeId);
     check('progressPct tính đúng 16/24 = 66.7%', pipe && pipe.progressPct === 66.7, JSON.stringify(pipe));
     check('status suy ra IN_PROGRESS', pipe && pipe.status === 'IN_PROGRESS', pipe && pipe.status);
+
+    // % tiến độ trên thẻ dự án giờ tính từ khối lượng hạng mục (trước là AVG(tasks.progress)).
+    // Phải khớp đúng công thức sheetPct ở frontend, nếu không hai chỗ hiện hai con số.
+    // Lúc này: Ống thép 16/24, Co hàn 0/2, Dây cáp 0/100 -> 16/126 = 12.7 -> làm tròn 13.
+    r = await api('GET', '/projects', { token: manager });
+    const proj = (r.body?.data || []).find(x => x.id === PROJECT_ID);
+    check('GET /projects trả % tính từ khối lượng hạng mục (16/126 -> 13)',
+        proj && proj.progress === 13, `got ${proj && proj.progress}`);
+
+    db = await pool.query(
+        `SELECT ROUND(SUM(LEAST(completed_qty, planned_qty)) * 100.0 / NULLIF(SUM(planned_qty), 0)) AS pct
+         FROM project_work_items WHERE project_id = $1 AND level = 2`,
+        [PROJECT_ID]
+    );
+    check('% của API khớp đúng công thức SQL',
+        proj && Number(db.rows[0].pct) === proj.progress, `SQL=${db.rows[0].pct} API=${proj && proj.progress}`);
+
+    // GET /projects được cache PROJECTS_LIST. Lần GET ở trên vừa nạp cache, nên
+    // nếu route ghi tiến độ không gọi CacheService.clear thì lần GET sau vẫn trả
+    // số cũ — thẻ dự án đứng yên, không lỗi, không log. Đã xảy ra thật.
+    await api('PUT', `/project-work-items/${elbowId}/progress`, {
+        token: engineer, body: { logDate: '2030-01-25', completedQty: 2 },
+    });
+    r = await api('GET', '/projects', { token: manager });
+    const projAfter = (r.body?.data || []).find(x => x.id === PROJECT_ID);
+    check('ghi tiến độ xong thì % ở GET /projects đổi ngay (cache được xoá)',
+        projAfter && projAfter.progress !== proj.progress,
+        `truoc=${proj && proj.progress} sau=${projAfter && projAfter.progress}`);
 
     // --------------------------------------------------------- 1.4 xoá log
     group('1.4', 'Xoá lần ghi và tính lại');

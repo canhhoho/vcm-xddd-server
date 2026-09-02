@@ -459,7 +459,7 @@
         "saveFailed": "Save failed: ",
         "deleteFailed": "Delete failed: ",
         "deleteError": "Error occurred while deleting",
-        "tabWorkItems": "Work Progress"
+        "tabWorkItems": "WORK PROGRESS"
     },
     "branches": {
         "title": "Branch Management",
@@ -1094,6 +1094,10 @@
         "overdue": "{{count}} days late",
         "filterOverdue": "Overdue only",
         "noOverdue": "No overdue work items in this section.",
-        "dateSaveSuccess": "Date saved"
+        "dateSaveSuccess": "Date saved",
+        "statTotal": "Total items",
+        "statDone": "Completed",
+        "statPending": "In progress",
+        "statOverdue": "Overdue"
     }
 }

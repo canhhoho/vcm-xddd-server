@@ -16,6 +16,7 @@ import React, { useMemo, useState } from 'react';
 import {
     Table, Button, InputNumber, DatePicker, Empty, Tag, Progress, Upload,
     Modal, message, Drawer, Popconfirm, Tabs, Alert, Spin, Tooltip, Switch, Badge,
+    Row, Col,
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import {
@@ -113,6 +114,13 @@ const ProjectWorkItemsTab: React.FC<Props> = ({ project, canEdit }) => {
         r.targetDate ? dayjs().startOf('day').diff(dayjs(r.targetDate).startOf('day'), 'day') : 0;
 
     const overdueCount = useMemo(() => items.filter(isOverdue).length, [items]);
+
+    /** Thống kê toàn dự án (mọi sheet), chỉ tính dòng lá vì dòng nhóm là tiêu đề */
+    const stats = useMemo(() => {
+        const leaves = items.filter(i => i.level === 2);
+        const done = leaves.filter(i => i.progressPct >= 100).length;
+        return { total: leaves.length, done, pending: leaves.length - done, overdue: overdueCount };
+    }, [items, overdueCount]);
 
     // Khi lọc, bỏ luôn dòng nhóm: giữ lại tiêu đề nhóm mà không có dòng con nào
     // bên dưới chỉ làm bảng đầy dòng rỗng.
@@ -426,6 +434,30 @@ const ProjectWorkItemsTab: React.FC<Props> = ({ project, canEdit }) => {
                     style={{ padding: '32px 0' }}
                 />
             ) : (
+                <>
+                <Row gutter={[16, 16]} className="log-stats-row">
+                    {[
+                        { label: t('projectWorkItems.statTotal'), value: stats.total, icon: '📋', color: BRAND_COLORS.info, bg: '#EFF6FF' },
+                        { label: t('projectWorkItems.statDone'), value: stats.done, icon: '✅', color: BRAND_COLORS.success, bg: '#ECFDF5' },
+                        { label: t('projectWorkItems.statPending'), value: stats.pending, icon: '🚧', color: BRAND_COLORS.warning, bg: '#FFFBEB' },
+                        {
+                            label: t('projectWorkItems.statOverdue'), value: stats.overdue, icon: '⚠️',
+                            color: stats.overdue > 0 ? BRAND_COLORS.error : BRAND_COLORS.textMuted,
+                            bg: stats.overdue > 0 ? '#FEF2F2' : BRAND_COLORS.backgroundLight,
+                        },
+                    ].map((s, i) => (
+                        <Col xs={12} sm={12} md={6} key={i}>
+                            <div className="log-stats-card">
+                                <div className="log-stats-icon" style={{ backgroundColor: s.bg }}>{s.icon}</div>
+                                <div className="log-stats-info">
+                                    <div className="log-stats-label">{s.label}</div>
+                                    <div className="log-stats-value" style={{ color: s.color }}>{s.value}</div>
+                                </div>
+                            </div>
+                        </Col>
+                    ))}
+                </Row>
+
                 <Tabs
                     activeKey={currentSheet}
                     onChange={key => { setActiveSheet(key); setDrafts({}); }}
@@ -452,6 +484,7 @@ const ProjectWorkItemsTab: React.FC<Props> = ({ project, canEdit }) => {
                         ),
                     }))}
                 />
+                </>
             )}
 
             {/* Preview trước khi import */}

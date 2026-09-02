@@ -6,6 +6,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiService } from '../services/api';
 import { unwrap } from '../services/unwrap';
+import { PROJECT_KEYS } from './useProjects';
 import type { ProjectWorkItem, WorkItemLog, WorkItemSheetInput } from '../types';
 
 // ==================== CACHE KEYS ====================
@@ -64,6 +65,10 @@ export const useWorkItemMutations = (projectId: string) => {
     // [..., id, '2026-09-02']. Cùng cái bẫy đã ghi trong useProjectLogs.ts.
     const invalidate = () => {
         queryClient.invalidateQueries({ queryKey: WORK_ITEM_KEYS.project(projectId) });
+        // % trên thẻ dự án ngoài danh sách được backend tính từ chính khối lượng
+        // này. Không invalidate PROJECT_KEYS thì thẻ giữ số cũ tới khi F5 —
+        // server đã trả đúng nhưng client vẫn đọc cache. Giống useProjectLogs.
+        queryClient.invalidateQueries({ queryKey: PROJECT_KEYS.all });
     };
 
     const importItems = useMutation({
