@@ -236,11 +236,20 @@ function detectColumns(row: { getCell: (c: number) => { value: unknown } }, maxC
     return map;
 }
 
-/** Tìm dòng header: dòng đầu tiên có ô chứa cả "hạng mục"/"work item" */
-function findHeaderRow(worksheet: { rowCount: number; getRow: (n: number) => { getCell: (c: number) => { value: unknown } } }): number {
+/**
+ * Tìm dòng header: dòng đầu tiên có ô chứa "hạng mục"/"work item".
+ *
+ * BỎ QUA dòng có ô gộp: dòng chú thích phạm vi mà chính hàm xuất bên dưới ghi
+ * ra là một ô gộp trải hết bề ngang bảng, và ExcelJS trả nội dung của ô gộp cho
+ * MỌI cột trong vùng gộp. Không bỏ qua thì chỉ cần người dùng lọc bằng một từ
+ * khoá có chữ "hạng mục" là dòng chú thích bị nhận nhầm làm tiêu đề, và lượt
+ * import ngược đọc lệch toàn bộ file. Dòng tiêu đề thật không bao giờ bị gộp.
+ */
+function findHeaderRow(worksheet: { rowCount: number; getRow: (n: number) => { getCell: (c: number) => { value: unknown; isMerged?: boolean } } }): number {
     const limit = Math.min(worksheet.rowCount, 20);
     for (let r = 1; r <= limit; r += 1) {
         const row = worksheet.getRow(r);
+        if (row.getCell(1).isMerged) continue;
         for (let c = 1; c <= 10; c += 1) {
             const text = cellText(row.getCell(c).value).toLowerCase();
             if (text.includes('hạng mục') || text.includes('work item')) return r;
@@ -403,11 +412,17 @@ function toExcelDate(value?: string | null): Date | null {
  * Xuất danh mục ra file Excel đúng mẫu (mỗi hạng mục lớn một sheet).
  * `%` và Trạng thái ghi GIÁ TRỊ ĐÃ TÍNH chứ không ghi công thức, để mở bằng
  * phần mềm nào cũng ra đúng số.
+ *
+ * `scopeNote` chỉ truyền khi xuất MỘT PHẦN danh mục (theo sheet hoặc theo bộ
+ * lọc). Nó thành một dòng chú thích ngay trên dòng tiêu đề: thiếu nó thì file
+ * thiếu 300 dòng trông hệt file đầy đủ, người nhận không có cách nào biết.
+ * Bản xuất toàn bộ KHÔNG có dòng này để bố cục khớp đúng file mẫu.
  */
 export async function exportWorkItemsExcel(
     items: ProjectWorkItem[],
     fileName: string,
     projectName: string,
+    scopeNote?: string,
 ): Promise<boolean> {
     if (items.length === 0) return false;
 
@@ -415,6 +430,8 @@ export async function exportWorkItemsExcel(
     const workbook = new ExcelJS.Workbook();
     workbook.creator = 'VCM XDDD';
     workbook.created = new Date();
+    // Ghi phạm vi vào Properties nữa — không chiếm ô nào trong lưới.
+    if (scopeNote) workbook.subject = scopeNote;
 
     // Gom theo sheet, giữ đúng thứ tự gốc
     const bySheet = new Map<string, ProjectWorkItem[]>();
@@ -435,6 +452,18 @@ export async function exportWorkItemsExcel(
 
         ws.columns = HEADERS.map(([, , width]) => ({ width }));
 
+        // Dòng chú thích phạm vi, chỉ khi xuất một phần. Nó đẩy tiêu đề xuống
+        // dòng 2 nên autoFilter và freeze pane bên dưới phải bám theo
+        // header.number, không được hardcode 1.
+        if (scopeNote) {
+            const noteRow = ws.addRow([scopeNote]);
+            ws.mergeCells(noteRow.number, 1, noteRow.number, HEADERS.length);
+            noteRow.height = 20;
+            const noteCell = noteRow.getCell(1);
+            noteCell.font = { italic: true, size: 10, color: { argb: 'FF7F7F7F' } };
+            noteCell.alignment = { vertical: 'middle', horizontal: 'left' };
+        }
+
         const header = ws.addRow(HEADERS.map(([vi, en]) => bilingualCell(vi, en, true)));
         header.height = 34;
         header.eachCell(cell => {
@@ -451,10 +480,14 @@ export async function exportWorkItemsExcel(
                 isLeaf ? bilingualCell(item.unitVi, item.unitEn) : '',
                 isLeaf ? item.plannedQty : '',
                 isLeaf ? item.completedQty : '',
-                item.progressPct / 100,
+                // Dòng nhóm là tiêu đề: server luôn trả progressPct 0 và status
+                // NOT_STARTED cho chúng, ghi ra thì mọi dòng cam trong file gửi
+                // chủ đầu tư đều hoá "0.0% / Chưa thực hiện". Để trống cho khớp
+                // giao diện web và khớp các cột khối lượng ngay bên cạnh.
+                isLeaf ? item.progressPct / 100 : null,
                 isLeaf ? toExcelDate(item.targetDate) : null,
                 isLeaf ? toExcelDate(item.actualDate) : null,
-                STATUS_TEXT[item.status] || '',
+                isLeaf ? (STATUS_TEXT[item.status] || '') : '',
                 item.note || '',
             ]);
 
@@ -477,8 +510,12 @@ export async function exportWorkItemsExcel(
             row.getCell(COL_ACTUAL_DATE).numFmt = DATE_NUM_FMT;
         });
 
-        ws.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: HEADERS.length } };
-        ws.views = [{ state: 'frozen', ySplit: 1 }];
+        // Bám theo vị trí thật của dòng tiêu đề (1, hoặc 2 khi có scopeNote).
+        ws.autoFilter = {
+            from: { row: header.number, column: 1 },
+            to: { row: header.number, column: HEADERS.length },
+        };
+        ws.views = [{ state: 'frozen', ySplit: header.number }];
     });
 
     const buffer = await workbook.xlsx.writeBuffer();

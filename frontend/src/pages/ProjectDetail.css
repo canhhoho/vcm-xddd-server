@@ -961,3 +961,62 @@
     min-width: 38px;
     text-align: right;
 }
+
+/* Thẻ thống kê dùng làm nút lọc: cần thấy rõ cái nào đang bật */
+.log-stats-card.is-clickable {
+    cursor: pointer;
+    outline: 2px solid transparent;
+    outline-offset: -2px;
+    transition: outline-color 0.15s;
+}
+.log-stats-card.is-clickable:focus-visible {
+    outline-color: #93C5FD;
+}
+.log-stats-card.is-active {
+    outline-color: #2563EB;
+}
+.log-stats-scope {
+    margin-left: 6px;
+    font-size: 11px;
+    font-weight: 400;
+    color: #9CA3AF;
+    text-transform: none;
+    letter-spacing: 0;
+}
+
+/* Đường dẫn nhóm, thay cho dòng cha khi bảng ở dạng danh sách phẳng */
+.vcm-wi-path {
+    font-size: 11px;
+    color: #9CA3AF;
+    margin-bottom: 2px;
+}
+
+/* Ô ghi chú: dòng trên là ghi chú gốc từ Excel, dòng dưới là ghi chú theo ngày.
+   min-width: 0 để Typography ellipsis cắt được bên trong flex column. */
+.vcm-wi-note {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+.vcm-wi-note-src {
+    display: block;
+    max-width: 100%;
+    font-size: 11px;
+}
+.vcm-wi-note-day {
+    display: block;
+    max-width: 100%;
+    font-size: 12px;
+    cursor: pointer;
+}
+.vcm-wi-note-add {
+    font-size: 12px;
+    color: #9CA3AF;
+    cursor: pointer;
+    white-space: nowrap;
+}
+.vcm-wi-note-add:hover,
+.vcm-wi-note-day:hover {
+    color: #2563EB;
+}
