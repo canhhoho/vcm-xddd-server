@@ -383,6 +383,108 @@ DO $$ BEGIN
 END $$;
 
 -- ============================================================
+-- Ràng buộc cột quyền của bảng users
+-- Mirror của migrate-users-permission-constraints.sql (xem file đó để biết lý do
+-- đầy đủ của từng quyết định quy đổi).
+--
+-- PHẢI đứng SAU khối DO ở trên: các cột plans_bd..plans_pm được ADD COLUMN trong
+-- khối đó; ràng buộc một cột chưa tồn tại sẽ nổ 42703. Và phải là khối RIÊNG chứ
+-- không nhét vào khối trên, vì EXCEPTION bên dưới sẽ che luôn lỗi của mọi
+-- ADD COLUMN — mất tín hiệu ở chỗ không được mất.
+--
+-- Thang giá trị: role = ADMIN|EDIT|VIEW|NO_ACCESS; cột module/plan chỉ
+-- EDIT|VIEW|NO_ACCESS (cổng ghi đòi đúng 'EDIT' nên 'ADMIN' ở cột module thực tế
+-- yếu hơn 'EDIT'). Quy đổi dữ liệu cũ: 'ADMIN'/'FULL' -> 'VIEW' (giữ đúng quyền
+-- thực tế), giá trị lạ/NULL/'' -> 'NO_ACCESS', role lạ -> 'VIEW'.
+--
+-- UPDATE chuẩn hoá BẮT BUỘC đứng trước ADD CONSTRAINT trong cùng khối: cả
+-- init-db.sql chạy MỖI LẦN server boot (server.js -> autoCreateTables) và có thể
+-- gặp dữ liệu bẩn do một đường ghi chưa được vá.
+--
+-- EXCEPTION ở cuối là BẮT BUỘC, không phải cho tiện. autoCreateTables() gửi CẢ
+-- file trong một query -> một transaction. Không bọc, thì một lỗi ở đây rollback
+-- TOÀN BỘ init-db.sql của lần boot đó: trên DB cài mới là KHÔNG CÓ BẢNG NÀO, app
+-- vẫn listen và mọi request 500. Bọc lại thì chỉ khối này rollback
+-- (subtransaction), phần còn lại vẫn commit.
+-- RAISE WARNING chứ không NOTICE: log_min_messages mặc định là 'warning' nên chỉ
+-- WARNING mới vào log của PostgreSQL.
+-- ============================================================
+DO $perm$
+DECLARE
+  module_cols text[] := ARRAY[
+    'branches', 'contracts', 'projects', 'targets', 'business',
+    'plans_bd', 'plans_mkt', 'plans_qs', 'plans_des', 'plans_pm',
+    'plans'   -- DEPRECATED; có/không tuỳ lịch sử từng DB -> guard information_schema
+  ];
+  col       text;
+  con_name  text;
+BEGIN
+  UPDATE users u
+     SET role = x.want
+    FROM (
+      SELECT id,
+             CASE UPPER(BTRIM(COALESCE(role, '')))
+               WHEN 'ADMIN'     THEN 'ADMIN'
+               WHEN 'EDIT'      THEN 'EDIT'
+               WHEN 'VIEW'      THEN 'VIEW'
+               WHEN 'NO_ACCESS' THEN 'NO_ACCESS'
+               ELSE 'VIEW'
+             END AS want
+        FROM users
+    ) AS x
+   WHERE x.id = u.id AND u.role IS DISTINCT FROM x.want;
+
+  ALTER TABLE users ALTER COLUMN role SET DEFAULT 'VIEW';
+  ALTER TABLE users ALTER COLUMN role SET NOT NULL;
+
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint
+                  WHERE conrelid = 'users'::regclass AND conname = 'chk_users_role') THEN
+    ALTER TABLE users ADD CONSTRAINT chk_users_role
+      CHECK (role IN ('ADMIN', 'EDIT', 'VIEW', 'NO_ACCESS'));
+  END IF;
+
+  FOREACH col IN ARRAY module_cols LOOP
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                    WHERE table_schema = current_schema()
+                      AND table_name = 'users' AND column_name = col) THEN
+      CONTINUE;
+    END IF;
+
+    con_name := 'chk_users_' || col;
+
+    EXECUTE format($fmt$
+      UPDATE users u
+         SET %1$I = x.want
+        FROM (
+          SELECT id,
+                 CASE UPPER(BTRIM(COALESCE(%1$I, '')))
+                   WHEN 'EDIT'      THEN 'EDIT'
+                   WHEN 'VIEW'      THEN 'VIEW'
+                   WHEN 'NO_ACCESS' THEN 'NO_ACCESS'
+                   WHEN 'ADMIN'     THEN 'VIEW'
+                   WHEN 'FULL'      THEN 'VIEW'
+                   ELSE 'NO_ACCESS'
+                 END AS want
+            FROM users
+        ) AS x
+       WHERE x.id = u.id AND u.%1$I IS DISTINCT FROM x.want
+    $fmt$, col);
+
+    EXECUTE format($q$ALTER TABLE users ALTER COLUMN %I SET DEFAULT 'NO_ACCESS'$q$, col);
+    EXECUTE format($q$ALTER TABLE users ALTER COLUMN %I SET NOT NULL$q$, col);
+
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint
+                    WHERE conrelid = 'users'::regclass AND conname = con_name) THEN
+      EXECUTE format(
+        $q$ALTER TABLE users ADD CONSTRAINT %I CHECK (%I IN ('EDIT','VIEW','NO_ACCESS'))$q$,
+        con_name, col);
+    END IF;
+  END LOOP;
+EXCEPTION WHEN others THEN
+  RAISE WARNING 'init-db: bo qua rang buoc cot quyen users (SQLSTATE %): %. Phan con lai cua init-db.sql van duoc ap. Chay tay de xem chi tiet: node server/scripts/run-migration.js migrate-users-permission-constraints.sql', SQLSTATE, SQLERRM;
+END $perm$;
+
+-- ============================================================
 -- Ràng buộc chống trùng cho Page Plan
 -- Trước đây chỉ kiểm tra tồn tại ở tầng app (check-then-insert) nên hai request
 -- đồng thời vẫn tạo được 2 plan cùng tuần/tháng, hoặc 2 daily log cùng ngày.

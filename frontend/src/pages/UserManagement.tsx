@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useCallback, useState, useMemo } from 'react';
 import {
     Tabs,
     Table,
@@ -13,17 +13,15 @@ import {
     Popconfirm,
     Typography,
     Tooltip,
-    Row,
     Col,
     Dropdown,
     Radio
 } from 'antd';
-import type { MenuProps } from 'antd';
 import { useTranslation } from 'react-i18next';
+import type { TFunction } from 'i18next';
 import {
     PlusOutlined,
     EditOutlined,
-    DeleteOutlined,
     TeamOutlined,
     SafetyCertificateOutlined,
     SaveOutlined,
@@ -32,12 +30,11 @@ import {
     FilterOutlined,
     FileExcelOutlined,
     IdcardOutlined,
-    EyeOutlined,
     HistoryOutlined
 } from '@ant-design/icons';
-import { apiService } from '../services/api';
 import { usePermissions } from '../hooks/usePermissions';
 import type { Position, User, UserRole, ModulePermission, ModuleAccess, Activity } from '../types';
+import type { ApiResponse } from '../services/api.interface';
 import { BRAND_COLORS } from '../styles/brandIdentity';
 import './UserManagement.css';
 import { useFilterSync } from '../hooks/useFilterSync';
@@ -63,33 +60,186 @@ const { Title, Text } = Typography;
 
 const { Option } = Select;
 
-// Icon mapping
-const ICON_MAP: Record<string, React.ReactNode> = {
-    'CrownOutlined': <span role="img" aria-label="director" className="anticon"><svg viewBox="64 64 896 896" focusable="false" data-icon="crown" width="1em" height="1em" fill="currentColor" aria-hidden="true"><path d="M899.6 276.5L705 396.4 518.4 147.5a8.06 8.06 0 00-12.9 0L319 396.4 124.3 276.5c-5.7-3.5-13 1.2-12.2 7.9l48.8 403.2c.7 5.5 5.3 9.6 10.8 9.6h680.5c5.5 0 10.1-4.1 10.8-9.6l48.8-403.2c.8-6.7-6.5-11.4-12.2-7.9zM738.2 624.7l-9.4 69.4H295.2l-9.4-69.4 225.8-138.7 226.6 138.7z"></path></svg></span>,
-    'SafetyCertificateOutlined': <SafetyCertificateOutlined />,
-    'TeamOutlined': <TeamOutlined />,
-    'UsergroupAddOutlined': <TeamOutlined />, // Fallback to TeamOutlined if UsergroupAddOutlined is not imported
-    'SolutionOutlined': <FileExcelOutlined />, // Fallback or import
-    'UserOutlined': <TeamOutlined />, // Fallback
-    'EyeOutlined': <EyeOutlined />,
-    'EditOutlined': <EditOutlined />,
-    'DeleteOutlined': <DeleteOutlined />,
-};
+/**
+ * Cột của ma trận phân quyền.
+ *
+ * Thứ tự PHẢI khớp menu ở layouts/MainLayout.tsx (Chỉ tiêu -> Kinh doanh -> Kế
+ * hoạch -> Hợp đồng -> Dự án -> Chi nhánh): admin cấp quyền theo đúng những trang
+ * họ thấy trên sidebar, hai nơi lệch nhau là phải dò lại từ đầu mỗi lần.
+ *
+ * 5 quyền plans_* là quyền con của MỘT trang Kế hoạch nên gom dưới một tiêu đề
+ * cha, thay vì bày ngang hàng như thể là 5 trang riêng biệt.
+ */
+/**
+ * Chỉ những field của ModulePermission có kiểu ModuleAccess. Khai thế này để TS chặn
+ * ngay tại MODULE_GROUPS nếu ai đó viết một key không tồn tại trên ModulePermission.
+ */
+type ModuleKey = {
+    [K in keyof ModulePermission]-?: ModulePermission[K] extends ModuleAccess | undefined ? K : never
+}[keyof ModulePermission];
 
-// Module definitions for permission matrix - moved labels to translation files
-const MODULE_KEYS = [
-    'targets', 'business', 'contracts', 'projects', 'branches',
-    'plans_bd', 'plans_mkt', 'plans_qs', 'plans_des', 'plans_pm'
+/**
+ * 5 cột con của trang Kế hoạch. `Extract` vừa ràng buộc vừa CHỨNG MINH cả 5 key đều
+ * tồn tại trên ModulePermission: viết sai một cái là PlanKey hụt đi một nhánh và
+ * PLAN_SHORT_LABEL bên dưới báo thiếu key ngay lúc build.
+ */
+const PLAN_KEYS = ['plans_bd', 'plans_mkt', 'plans_qs', 'plans_des', 'plans_pm'] as const;
+type PlanKey = Extract<ModuleKey, typeof PLAN_KEYS[number]>;
+
+type ModuleColumn = { key: ModuleKey } | { groupLabel: string; keys: readonly PlanKey[] };
+
+const MODULE_GROUPS: ModuleColumn[] = [
+    { key: 'targets' },
+    { key: 'business' },
+    // groupLabel lấy thẳng nhãn sidebar để hai chỗ không bao giờ lệch chữ
+    { groupLabel: 'layout.plans', keys: PLAN_KEYS },
+    { key: 'contracts' },
+    { key: 'projects' },
+    { key: 'branches' },
 ];
 
-// Position categories defaults (keys for translation or absolute values)
-const DEFAULT_CATEGORY_KEYS = ['leader', 'construction', 'business', 'qs', 'project', 'other'];
+/** Danh sách phẳng mọi cột quyền — SUY RA từ MODULE_GROUPS để không thể lệch nhau */
+const ALL_MODULE_KEYS: ModuleKey[] = MODULE_GROUPS.flatMap(
+    (col): readonly ModuleKey[] => 'groupLabel' in col ? col.keys : [col.key]
+);
+
+/**
+ * Bề rộng của MỌI cột quyền. Nhóm 3 nút "Sửa/Xem/Không" đo được 109.8px ở font-size
+ * 11px, cộng padding ô (đã bóp còn 2px mỗi bên bằng .perm-cell trong
+ * UserManagement.css) là ~114px. Đặt hẹp hơn thì nút xuống dòng và mỗi hàng cao gấp
+ * đôi — 115px cũ vẫn thiếu ~10px nên cả bảng đang bị wrap.
+ *
+ * Dùng CHUNG cho module lẻ và 5 cột con Kế hoạch: cùng nội dung thì cùng bề rộng,
+ * và ma trận trông thẳng hàng.
+ */
+const PERM_COL_WIDTH = 116;
+
+/** Nhãn ngắn cho 5 cột con — tiêu đề cha đã nói "Kế hoạch" rồi, không lặp lại */
+const PLAN_SHORT_LABEL: Record<PlanKey, string> = {
+    plans_bd: 'BD', plans_mkt: 'MKT', plans_qs: 'QS', plans_des: 'DES', plans_pm: 'PM',
+};
+
+/**
+ * Nhóm chức danh, theo thứ hạng nghiệp vụ — thứ tự của mảng CHÍNH LÀ thứ hạng sắp xếp.
+ *
+ * Phải phủ đủ 8 nhóm của APP_CONFIG.GROUPS (server/src/config/index.js) vì dropdown
+ * "Nhóm" lấy option từ đó: thiếu 'marketing' và 'design' như trước là hai nhóm ấy
+ * nhận rank -1 và bị dồn xuống cuối bảng, sau cả nhóm "Khác".
+ */
+const DEFAULT_CATEGORY_KEYS = [
+    'leader', 'construction', 'business', 'marketing', 'qs', 'design', 'project', 'other',
+];
+
+/**
+ * DB đang có BA lối viết category song song, không quy đổi thì cả sort lẫn filter đều sai:
+ *   - key chuẩn lowercase:  'leader', 'construction'      (seed-test.sql:6-13)
+ *   - nhãn tiếng Việt:      'Lãnh đạo', 'Kinh doanh'      (seed-data.sql:43-48)
+ *   - UPPERCASE:            'LEADER', 'CONSTRUCTION'      (APP_CONFIG.GROUPS — chính là
+ *                                                          giá trị dropdown gửi lên)
+ * Nhãn tiếng Việt lấy từ `users.groups` trong locales/vi.json; thêm nhóm mới ở
+ * APP_CONFIG.GROUPS thì bổ sung cả nhãn tương ứng vào đây.
+ */
+const CATEGORY_ALIAS: Record<string, string> = {
+    leadership: 'leader',
+    'lãnh đạo': 'leader',
+    'xây dựng': 'construction',
+    'thi công': 'construction',
+    'kinh doanh': 'business',
+    'thiết kế': 'design',
+    'dự án': 'project',
+    'khác': 'other',
+};
+
+/**
+ * Option "Tất cả" của các Select filter gửi lên sentinel 'ALL', KHÔNG phải undefined
+ * (lối đã dùng ở Branches.tsx:229-257). Quên coi 'ALL' là "không lọc" thì điều kiện
+ * thành `positionId === 'ALL'` -> không khớp dòng nào -> bảng trắng trơn.
+ */
+const noFilter = (v?: string) => !v || v === 'ALL';
+
+/**
+ * SheetJS nạp bằng <script> từ CDN (index.html), không có package nên không có type.
+ * Chỉ khai đúng hai hàm đang dùng, trả undefined khi script chưa tải xong.
+ */
+type XlsxSheet = { '!cols'?: { wch: number }[] };
+type XlsxGlobal = {
+    utils: {
+        json_to_sheet: (rows: Record<string, unknown>[]) => XlsxSheet;
+        book_new: () => unknown;
+        book_append_sheet: (wb: unknown, ws: XlsxSheet, name: string) => void;
+    };
+    writeFile: (wb: unknown, fileName: string) => void;
+};
+
+const getXlsx = (): XlsxGlobal | undefined => (window as unknown as { XLSX?: XlsxGlobal }).XLSX;
+
+// Role tag colors
+const getRoleColor = (role?: UserRole | ModuleAccess) => {
+    switch (role) {
+        case 'ADMIN': return 'red';
+        case 'EDIT': return 'blue';
+        case 'VIEW': return 'green';
+        case 'NO_ACCESS': return 'default';
+        default: return 'default';
+    }
+};
+
+/**
+ * Về key chuẩn lowercase. PHẢI gọi ở CẢ HAI đầu mọi phép so sánh category — dropdown
+ * gửi 'LEADER' còn DB trả 'leader'/'Lãnh đạo', so sánh `===` thô không khớp dòng nào.
+ */
+const normalizeCategory = (c?: string) => {
+    const raw = String(c || '').trim().toLowerCase();
+    return CATEGORY_ALIAS[raw] || raw;
+};
+
+const categoryRank = (c?: string) => {
+    const i = DEFAULT_CATEGORY_KEYS.indexOf(normalizeCategory(c));
+    return i === -1 ? DEFAULT_CATEGORY_KEYS.length : i;   // nhóm lạ/trống xuống cuối
+};
+
+/**
+ * Thứ tự hiển thị người dùng: nhóm chức danh theo thứ hạng nghiệp vụ, trong mỗi
+ * nhóm xếp tên A-Z.
+ *
+ * Dùng CHUNG cho tab Người dùng và tab Phân quyền. Trước đây hai tab lấy dữ liệu
+ * từ hai endpoint sắp xếp khác nhau (/users: created_at DESC, /permissions: name)
+ * nên cùng một người nằm ở hai vị trí khác hẳn giữa hai tab — đó là nguyên nhân
+ * chính khiến trang này trông lộn xộn.
+ *
+ * Sắp ở client chứ không sửa ORDER BY: thứ hạng nhóm là DEFAULT_CATEGORY_KEYS
+ * chứ không phải alphabet, đưa vào SQL là phải chép CASE WHEN vào hai file route.
+ */
+const compareUsers = (
+    a: { category?: string; name?: string },
+    b: { category?: string; name?: string },
+) => categoryRank(a.category) - categoryRank(b.category)
+    // localeCompare 'vi': so sánh chuỗi thô sẽ đẩy hết tên có dấu xuống cuối
+    || String(a.name || '').localeCompare(String(b.name || ''), 'vi');
+
+/**
+ * Nhãn chức danh để hiển thị. Dùng CHUNG cho tab Người dùng và tab Phân quyền —
+ * trước đây tab Phân quyền in thẳng `position_name` nên có lúc hiện UUID và không
+ * dịch được sang EN.
+ */
+const positionLabel = (
+    positionName: string | undefined,
+    positionId: string | undefined,
+    positions: Position[],
+    t: TFunction,
+) => {
+    const pos = positions.find((p: Position) => p.id === positionId);
+    if (pos) return t(`users.positions.${pos.code}`, pos.name) as string;
+    // position_name của bảng users có thể còn lưu UUID từ dữ liệu cũ
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-/i.test(positionName || '');
+    return isUuid ? '' : (positionName || '');
+};
 
 const UserManagement: React.FC = () => {
     const { t } = useTranslation();
     const { isAdmin } = usePermissions();
     const canEdit = isAdmin; // Only admins can manage users
-    const [activeTab, setActiveTab] = useFilterSync<'users' | 'permissions' | 'positions' | 'activities'>('tab', 'users');
+    const [activeTab, setActiveTab] = useFilterSync<'users' | 'positions' | 'permissions' | 'activities'>('tab', 'users');
 
     // --- REACT QUERY DATA ---
     const { data: positions = [] } = usePositions();
@@ -120,17 +270,16 @@ const UserManagement: React.FC = () => {
     const [editingPosition, setEditingPosition] = useState<Position | null>(null);
     const [positionForm] = Form.useForm();
 
-    // Module Permissions State
-    const [permissionsDirty, setPermissionsDirty] = useState(false);
-    // Local state for permissions to handle "Dirty" state before saving
-    // We sync with server data initially, then let user edit locally
-    const [localPermissions, setLocalPermissions] = useState<ModulePermission[]>([]);
-
-    useEffect(() => {
-        if (modulePermissions.length > 0) {
-            setLocalPermissions(modulePermissions);
-        }
-    }, [modulePermissions]);
+    // Module Permissions State — bản nháp NULLABLE, không phải bản copy sync bằng effect.
+    //
+    // `null` = chưa chỉnh gì, bảng đọc thẳng dữ liệu server. Chỉ khi admin bấm ô đầu
+    // tiên mới sinh ra bản nháp. Trước đây là `useState([])` + useEffect copy
+    // `modulePermissions` vào mỗi lần query đổi, nên mọi invalidate
+    // PERMISSION_KEYS.all (create/update/delete user — useUsers.ts) XOÁ SẠCH các ô
+    // đang chỉnh mà nút Lưu vẫn sáng: admin bấm Lưu và ghi lại đúng dữ liệu cũ.
+    const [draftPermissions, setDraftPermissions] = useState<ModulePermission[] | null>(null);
+    const permissionRows = draftPermissions ?? modulePermissions;
+    const permissionsDirty = draftPermissions !== null;
 
     // Activities State
     const [activityFilterUser, setActivityFilterUser] = useState<string | null>(null);
@@ -141,16 +290,25 @@ const UserManagement: React.FC = () => {
     const [selectedCategory, setSelectedCategory] = useFilterSync<string | undefined>('category', undefined);
 
     // Active Filters List for Chips
+    // `noFilter(...) ? undefined : ...`: sentinel 'ALL' nghĩa là không lọc, đừng hiện chip.
     const activeFilters = [
         { key: 'q', label: t('common.search'), value: searchText, onRemove: () => setSearchText('') },
         {
             key: 'position',
             label: t('users.colPosition'),
-            value: selectedPosition,
-            displayValue: positions.find((p: Position) => p.code === selectedPosition)?.name,
+            value: noFilter(selectedPosition) ? undefined : selectedPosition,
+            // Select dùng value={p.id} nên phải tra theo `p.id`, không phải `p.code` —
+            // tra sai key trả undefined và chip in nguyên UUID ra cho người dùng xem.
+            displayValue: positionLabel(undefined, selectedPosition, positions, t),
             onRemove: () => setSelectedPosition(undefined)
         },
-        { key: 'category', label: t('users.colGroup'), value: selectedCategory, onRemove: () => setSelectedCategory(undefined) }
+        {
+            key: 'category',
+            label: t('users.colGroup'),
+            value: noFilter(selectedCategory) ? undefined : selectedCategory,
+            displayValue: selectedCategory ? (t(`users.groups.${selectedCategory}`, selectedCategory) as string) : undefined,
+            onRemove: () => setSelectedCategory(undefined)
+        }
     ];
 
     // Guard !isAdmin nằm ở cuối, ngay trước return chính — KHÔNG được early-return
@@ -172,7 +330,6 @@ const UserManagement: React.FC = () => {
     // Filtered users based on filters
     const filteredUsers = useMemo(() => {
         return users.filter((u: User) => {
-            const position = positions.find((p: Position) => p.id === u.positionId);
             const name = String(u?.name || '').toLowerCase();
             const email = String(u?.email || '').toLowerCase();
             const searchTerm = searchText.toLowerCase();
@@ -181,11 +338,33 @@ const UserManagement: React.FC = () => {
                 name.includes(searchTerm) ||
                 email.includes(searchTerm) ||
                 (u.positionName && String(u.positionName).toLowerCase().includes(searchTerm));
-            const matchPosition = !selectedPosition || u.positionId === selectedPosition;
-            const matchCategory = !selectedCategory || position?.category === selectedCategory;
+            const matchPosition = noFilter(selectedPosition) || u.positionId === selectedPosition;
+            // u.category, KHÔNG position?.category: cùng nguồn với compareUsers bên dưới
+            // (lý do ở comment ngay sau .filter), và so hai đầu qua normalizeCategory vì
+            // dropdown gửi 'LEADER' còn DB trả 'leader'/'Lãnh đạo'.
+            const matchCategory = noFilter(selectedCategory)
+                || normalizeCategory(u.category) === normalizeCategory(selectedCategory);
             return matchSearch && matchPosition && matchCategory;
-        });
-    }, [users, positions, searchText, selectedPosition, selectedCategory]);
+        })
+        // filter() da tra mang moi nen sort tai cho khong dung vao state goc.
+        //
+        // Dung u.category chu KHONG tra nguoc qua positions.find(): usePositions()
+        // loc trung theo code (useUsers.ts), nen chuc danh nao bi loai se tra ra
+        // undefined va toan bo user cua no roi xuong cuoi bang — dung cai lon xon
+        // dang phai sua. Backend da tinh san category tren ban positions DAY DU.
+        .sort(compareUsers);
+    }, [users, searchText, selectedPosition, selectedCategory]);
+
+    /**
+     * Tra User theo id. /api/permissions trả `category` đọc thẳng cột users.category
+     * (permissions.js) — thường rỗng — còn /api/users trả
+     * COALESCE(NULLIF(p.category,''), u.category) (users.js). Muốn tab Phân quyền lọc
+     * và sắp GIỐNG tab Người dùng thì phải lấy category (và positionId) từ đây.
+     */
+    const usersById = useMemo(
+        () => new Map<string, User>(users.map((u: User) => [u.id, u])),
+        [users]
+    );
 
     const filteredActivities = useMemo(() => {
         if (!activityFilterUser) return activities;
@@ -194,18 +373,28 @@ const UserManagement: React.FC = () => {
 
     // Filtered permissions based on filters
     const filteredPermissions = useMemo(() => {
-        return localPermissions.filter((p: ModulePermission) => {
-            const user = users.find((u: User) => u.id === p.userId);
+        return permissionRows.filter((p: ModulePermission) => {
+            const user = usersById.get(p.userId);
             const name = String(p.userName || '').toLowerCase();
             const searchTerm = searchText.toLowerCase();
 
             const matchSearch = !searchText || name.includes(searchTerm);
-            const matchPosition = !selectedPosition || user?.positionId === selectedPosition;
-            const matchCategory = !selectedCategory || (p as any).category === selectedCategory;
+            const matchPosition = noFilter(selectedPosition) || user?.positionId === selectedPosition;
+            // user.category, KHÔNG p.category — xem comment của usersById. Dùng
+            // p.category thì mọi người đều rank "không xác định" và bảng quay về thứ
+            // tự tên, khác hẳn tab Người dùng.
+            const matchCategory = noFilter(selectedCategory)
+                || normalizeCategory(user?.category) === normalizeCategory(selectedCategory);
 
             return matchSearch && matchPosition && matchCategory;
-        });
-    }, [localPermissions, users, searchText, selectedPosition, selectedCategory]);
+        })
+        // PHẢI cùng thứ tự với filteredUsers, nếu không hai tab hiện cùng một danh
+        // sách người ở hai thứ tự khác nhau.
+        .sort((a: ModulePermission, b: ModulePermission) => compareUsers(
+            { category: usersById.get(a.userId)?.category, name: a.userName },
+            { category: usersById.get(b.userId)?.category, name: b.userName },
+        ));
+    }, [permissionRows, usersById, searchText, selectedPosition, selectedCategory]);
 
     const exportActivities = async () => {
         const dataToExport = filteredActivities.map((a: Activity) => ({
@@ -216,9 +405,9 @@ const UserManagement: React.FC = () => {
         }));
 
         // Use global XLSX from CDN
-        const XLSX = (window as any).XLSX;
+        const XLSX = getXlsx();
         if (!XLSX) {
-            message.error('Thư viện Excel chưa được tải. Vui lòng thử lại sau.');
+            message.error(t('users.excelNotLoaded'));
             return;
         }
 
@@ -240,16 +429,16 @@ const UserManagement: React.FC = () => {
         }));
 
         // Use global XLSX from CDN
-        const XLSX = (window as any).XLSX;
+        const XLSX = getXlsx();
         if (!XLSX) {
-            message.error('Thư viện Excel chưa được tải. Vui lòng thử lại sau.');
+            message.error(t('users.excelNotLoaded'));
             return;
         }
 
         // Create workbook and worksheet
         const ws = XLSX.utils.json_to_sheet(exportData);
         const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, 'Người dùng');
+        XLSX.utils.book_append_sheet(wb, ws, t('users.usersSheetName'));
 
         // Set column widths
         ws['!cols'] = [
@@ -290,7 +479,7 @@ const UserManagement: React.FC = () => {
             cancelText: t('common.cancel'),
             onOk: () => {
                 deleteUser.mutate({ id }, {
-                    onSuccess: (res: any) => {
+                    onSuccess: (res: ApiResponse) => {
                         if (res.success) {
                             message.success(t('common.success'));
                         } else {
@@ -318,7 +507,7 @@ const UserManagement: React.FC = () => {
                 positionName: selectedPosition?.name || values.positionId || '', // Use name or fallback to ID
             };
 
-            const onSuccess = (res: any) => {
+            const onSuccess = (res: ApiResponse) => {
                 if (res.success) {
                     message.success(editingUser ? t('common.success') : t('common.success'));
                     setUserModalOpen(false);
@@ -336,7 +525,7 @@ const UserManagement: React.FC = () => {
             } else {
                 createUser.mutate(payload, { onSuccess, onError });
             }
-        } catch (error) {
+        } catch {
             // Validation error
         }
     };
@@ -358,7 +547,7 @@ const UserManagement: React.FC = () => {
             };
 
             updateUser.mutate(payload, {
-                onSuccess: (res: any) => {
+                onSuccess: (res: ApiResponse) => {
                     if (res.success) {
                         message.success(t('users.resetPasswordSuccess'));
                         setPasswordModalOpen(false);
@@ -370,20 +559,18 @@ const UserManagement: React.FC = () => {
                     message.error(t('common.error'));
                 }
             });
-        } catch (error) {
+        } catch {
             // Validation error
         }
     };
 
     // Position Handlers
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const handleCreatePosition = () => {
         setEditingPosition(null);
         positionForm.resetFields();
         setPositionModalOpen(true);
     };
 
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const handleEditPosition = (position: Position) => {
         setEditingPosition(position);
         positionForm.setFieldsValue(position);
@@ -399,7 +586,7 @@ const UserManagement: React.FC = () => {
             cancelText: t('common.cancel'),
             onOk: () => {
                 deletePosition.mutate({ id }, {
-                    onSuccess: (res: any) => {
+                    onSuccess: (res: ApiResponse) => {
                         if (res.success) {
                             message.success(t('common.success'));
                         } else {
@@ -419,7 +606,7 @@ const UserManagement: React.FC = () => {
             const values = await positionForm.validateFields();
             const payload = { ...values, id: editingPosition?.id };
 
-            const onSuccess = (res: any) => {
+            const onSuccess = (res: ApiResponse) => {
                 if (res.success) {
                     message.success(t('common.success'));
                     setPositionModalOpen(false);
@@ -437,45 +624,47 @@ const UserManagement: React.FC = () => {
             } else {
                 createPosition.mutate(payload, { onSuccess, onError });
             }
-        } catch (error) {
+        } catch {
             // Validation error
         }
     };
 
     // Module Permission Handlers
-    const handlePermissionChange = (userId: string, moduleKey: string, value: ModuleAccess) => {
-        setLocalPermissions(prev =>
-            prev.map(p =>
+    // `prev ?? modulePermissions`: lần bấm đầu tiên sinh bản nháp từ dữ liệu server
+    // hiện có; các lần sau chỉnh tiếp trên bản nháp.
+    const handlePermissionChange = useCallback((userId: string, moduleKey: string, value: ModuleAccess) => {
+        setDraftPermissions(prev =>
+            (prev ?? modulePermissions).map((p: ModulePermission) =>
                 p.userId === userId
                     ? { ...p, [moduleKey]: value }
                     : p
             )
         );
-        setPermissionsDirty(true);
-    };
+    }, [modulePermissions]);
 
-    const handleBulkPermissionChange = (userId: string, value: ModuleAccess) => {
-        setLocalPermissions(prev =>
-            prev.map(p => {
-                if (p.userId === userId) {
-                    const updated = { ...p };
-                    MODULE_KEYS.forEach(key => {
-                        (updated as any)[key] = value;
-                    });
-                    return updated;
-                }
-                return p;
+    const handleBulkPermissionChange = useCallback((userId: string, value: ModuleAccess) => {
+        setDraftPermissions(prev =>
+            (prev ?? modulePermissions).map((p: ModulePermission) => {
+                if (p.userId !== userId) return p;
+                // Object.fromEntries thay vì gán vòng lặp: ALL_MODULE_KEYS được khai là
+                // ModuleKey nên TS kiểm được từng key là field thật của ModulePermission,
+                // không cần cast sang Record<string, unknown>.
+                const allSet = Object.fromEntries(
+                    ALL_MODULE_KEYS.map(key => [key, value])
+                ) as Record<ModuleKey, ModuleAccess>;
+                return { ...p, ...allSet };
             })
         );
-        setPermissionsDirty(true);
-    };
+    }, [modulePermissions]);
 
     const handleSavePermissions = () => {
-        savePermissions.mutate(localPermissions, {
-            onSuccess: (res: any) => {
+        savePermissions.mutate(permissionRows, {
+            onSuccess: (res) => {
                 if (res.success) {
                     message.success(t('common.success'));
-                    setPermissionsDirty(false);
+                    // Bỏ bản nháp -> bảng quay về đọc dữ liệu server (query vừa được
+                    // invalidate trong usePermissionMutations nên sẽ là dữ liệu mới).
+                    setDraftPermissions(null);
                 } else {
                     message.error(res.error);
                 }
@@ -486,18 +675,7 @@ const UserManagement: React.FC = () => {
         });
     };
 
-    // Role tag colors
-    const getRoleColor = (role?: UserRole | ModuleAccess) => {
-        switch (role) {
-            case 'ADMIN': return 'red';
-            case 'EDIT': return 'blue';
-            case 'VIEW': return 'green';
-            case 'NO_ACCESS': return 'default';
-            default: return 'default';
-        }
-    };
-
-    const getRoleLabel = (role?: UserRole | ModuleAccess) => {
+    const getRoleLabel = useCallback((role?: UserRole | ModuleAccess) => {
         switch (role) {
             case 'ADMIN': return t('users.formDefaultRoleAdmin');
             case 'EDIT': return t('users.formDefaultRoleEdit');
@@ -505,7 +683,7 @@ const UserManagement: React.FC = () => {
             case 'NO_ACCESS': return t('users.formDefaultRoleNo');
             default: return role || '-';
         }
-    };
+    }, [t]);
 
     const renderFilters = () => (
         <VcmFilterBar>
@@ -521,7 +699,7 @@ const UserManagement: React.FC = () => {
             <Col xs={24} sm={12} md={8}>
                 <Select
                     placeholder={t('users.filterPosition')}
-                    value={selectedPosition}
+                    value={noFilter(selectedPosition) ? undefined : selectedPosition}
                     onChange={setSelectedPosition}
                     allowClear
                     style={{ width: '100%' }}
@@ -538,7 +716,7 @@ const UserManagement: React.FC = () => {
             <Col xs={24} sm={12} md={8}>
                 <Select
                     placeholder={t('users.filterGroup')}
-                    value={selectedCategory}
+                    value={noFilter(selectedCategory) ? undefined : selectedCategory}
                     onChange={setSelectedCategory}
                     allowClear
                     style={{ width: '100%' }}
@@ -556,18 +734,6 @@ const UserManagement: React.FC = () => {
     // Combined Users Table Columns (with Position info)
     const userColumns = [
         {
-            title: t('users.colPosition'),
-            dataIndex: 'positionName',
-            key: 'positionName',
-            width: 140,
-            render: (text: string, record: User) => {
-                const pos = positions.find((p: Position) => p.id === record.positionId);
-                const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-/i.test(text || '');
-                const label = pos ? (t(`users.positions.${pos.code}`, pos.name) as string) : (isUuid ? '' : text);
-                return label ? <Text strong style={{ color: '#1890ff' }}>{label}</Text> : <Text type="secondary">-</Text>;
-            }
-        },
-        {
             title: t('users.colName'),
             dataIndex: 'name',
             key: 'name',
@@ -583,16 +749,13 @@ const UserManagement: React.FC = () => {
             render: (text: string) => <Text type="secondary">{text}</Text>
         },
         {
-            // Trạng thái lấy từ usePresence (endpoint riêng, không cache), KHÔNG từ
-            // record của bảng users: GET /users cache 5 phút ở server và 15 phút ở
-            // client nên chấm xanh sẽ đứng hình nếu đọc từ đó.
-            title: t('presence.colStatus'),
-            key: 'presence',
-            width: 130,
-            align: 'center' as const,
-            render: (_: unknown, record: User) => {
-                const p = presenceById.get(record.id);
-                return <OnlineStatus online={p?.online ?? false} lastSeenAt={p?.lastSeenAt ?? null} />;
+            title: t('users.colPosition'),
+            dataIndex: 'positionName',
+            key: 'positionName',
+            width: 140,
+            render: (text: string, record: User) => {
+                const label = positionLabel(text, record.positionId, positions, t);
+                return label ? <Text strong style={{ color: BRAND_COLORS.info }}>{label}</Text> : <Text type="secondary">-</Text>;
             }
         },
         {
@@ -614,6 +777,19 @@ const UserManagement: React.FC = () => {
             )
         },
         {
+            // Trạng thái lấy từ usePresence (endpoint riêng, không cache), KHÔNG từ
+            // record của bảng users: GET /users cache 5 phút ở server và 15 phút ở
+            // client nên chấm xanh sẽ đứng hình nếu đọc từ đó.
+            title: t('presence.colStatus'),
+            key: 'presence',
+            width: 130,
+            align: 'center' as const,
+            render: (_: unknown, record: User) => {
+                const p = presenceById.get(record.id);
+                return <OnlineStatus online={p?.online ?? false} lastSeenAt={p?.lastSeenAt ?? null} />;
+            }
+        },
+        {
             title: t('users.colDescription'),
             dataIndex: 'description',
             key: 'description',
@@ -633,7 +809,7 @@ const UserManagement: React.FC = () => {
             width: 100,
             align: 'center' as const,
             fixed: 'right' as const,
-            render: (_: any, record: User) => (
+            render: (_: unknown, record: User) => (
                 <VcmActionGroup
                     onEdit={() => handleEditUser(record)}
                     onDelete={() => handleDeleteUser(record.id)}
@@ -660,6 +836,29 @@ const UserManagement: React.FC = () => {
     ];
 
     // Module Permissions Table Columns
+    /** Một cột quyền: 3 nút EDIT/VIEW/NO. Dùng cho cả module lẻ lẫn 5 cột con Kế hoạch. */
+    const permissionColumn = useCallback((key: string, label: string, width: number) => ({
+        title: label,
+        dataIndex: key,
+        key,
+        width,
+        align: 'center' as const,
+        className: 'perm-cell',
+        render: (access: ModuleAccess, record: ModulePermission) => (
+            <Radio.Group
+                value={access || 'NO_ACCESS'}
+                onChange={(e) => handlePermissionChange(record.userId, key, e.target.value)}
+                size="small"
+                buttonStyle="solid"
+                className={`perm-radio perm-radio-${access || 'NO_ACCESS'}`}
+            >
+                <Radio.Button value="EDIT">{t('common.edit')}</Radio.Button>
+                <Radio.Button value="VIEW">{t('common.view')}</Radio.Button>
+                <Radio.Button value="NO_ACCESS">{t('common.no')}</Radio.Button>
+            </Radio.Group>
+        ),
+    }), [handlePermissionChange, t]);
+
     const permissionColumns = useMemo(() => [
         {
             title: t('users.tabUsers'),
@@ -673,38 +872,45 @@ const UserManagement: React.FC = () => {
             title: t('users.colPosition'),
             key: 'position',
             width: 150,
-            render: (_: any, record: ModulePermission) => {
-                const posName = (record as any).positionName || '';
-                return <Text type="secondary">{posName || '-'}</Text>;
+            render: (_: unknown, record: ModulePermission) => {
+                // Cùng helper với tab Người dùng: guard UUID + dịch theo position code.
+                const label = positionLabel(record.positionName, record.positionId, positions, t);
+                return <Text type="secondary">{label || '-'}</Text>;
             }
         },
-        ...MODULE_KEYS.map(key => ({
-            title: t(`users.modules.${key}`),
-            dataIndex: key,
-            key: key,
-            width: 115,
+        {
+            // Read-only, đổi role vẫn ở tab Người dùng. Có mặt ở đây vì role='ADMIN'
+            // BYPASS toàn bộ ma trận (moduleAccess.js:70, planAccess.js:134): không
+            // hiện cột này thì admin thấy 10 cột NO_ACCESS và tin là đã khoá, trong
+            // khi người đó đang toàn quyền.
+            title: t('users.colRole'),
+            dataIndex: 'role',
+            key: 'role',
+            width: 90,
             align: 'center' as const,
-            render: (access: ModuleAccess, record: ModulePermission) => (
-                <Radio.Group
-                    value={access || 'NO_ACCESS'}
-                    onChange={(e) => handlePermissionChange(record.userId, key, e.target.value)}
-                    size="small"
-                    buttonStyle="solid"
-                    className={`perm-radio perm-radio-${access || 'NO_ACCESS'}`}
-                >
-                    <Radio.Button value="EDIT">{t('common.edit')}</Radio.Button>
-                    <Radio.Button value="VIEW">{t('common.view')}</Radio.Button>
-                    <Radio.Button value="NO_ACCESS">{t('common.no')}</Radio.Button>
-                </Radio.Group>
-            )
-        })),
+            render: (role: UserRole | undefined) => {
+                const tag = <Tag color={getRoleColor(role)} style={{ margin: 0 }}>{getRoleLabel(role)}</Tag>;
+                return role === 'ADMIN'
+                    ? <Tooltip title={t('users.adminBypassHint')}>{tag}</Tooltip>
+                    : tag;
+            }
+        },
+        ...MODULE_GROUPS.map(col => 'groupLabel' in col
+            // Tiêu đề cha 2 tầng của antd Table: 5 cột plans_* nằm dưới "Kế hoạch"
+            ? {
+                title: t(col.groupLabel),
+                key: col.groupLabel,
+                children: col.keys.map(key => permissionColumn(key, PLAN_SHORT_LABEL[key], PERM_COL_WIDTH)),
+            }
+            : permissionColumn(col.key, t(`users.modules.${col.key}`), PERM_COL_WIDTH)
+        ),
         {
             title: t('common.setAll'),
             key: 'bulk',
             width: 100,
             fixed: 'right' as const,
             align: 'center' as const,
-            render: (_: any, record: ModulePermission) => (
+            render: (_: unknown, record: ModulePermission) => (
                 <Dropdown
                     menu={{
                         items: [
@@ -719,7 +925,7 @@ const UserManagement: React.FC = () => {
                 </Dropdown>
             )
         }
-    ], [users, positions, handlePermissionChange, handleBulkPermissionChange, t]);
+    ], [positions, permissionColumn, handleBulkPermissionChange, getRoleLabel, t]);
 
     // Position Table Columns
     const positionColumns = [
@@ -769,7 +975,7 @@ const UserManagement: React.FC = () => {
             width: 80,
             align: 'center' as const,
             fixed: 'right' as const,
-            render: (_: any, record: Position) => (
+            render: (_: unknown, record: Position) => (
                 <VcmActionGroup
                     onEdit={() => handleEditPosition(record)}
                     onDelete={() => handleDeletePosition(record.id)}
@@ -855,13 +1061,14 @@ const UserManagement: React.FC = () => {
             <div className="user-management-content">
                 <Tabs
                     activeKey={activeTab}
-                    onChange={(key) => setActiveTab(key as 'users' | 'permissions' | 'positions' | 'activities')}
+                    onChange={(key) => setActiveTab(key as 'users' | 'positions' | 'permissions' | 'activities')}
                     tabBarExtraContent={activeTab === 'permissions' ? (
                         <Button
                             type="primary"
                             icon={<SaveOutlined />}
                             onClick={handleSavePermissions}
-                            disabled={!permissionsDirty}
+                            loading={savePermissions.isPending}
+                            disabled={!permissionsDirty || savePermissions.isPending}
                             className={permissionsDirty ? "vcm-btn-premium" : ""}
                         >
                             {permissionsDirty ? t('users.savePermissions') : t('users.saved')}
@@ -901,6 +1108,44 @@ const UserManagement: React.FC = () => {
                         },
 
                         {
+                            // Tab này từng bị gỡ khỏi items trong khi toàn bộ phần còn
+                            // lại (positionColumns, modal, các handler, mutations, key
+                            // i18n) vẫn nguyên — và cảnh báo "biến không dùng" bị tắt
+                            // bằng eslint-disable thay vì xoá code. Hệ quả: quản lý
+                            // chức danh biến mất khỏi UI, và link ?tab=positions ra
+                            // vùng nội dung trống vì items.find() trả undefined.
+                            key: 'positions',
+                            label: (
+                                <span>
+                                    <IdcardOutlined /> {t('users.tabPositions')} ({positions.length})
+                                </span>
+                            ),
+                            children: (
+                                <>
+                                    <div style={{ marginBottom: 16 }}>
+                                        <Button
+                                            type="primary"
+                                            icon={<PlusOutlined />}
+                                            onClick={handleCreatePosition}
+                                        >
+                                            {t('users.addPosition')}
+                                        </Button>
+                                    </div>
+                                    <Table
+                                        columns={positionColumns}
+                                        dataSource={positions}
+                                        rowKey="id"
+                                        pagination={{
+                                            pageSize: 10,
+                                            showSizeChanger: true,
+                                        }}
+                                        size="small"
+                                    />
+                                </>
+                            )
+                        },
+
+                        {
                             key: 'permissions',
                             label: (
                                 <span>
@@ -908,28 +1153,40 @@ const UserManagement: React.FC = () => {
                                 </span>
                             ),
                             children: (
-                                <div className="permissions-matrix">
-                                    <div className="permissions-legend">
-                                        <Text type="secondary">{t('users.legendTitle')}</Text>
-                                        <Tag color="blue">{t('users.legendEdit')}</Tag>
-                                        <Tag color="green">{t('users.legendView')}</Tag>
-                                        <Tag color="default">{t('users.legendNoAccess')}</Tag>
+                                <>
+                                    {/* Bảng này DÙNG CHUNG searchText/position/category với tab
+                                        Người dùng (useFilterSync giữ trong URL). Không render
+                                        filter bar ở đây thì admin lọc bên tab kia rồi sang đây
+                                        thấy bảng thiếu người mà không có gì cho biết đang lọc. */}
+                                    {renderFilters()}
+                                    <div style={{ marginBottom: 16 }}>
+                                        <FilterChips filters={activeFilters} onClearAll={clearAllFilters} />
                                     </div>
-                                    <Table
-                                        columns={permissionColumns}
-                                        dataSource={filteredPermissions}
-                                        rowKey="userId"
-                                        loading={permissionsLoading}
-                                        pagination={{
-                                            pageSize: 20,
-                                            showSizeChanger: true,
-                                            showTotal: (total) => t('users.totalUsers', { total }),
-                                        }}
-                                        scroll={{ x: 700 }}
-                                        bordered
-                                        size="small"
-                                    />
-                                </div>
+                                    <div className="permissions-matrix">
+                                        <div className="permissions-legend">
+                                            <Text type="secondary">{t('users.legendTitle')}</Text>
+                                            <Tag color="blue">{t('users.legendEdit')}</Tag>
+                                            <Tag color="green">{t('users.legendView')}</Tag>
+                                            <Tag color="default">{t('users.legendNoAccess')}</Tag>
+                                        </div>
+                                        <Table
+                                            columns={permissionColumns}
+                                            dataSource={filteredPermissions}
+                                            rowKey="userId"
+                                            loading={permissionsLoading}
+                                            pagination={{
+                                                pageSize: 20,
+                                                showSizeChanger: true,
+                                                showTotal: (total) => t('users.totalUsers', { total }),
+                                            }}
+                                            // 160 tên + 150 chức danh + 90 role
+                                            // + 10×116 quyền + 100 "Đặt tất cả" = 1660
+                                            scroll={{ x: 160 + 150 + 90 + 10 * PERM_COL_WIDTH + 100 }}
+                                            bordered
+                                            size="small"
+                                        />
+                                    </div>
+                                </>
                             )
                         },
                         {

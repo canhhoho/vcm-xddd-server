@@ -867,16 +867,14 @@
         "modules": {
             "targets": "Chỉ tiêu",
             "business": "Kinh doanh",
-            "plans": "Kế hoạch (Chung)",
-            "plans_bd": "Kế hoạch BD",
-            "plans_mkt": "Kế hoạch MKT",
-            "plans_qs": "Kế hoạch QS",
-            "plans_des": "Kế hoạch DES",
-            "plans_pm": "Kế hoạch PM",
             "contracts": "Hợp đồng",
             "projects": "Dự án",
             "branches": "Chi nhánh"
-        }
+        },
+        "addPosition": "Thêm chức danh",
+        "adminBypassHint": "Vai trò ADMIN bỏ qua toàn bộ ma trận quyền — người này có toàn quyền bất kể các cột bên dưới.",
+        "excelNotLoaded": "Thư viện Excel chưa được tải. Vui lòng thử lại sau.",
+        "usersSheetName": "Người dùng"
     },
     "common": {
         "add": "Thêm",
@@ -1092,12 +1090,19 @@
         "colTargetDate": "Ngày hoàn thành mục tiêu",
         "colActualDate": "Ngày hoàn thành thực tế",
         "overdue": "Trễ {{count}} ngày",
-        "filterOverdue": "Chỉ xem hạng mục trễ",
+        "filterOverdue": "Trễ hạn",
         "noOverdue": "Không có hạng mục nào trễ hạn trong mục này.",
         "dateSaveSuccess": "Đã lưu ngày",
         "statTotal": "Tổng hạng mục",
         "statDone": "Đã hoàn thành",
         "statPending": "Chưa hoàn thành",
-        "statOverdue": "Trễ hạn"
+        "statOverdue": "Trễ hạn",
+        "searchPlaceholder": "Tìm theo tên hạng mục...",
+        "filterAll": "Tất cả",
+        "filterPending": "Chưa xong",
+        "filterDone": "Hoàn thành",
+        "filterResult": "{{count}} kết quả",
+        "noFilterResult": "Không có hạng mục nào khớp bộ lọc trong mục này.",
+        "pageTotal": "{{from}}-{{to}} / {{total}} hạng mục"
     }
 }

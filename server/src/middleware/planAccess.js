@@ -6,18 +6,28 @@
  * luôn là bản mới nhất (admin đổi quyền có hiệu lực ngay, không cần user F5).
  *
  * Quy tắc:
- *   - ADMIN            → toàn quyền.
- *   - NO_ACCESS        → 403.
- *   - VIEW             → chỉ GET; POST/PUT/DELETE → 403.
+ *   - role=ADMIN       → toàn quyền.
  *   - EDIT             → toàn quyền trên phòng ban đó.
+ *   - VIEW             → chỉ GET; POST/PUT/DELETE → 403.
+ *   - còn lại          → 403. ALLOW-LIST, không phải deny-list: trước đây cổng
+ *                        đọc là `!== 'NO_ACCESS'` nên `plans_qs='FULL'` đưa QS
+ *                        vào allowedDepartments và lọt thẳng vào SQL
+ *                        `department = ANY($n)` ở weeklyPlans.js/monthlyPlans.js.
+ *                        Xem services/accessLevels.js.
  *   - GET không chỉ định department → không chặn, chỉ giới hạn danh sách phòng
  *     ban user được xem qua req.planAccess.allowedDepartments (route tự lọc).
  */
 const { query } = require('../config/database');
 const { forbidden, badRequest } = require('../routes/_planValidators');
+const { PLAN_COLUMNS, normalizeAccess, isAdminRole, canRead, canWrite } = require('../services/accessLevels');
 
 const DEPARTMENTS = ['BD', 'MKT', 'QS', 'DES', 'PM'];
+// PLAN_COLUMNS của helper đã theo đúng thứ tự DEPARTMENTS; assert để nếu ai đổi
+// một trong hai thì nổ ngay lúc require, không phải lúc phân quyền sai.
 const PERM_COLUMNS = DEPARTMENTS.map(d => `plans_${d.toLowerCase()}`);
+if (PERM_COLUMNS.join() !== PLAN_COLUMNS.join()) {
+  throw new Error('planAccess: DEPARTMENTS lệch với PLAN_COLUMNS trong services/accessLevels.js');
+}
 
 /** Đọc quyền plan của user từ DB, cache trong req cho các lần gọi sau */
 async function loadPermissions(req) {
@@ -34,12 +44,11 @@ async function loadPermissions(req) {
   const row = result.rows[0];
   const perms = {};
   DEPARTMENTS.forEach(dept => {
-    const raw = row[`plans_${dept.toLowerCase()}`] || 'NO_ACCESS';
-    perms[dept] = String(raw).toUpperCase();
+    perms[dept] = normalizeAccess(row[`plans_${dept.toLowerCase()}`]);
   });
 
   req._planPermissions = {
-    isAdmin: String(row.role || '').toUpperCase() === 'ADMIN',
+    isAdmin: isAdminRole(row.role),
     byDepartment: perms,
   };
   return req._planPermissions;
@@ -122,8 +131,8 @@ function planAccess(scope) {
       const { isAdmin, byDepartment } = await loadPermissions(req);
       const isWrite = req.method !== 'GET';
 
-      const allowedView = DEPARTMENTS.filter(d => byDepartment[d] !== 'NO_ACCESS');
-      const allowedEdit = DEPARTMENTS.filter(d => byDepartment[d] === 'EDIT');
+      const allowedView = DEPARTMENTS.filter(d => canRead(byDepartment[d]));
+      const allowedEdit = DEPARTMENTS.filter(d => canWrite(byDepartment[d]));
 
       req.planAccess = {
         isAdmin,
@@ -147,10 +156,10 @@ function planAccess(scope) {
           return res.status(400).json({ success: false, error: `Unknown department: ${dept}` });
         }
         const level = byDepartment[dept];
-        if (level === 'NO_ACCESS') {
+        if (!canRead(level)) {
           return res.status(403).json({ success: false, error: `Forbidden: No access to department ${dept}` });
         }
-        if (isWrite && level !== 'EDIT') {
+        if (isWrite && !canWrite(level)) {
           return res.status(403).json({ success: false, error: `Forbidden: Read-only access to department ${dept}` });
         }
       }

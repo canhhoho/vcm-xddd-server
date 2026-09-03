@@ -10,6 +10,7 @@ require('dotenv').config();
 const fs = require('fs');
 const path = require('path');
 const { Pool } = require('pg');
+const { normalizeAccess, normalizeRole } = require('../src/services/accessLevels');
 
 const pool = new Pool({
   host: process.env.DB_HOST || 'localhost',
@@ -117,10 +118,12 @@ async function importData() {
            ON CONFLICT (id) DO UPDATE SET email=$2, password=$3, name=$4, role=$5, position_code=$7, position_name=$8`,
           [
             toStr(u.id), toStr(u.email), toStr(u.password), toStr(u.name),
-            toStr(u.role || 'VIEW'), toStr(u.positionId), toStr(u.positionCode),
+            normalizeRole(u.role || 'VIEW'), toStr(u.positionId), toStr(u.positionCode),
             toStr(u.positionName), toStr(u.category), toStr(u.description),
-            toStr(u.branches), toStr(u.contracts), toStr(u.projects),
-            toStr(u.targets), toStr(u.business),
+            // KHÔNG toStr() cho cột quyền: toStr(undefined) === '' và '' vi phạm
+            // chk_users_* -> cả lần import (một transaction) hỏng.
+            normalizeAccess(u.branches), normalizeAccess(u.contracts), normalizeAccess(u.projects),
+            normalizeAccess(u.targets), normalizeAccess(u.business),
             toDate(u.createdAt) || new Date().toISOString()
           ]
         );

@@ -936,3 +936,28 @@
        expectedTime HOA) — ép về một kiểu để header không lệch. */
     text-transform: uppercase;
 }
+
+/* Thanh tiến độ nhẹ, thay antd Progress trong bảng hạng mục */
+.vcm-wi-bar {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.vcm-wi-bar-track {
+    flex: 1;
+    height: 6px;
+    background: #F0F0F0;
+    border-radius: 3px;
+    overflow: hidden;
+}
+.vcm-wi-bar-fill {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 0.2s;
+}
+.vcm-wi-bar-text {
+    font-size: 12px;
+    color: #6B7280;
+    min-width: 38px;
+    text-align: right;
+}

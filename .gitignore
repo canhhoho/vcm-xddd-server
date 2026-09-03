@@ -60,6 +60,7 @@
 !server/scripts/migrate-target-allocation.js
 !server/scripts/migrate-add-project-work-items.sql
 !server/scripts/migrate-add-work-item-dates.sql
+!server/scripts/migrate-users-permission-constraints.sql
 !server/scripts/fix-position-uuid.sql
 
 # Script verify (chạy assertion trên API + DB local)

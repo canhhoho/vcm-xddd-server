@@ -867,16 +867,14 @@
         "modules": {
             "targets": "Targets",
             "business": "Business",
-            "plans": "Plans (General)",
-            "plans_bd": "Plans BD",
-            "plans_mkt": "Plans MKT",
-            "plans_qs": "Plans QS",
-            "plans_des": "Plans DES",
-            "plans_pm": "Plans PM",
             "contracts": "Contracts",
             "projects": "Projects",
             "branches": "Branches"
-        }
+        },
+        "addPosition": "Add position",
+        "adminBypassHint": "The ADMIN role bypasses this whole matrix — this user has full access regardless of the columns below.",
+        "excelNotLoaded": "Excel library is not loaded yet. Please try again shortly.",
+        "usersSheetName": "Users"
     },
     "common": {
         "add": "Add",
@@ -1092,12 +1090,19 @@
         "colTargetDate": "Target date",
         "colActualDate": "Actual date",
         "overdue": "{{count}} days late",
-        "filterOverdue": "Overdue only",
+        "filterOverdue": "Overdue",
         "noOverdue": "No overdue work items in this section.",
         "dateSaveSuccess": "Date saved",
         "statTotal": "Total items",
         "statDone": "Completed",
         "statPending": "In progress",
-        "statOverdue": "Overdue"
+        "statOverdue": "Overdue",
+        "searchPlaceholder": "Search work item name...",
+        "filterAll": "All",
+        "filterPending": "In progress",
+        "filterDone": "Completed",
+        "filterResult": "{{count}} results",
+        "noFilterResult": "No work items match the filter in this section.",
+        "pageTotal": "{{from}}-{{to}} of {{total}} items"
     }
 }

@@ -24,6 +24,7 @@
  */
 const router = require('express').Router();
 const { query } = require('../config/database');
+const { normalizeAccess, isAdminRole, canRead } = require('../services/accessLevels');
 
 /** Số ngày trước hạn thì bắt đầu báo (task, đầu việc kế hoạch, hợp đồng, dự án) */
 const DUE_SOON_DAYS = 3;
@@ -45,10 +46,10 @@ const ACTIVITY_WINDOW_DAYS = 7;
 
 // Không còn đọc cột quyền plans_*: từ khi nhánh MY_PLAN_ITEM bị bỏ, không thông
 // báo nào lấy dữ liệu từ bảng kế hoạch nữa nên không có gì để lọc theo phòng ban.
-const MODULE_COLUMNS = ['contracts', 'projects', 'business'];
-
-/** Có quyền đọc không: ADMIN, hoặc cột quyền là VIEW/EDIT */
-const canRead = (level) => level === 'VIEW' || level === 'EDIT' || level === 'ADMIN';
+//
+// Tên có tiền tố NOTIFY_ để không lẫn với MODULE_COLUMNS của
+// services/accessLevels.js (5 cột) — thông báo chỉ cần 3 cột này.
+const NOTIFY_MODULE_COLUMNS = ['contracts', 'projects', 'business'];
 
 /**
  * Đọc role + mọi cột quyền cần dùng bằng MỘT query.
@@ -56,13 +57,16 @@ const canRead = (level) => level === 'VIEW' || level === 'EDIT' || level === 'AD
  * đọc thẳng từ bảng users mỗi request nên admin đổi quyền có hiệu lực ngay.
  */
 async function loadPermissions(userId) {
-  const cols = MODULE_COLUMNS.join(', ');
+  const cols = NOTIFY_MODULE_COLUMNS.join(', ');
   const { rows } = await query(`SELECT role, ${cols} FROM users WHERE id = $1`, [userId]);
   if (rows.length === 0) return null;
 
   const row = rows[0];
-  const isAdmin = String(row.role || '').toUpperCase() === 'ADMIN';
-  const level = (col) => (isAdmin ? 'ADMIN' : String(row[col] || 'NO_ACCESS').toUpperCase());
+  const isAdmin = isAdminRole(row.role);
+  // ADMIN bypass -> trả 'EDIT' (mức cao nhất của thang cột module) thay vì 'ADMIN':
+  // 'ADMIN' không phải giá trị hợp lệ của cột module, và canRead/canWrite của
+  // helper quy nó về VIEW nên sẽ vô tình HẠ quyền admin.
+  const level = (col) => (isAdmin ? 'EDIT' : normalizeAccess(row[col]));
 
   return {
     isAdmin,

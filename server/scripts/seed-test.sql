@@ -21,8 +21,11 @@ INSERT INTO branches (id, name, code) VALUES
 ON CONFLICT (id) DO UPDATE SET name=EXCLUDED.name, code=EXCLUDED.code;
 
 -- Users (password: vcm123 hashed with bcrypt)
+-- Cột quyền chỉ nhận 'EDIT' | 'VIEW' | 'NO_ACCESS' (role thêm 'ADMIN') —
+-- chk_users_* trong init-db.sql. u-admin trước đây ghi 'FULL' × 5 và giờ sẽ nổ
+-- 23514; 'EDIT' là đúng ý "toàn quyền" của seed (role=ADMIN vốn bypass hết rồi).
 INSERT INTO users (id, email, password, name, position_id, position_code, position_name, category, description, role, branches, contracts, projects, targets, business) VALUES
-  ('u-admin', 'admin@vcm.com', '$2b$10$XKxH.PXqV4JiG5u5c8Vy8.1QPfWm4wV5oXu5dK.xKBNQBCxA8CjWq', 'Admin User', 'pos-001', 'GD', 'Giám đốc', 'leader', 'Giám đốc', 'ADMIN', 'FULL', 'FULL', 'FULL', 'FULL', 'FULL'),
+  ('u-admin', 'admin@vcm.com', '$2b$10$XKxH.PXqV4JiG5u5c8Vy8.1QPfWm4wV5oXu5dK.xKBNQBCxA8CjWq', 'Admin User', 'pos-001', 'GD', 'Giám đốc', 'leader', 'Giám đốc', 'ADMIN', 'EDIT', 'EDIT', 'EDIT', 'EDIT', 'EDIT'),
   ('u-user1', 'user1@vcm.com', '$2b$10$XKxH.PXqV4JiG5u5c8Vy8.1QPfWm4wV5oXu5dK.xKBNQBCxA8CjWq', 'Nguyen Van A', 'pos-003', 'TPKT', 'Trưởng phòng kỹ thuật', 'construction', 'Kỹ thuật', 'EDIT', 'VIEW', 'EDIT', 'EDIT', 'VIEW', 'VIEW'),
   ('u-user2', 'user2@vcm.com', '$2b$10$XKxH.PXqV4JiG5u5c8Vy8.1QPfWm4wV5oXu5dK.xKBNQBCxA8CjWq', 'Tran Thi B', 'pos-005', 'NVKD', 'Nhân viên kinh doanh', 'business', 'Kinh doanh', 'VIEW', 'VIEW', 'VIEW', 'VIEW', 'VIEW', 'VIEW')
 ON CONFLICT (id) DO NOTHING;

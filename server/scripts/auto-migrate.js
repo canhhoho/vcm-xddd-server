@@ -12,6 +12,7 @@ require('dotenv').config();
 const https = require('https');
 const http = require('http');
 const { Pool } = require('pg');
+const { normalizeAccess, normalizeRole } = require('../src/services/accessLevels');
 
 const SHEET_ID = '1ZOvkEJFPjP9NFCvhWx_enOQjzdeKnxMsFMf-7180Edc';
 
@@ -249,10 +250,14 @@ async function migrate() {
           await client.query(
             `INSERT INTO users (id, email, password, name, role, position_id, position_code, position_name, category, description, branches, contracts, projects, targets, business, created_at) 
              VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16) ON CONFLICT (id) DO NOTHING`,
-            [toStr(g(u,'id')), toStr(g(u,'email')), toStr(g(u,'password')), toStr(g(u,'name')), toStr(g(u,'role')||'VIEW'),
+            // Cột quyền đi qua normalize*, KHÔNG toStr(): giá trị từ Google Sheet là
+            // tuỳ ý và toStr(undefined) === '' — cả hai vi phạm chk_users_* và làm
+            // INSERT nổ 23514. Ở đây catch chỉ warn từng dòng nên hậu quả là
+            // "import xong, 0 user" mà không ai để ý.
+            [toStr(g(u,'id')), toStr(g(u,'email')), toStr(g(u,'password')), toStr(g(u,'name')), normalizeRole(g(u,'role')||'VIEW'),
              toStr(g(u,'positionid','position_id')), toStr(g(u,'positioncode','position_code')), nonUuid(g(u,'positionname','position_name')), toStr(g(u,'category')),
-             toStr(g(u,'description')), toStr(g(u,'branches')), toStr(g(u,'contracts')), toStr(g(u,'projects')),
-             toStr(g(u,'targets')), toStr(g(u,'business')), toDate(g(u,'createdat','createdAt')) || new Date().toISOString()]
+             toStr(g(u,'description')), normalizeAccess(g(u,'branches')), normalizeAccess(g(u,'contracts')), normalizeAccess(g(u,'projects')),
+             normalizeAccess(g(u,'targets')), normalizeAccess(g(u,'business')), toDate(g(u,'createdat','createdAt')) || new Date().toISOString()]
           );
           count++;
         } catch (e) { console.warn(`  ⚠️ User ${g(u,'email')}: ${e.message}`); }

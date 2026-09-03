@@ -10,11 +10,14 @@
  *
  * Quy tắc:
  *   - ADMIN / projects=EDIT  → toàn quyền.
- *   - projects=NO_ACCESS     → 403 mọi method.
  *   - GET                    → cần tối thiểu VIEW.
  *   - projects=VIEW + là thành viên dự án → được ghi tiến độ (PUT /:id/progress).
  *   - Import và DELETE       → luôn đòi EDIT/admin. Thành viên thường KHÔNG được
  *                              đụng danh mục vì import xoá sạch dữ liệu cũ.
+ *   - còn lại                → 403 mọi method. ALLOW-LIST: trước đây cổng đọc là
+ *                              `level === 'NO_ACCESS'` nên `projects='FULL'` lọt
+ *                              vào nhánh thành viên và ghi được tiến độ.
+ *                              Xem services/accessLevels.js.
  *
  * Quyền đọc từ bảng `users` mỗi request nên admin đổi quyền có hiệu lực ngay,
  * không cần user đăng nhập lại — giống moduleAccess và planAccess.
@@ -24,6 +27,7 @@
  */
 const { query } = require('../config/database');
 const { forbidden, badRequest } = require('../routes/_planValidators');
+const { normalizeAccess, isAdminRole, canRead, canWrite } = require('../services/accessLevels');
 
 const WRITE_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 
@@ -79,15 +83,17 @@ function projectMemberAccess() {
       if (result.rows.length === 0) return next(forbidden('Forbidden: User not found'));
 
       const row = result.rows[0];
-      const isAdmin = String(row.role || '').toUpperCase() === 'ADMIN';
-      const level = String(row.projects || 'NO_ACCESS').toUpperCase();
+      const isAdmin = isAdminRole(row.role);
+      const level = normalizeAccess(row.projects);
 
       req.projectAccess = { isAdmin, level };
 
-      if (isAdmin || level === 'EDIT') return next();
-      if (level === 'NO_ACCESS') return next(forbidden('Forbidden: no access to projects'));
+      if (isAdmin || canWrite(level)) return next();
+      if (!canRead(level)) return next(forbidden('Forbidden: no access to projects'));
 
-      // Từ đây: level === 'VIEW'
+      // Từ đây level CHẮC CHẮN là 'VIEW': normalizeAccess chỉ trả về 3 mức, hai
+      // mức kia đã return ở trên. (Trước khi có helper, giá trị rác cũng rơi vào
+      // đây nên comment cũ khẳng định === 'VIEW' là sai.)
       if (!WRITE_METHODS.has(req.method)) return next();
 
       // Danh mục hạng mục chỉ quyền EDIT mới được đụng — import xoá sạch dữ liệu

@@ -284,11 +284,22 @@ export class GasApiService implements IApiService {
                         });
                         return;
 
-                    case 'getModulePermissions':
+                    // Tên case PHẢI khớp action mà getPermissions() gửi ('getPermissions').
+                    // Lệch tên thì rơi xuống `default` và trả về một OBJECT thay vì mảng —
+                    // tab Phân quyền trắng trơn mà không có lỗi nào.
+                    case 'getPermissions':
                         resolve({
                             success: true,
                             data: [
-                                { userId: 'u_001', userName: 'Nguyễn Văn An', positionName: 'Giám đốc', category: 'Lãnh đạo', contracts: 'EDIT', projects: 'EDIT', targets: 'EDIT', business: 'EDIT' },
+                                {
+                                    userId: 'u_001', userName: 'Nguyễn Văn An',
+                                    positionName: 'Giám đốc', positionId: 'pos_001',
+                                    category: 'Lãnh đạo', role: 'ADMIN',
+                                    contracts: 'EDIT', projects: 'EDIT', targets: 'EDIT',
+                                    business: 'EDIT', branches: 'EDIT',
+                                    plans_bd: 'EDIT', plans_mkt: 'EDIT', plans_qs: 'EDIT',
+                                    plans_des: 'EDIT', plans_pm: 'EDIT',
+                                },
                             ]
                         });
                         return;

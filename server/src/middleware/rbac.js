@@ -11,14 +11,20 @@
  */
 const { query } = require('../config/database');
 const { forbidden } = require('../routes/_planValidators');
+const { normalizeRole } = require('../services/accessLevels');
 
 function rbac(requiredRoles = []) {
   const allowed = requiredRoles.map(r => String(r).toUpperCase());
 
+  // Nổ ngay lúc mount, KHÔNG lặng lẽ cho qua. `rbac()` không tham số trước đây
+  // `return next()` cho MỌI user đã đăng nhập — một cổng phân quyền mở toang mà
+  // trông y như đang bảo vệ. Lỗi cấu hình phải làm server chết lúc khởi động.
+  if (allowed.length === 0) {
+    throw new Error("rbac(): thiếu danh sách role. Truyền rõ, ví dụ rbac(['ADMIN']).");
+  }
+
   return async function rbacMiddleware(req, res, next) {
     try {
-      if (allowed.length === 0) return next();
-
       if (!req.user || !req.user.id) {
         return res.status(401).json({ success: false, error: 'Unauthorized' });
       }
@@ -28,7 +34,7 @@ function rbac(requiredRoles = []) {
         return next(forbidden('Forbidden: User not found'));
       }
 
-      const role = String(result.rows[0].role || '').toUpperCase();
+      const role = normalizeRole(result.rows[0].role);
       if (!allowed.includes(role)) {
         return next(forbidden('Forbidden: Insufficient permissions'));
       }

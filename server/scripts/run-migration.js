@@ -11,6 +11,13 @@ const pool = new Pool({
   password: process.env.DB_PASSWORD || 'postgres',
 });
 
+// node-pg đưa RAISE NOTICE qua event 'notice' của Client; không gắn listener thì
+// mọi NOTICE trong file migration bị bỏ IM LẶNG. Migration nào in số dòng đã
+// chuẩn hoá (blast radius) đều cần dòng này mới thấy được.
+pool.on('connect', (client) => {
+  client.on('notice', (msg) => console.log('  ▸', msg.message));
+});
+
 // Tên file migration truyền qua CLI, mặc định giữ nguyên hành vi cũ.
 // VD: node scripts/run-migration.js migrate-plan-constraints.sql
 const fileName = process.argv[2] || 'migrate-add-project-logs.sql';

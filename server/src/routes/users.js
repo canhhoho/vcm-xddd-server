@@ -7,17 +7,26 @@ const { query } = require('../config/database');
 const { v4: uuidv4 } = require('uuid');
 const SecurityService = require('../services/securityService');
 const CacheService = require('../services/cacheService');
-const { MODULE_COLUMNS } = require('../middleware/moduleAccess');
 const { badRequest } = require('./_planValidators');
-
-// Các cột quyền theo phòng ban của page Plan (moduleAccess chỉ quản 5 cột module thường).
-const PLAN_COLUMNS = ['plans_bd', 'plans_mkt', 'plans_qs', 'plans_des', 'plans_pm'];
-const ACCESS_LEVELS = ['ADMIN', 'EDIT', 'VIEW', 'NO_ACCESS'];
+// Hai thang giá trị KHÁC NHAU, đừng gộp lại — xem services/accessLevels.js:
+// - `role` (quyền toàn cục) có ADMIN, và ADMIN ở đây bypass toàn bộ moduleAccess/
+//   planAccess.
+// - cột module/plan KHÔNG có ADMIN: cổng ghi đòi đúng 'EDIT', nên đặt ADMIN vào cột
+//   module thực tế cho quyền YẾU HƠN EDIT — ngược ý định của người bấm.
+const {
+  MODULE_COLUMNS, PLAN_COLUMNS, ROLE_LEVELS, ACCESS_LEVELS,
+} = require('../services/accessLevels');
 
 /** Chuẩn hoá giá trị quyền từ client; giá trị lạ -> fallback, không ghi thẳng vào DB. */
 function accessLevel(value, fallback) {
   const v = String(value || '').toUpperCase();
   return ACCESS_LEVELS.includes(v) ? v : fallback;
+}
+
+/** Như accessLevel nhưng cho cột `role` — thang duy nhất được phép chứa ADMIN. */
+function roleLevel(value, fallback) {
+  const v = String(value || '').toUpperCase();
+  return ROLE_LEVELS.includes(v) ? v : fallback;
 }
 
 async function logActivity(email, action, description) {
@@ -93,8 +102,12 @@ router.post('/', async (req, res, next) => {
 
     // Quyền lấy từ body (PUT vẫn nhận đủ các cột này) — trước đây bị hardcode nên
     // admin tạo user xong luôn phải sang tab Phân quyền sửa lại.
-    const role = accessLevel(d.role, 'VIEW');
+    const role = roleLevel(d.role, 'VIEW');
     const permColumns = [...MODULE_COLUMNS, ...PLAN_COLUMNS];
+    // TODO(least-privilege): module mặc định 'VIEW' trong khi schema là DEFAULT
+    // 'NO_ACCESS' (init-db.sql:18-47) và plan bên dưới cũng 'NO_ACCESS' — tạo user mà
+    // không gửi cột quyền là user đọc được ngay contracts/projects/targets/business/
+    // branches. Giữ nguyên ở đợt này để không đổi hành vi tạo user ngoài phạm vi.
     const permValues = [
       ...MODULE_COLUMNS.map(col => accessLevel(d[col], 'VIEW')),
       ...PLAN_COLUMNS.map(col => accessLevel(d[col], 'NO_ACCESS')),
@@ -164,7 +177,7 @@ router.put('/:id', async (req, res, next) => {
         if (jsKey === 'positionCode' && localPosCode !== undefined) val = localPosCode;
         if (jsKey === 'positionName' && localPosName !== undefined) val = localPosName;
         if (accessFields.has(jsKey)) {
-          const normalized = accessLevel(val, null);
+          const normalized = jsKey === 'role' ? roleLevel(val, null) : accessLevel(val, null);
           if (normalized === null) throw badRequest(`Invalid access level for ${jsKey}`);
           val = normalized;
         }

@@ -12,16 +12,16 @@
  * request bị 403 (xem comment đầu ProjectLogTab.tsx).
  */
 
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
     Table, Button, InputNumber, DatePicker, Empty, Tag, Progress, Upload,
-    Modal, message, Drawer, Popconfirm, Tabs, Alert, Spin, Tooltip, Switch, Badge,
-    Row, Col,
+    Modal, message, Drawer, Popconfirm, Tabs, Alert, Spin,
+    Row, Col, Input, Segmented,
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import {
     UploadOutlined, FileExcelOutlined, HistoryOutlined,
-    DeleteOutlined, SaveOutlined,
+    DeleteOutlined, SaveOutlined, SearchOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import type { Dayjs } from 'dayjs';
@@ -59,7 +59,8 @@ const ProjectWorkItemsTab: React.FC<Props> = ({ project, canEdit }) => {
     const dateStr = logDate.format('YYYY-MM-DD');
     const { data: items = [], isLoading } = useProjectWorkItems(projectId, dateStr);
     const { importItems, updateProgress, updateDates, deleteLog } = useWorkItemMutations(projectId);
-    const [onlyOverdue, setOnlyOverdue] = useState(false);
+    const [statusFilter, setStatusFilter] = useState<'ALL' | 'PENDING' | 'DONE' | 'OVERDUE'>('ALL');
+    const [search, setSearch] = useState('');
 
     const currentUserId = useMemo(() => {
         try { return JSON.parse(localStorage.getItem('user') || '{}').id || ''; }
@@ -106,12 +107,14 @@ const ProjectWorkItemsTab: React.FC<Props> = ({ project, canEdit }) => {
      * Hạng mục trễ: có ngày mục tiêu, chưa xong, và đã quá hạn.
      * Xong muộn thì KHÔNG tính là trễ nữa — cột ngày thực tế đã nói lên điều đó.
      */
-    const isOverdue = (r: ProjectWorkItem) =>
+    // useCallback để tham chiếu ổn định — columns memo hoá theo các hàm này, hàm
+    // đổi mỗi render là memo vô hiệu.
+    const isOverdue = useCallback((r: ProjectWorkItem) =>
         r.level === 2 && !!r.targetDate && r.progressPct < 100
-        && dayjs(r.targetDate).isBefore(dayjs(), 'day');
+        && dayjs(r.targetDate).isBefore(dayjs(), 'day'), []);
 
-    const overdueDays = (r: ProjectWorkItem) =>
-        r.targetDate ? dayjs().startOf('day').diff(dayjs(r.targetDate).startOf('day'), 'day') : 0;
+    const overdueDays = useCallback((r: ProjectWorkItem) =>
+        r.targetDate ? dayjs().startOf('day').diff(dayjs(r.targetDate).startOf('day'), 'day') : 0, []);
 
     const overdueCount = useMemo(() => items.filter(isOverdue).length, [items]);
 
@@ -122,11 +125,30 @@ const ProjectWorkItemsTab: React.FC<Props> = ({ project, canEdit }) => {
         return { total: leaves.length, done, pending: leaves.length - done, overdue: overdueCount };
     }, [items, overdueCount]);
 
-    // Khi lọc, bỏ luôn dòng nhóm: giữ lại tiêu đề nhóm mà không có dòng con nào
-    // bên dưới chỉ làm bảng đầy dòng rỗng.
-    const visibleItems = useMemo(
-        () => onlyOverdue ? sheetItems.filter(isOverdue) : sheetItems,
-        [sheetItems, onlyOverdue]
+    /**
+     * Lọc trong phạm vi SHEET ĐANG XEM.
+     * Khi có bộ lọc, bỏ luôn dòng nhóm: giữ tiêu đề nhóm mà không có dòng con nào
+     * bên dưới chỉ làm bảng đầy dòng rỗng.
+     */
+    const isFiltering = statusFilter !== 'ALL' || search.trim() !== '';
+
+    const visibleItems = useMemo(() => {
+        if (!isFiltering) return sheetItems;
+        const q = search.trim().toLowerCase();
+        return sheetItems.filter(r => {
+            if (r.level !== 2) return false;
+            if (q && !`${r.nameVi} ${r.nameEn}`.toLowerCase().includes(q)) return false;
+            if (statusFilter === 'DONE') return r.progressPct >= 100;
+            if (statusFilter === 'PENDING') return r.progressPct < 100;
+            if (statusFilter === 'OVERDUE') return isOverdue(r);
+            return true;
+        });
+    }, [sheetItems, statusFilter, search, isFiltering]);
+
+    /** Số kết quả của bộ lọc trong sheet hiện tại, để hiện cạnh ô tìm kiếm */
+    const filteredLeafCount = useMemo(
+        () => visibleItems.filter(r => r.level === 2).length,
+        [visibleItems]
     );
 
     // ── Import ────────────────────────────────────────────────────────────────
@@ -186,7 +208,7 @@ const ProjectWorkItemsTab: React.FC<Props> = ({ project, canEdit }) => {
     };
 
     // ── Lưu một dòng ──────────────────────────────────────────────────────────
-    const saveRow = (item: ProjectWorkItem) => {
+    const saveRow = useCallback((item: ProjectWorkItem) => {
         const value = drafts[item.id];
         if (value === undefined) return;
         updateProgress.mutate(
@@ -203,9 +225,10 @@ const ProjectWorkItemsTab: React.FC<Props> = ({ project, canEdit }) => {
                 onError: showError,
             }
         );
-    };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [drafts, dateStr, updateProgress, t]);
 
-    const saveDate = (item: ProjectWorkItem, field: 'targetDate' | 'actualDate', value: Dayjs | null) => {
+    const saveDate = useCallback((item: ProjectWorkItem, field: 'targetDate' | 'actualDate', value: Dayjs | null) => {
         updateDates.mutate(
             { id: item.id, [field]: value ? value.format('YYYY-MM-DD') : null },
             {
@@ -213,10 +236,13 @@ const ProjectWorkItemsTab: React.FC<Props> = ({ project, canEdit }) => {
                 onError: showError,
             }
         );
-    };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [updateDates, t]);
 
     // ── Cột ───────────────────────────────────────────────────────────────────
-    const columns: ColumnsType<ProjectWorkItem> = [
+    // useMemo BAT BUOC: columns dong bao quanh drafts. Khong memo thi moi lan go
+    // mot o khoi luong la dung lai toan bo mang cot -> antd render lai ca bang.
+    const columns: ColumnsType<ProjectWorkItem> = useMemo(() => [
         {
             title: t('projectWorkItems.colNo'), dataIndex: 'code', key: 'code',
             width: 70, align: 'center',
@@ -258,6 +284,9 @@ const ProjectWorkItemsTab: React.FC<Props> = ({ project, canEdit }) => {
                         <InputNumber
                             size="small"
                             min={0}
+                            // controls={false}: bỏ hai nút tăng/giảm. Không ai bấm từng
+                            // đơn vị cho khối lượng, mà 50 dòng là 100 nút thừa.
+                            controls={false}
                             value={draft !== undefined ? draft : (r.dayQty ?? r.completedQty)}
                             onChange={val => setDrafts(prev => ({ ...prev, [r.id]: Number(val) || 0 }))}
                             style={{ width: 96 }}
@@ -276,11 +305,20 @@ const ProjectWorkItemsTab: React.FC<Props> = ({ project, canEdit }) => {
         {
             title: t('projectWorkItems.colProgress'), key: 'progress', width: 130,
             render: (_: unknown, r: ProjectWorkItem) => r.level < 2 ? null : (
-                <Progress
-                    percent={r.progressPct}
-                    size="small"
-                    status={r.progressPct >= 100 ? 'success' : 'active'}
-                />
+                // Thanh CSS thuần thay cho antd Progress: cùng hình thức nhưng chỉ 2
+                // thẻ div, nhân 20 dòng mỗi lần đổi sheet thì khác biệt thấy được.
+                <div className="vcm-wi-bar">
+                    <div className="vcm-wi-bar-track">
+                        <div
+                            className="vcm-wi-bar-fill"
+                            style={{
+                                width: `${Math.min(100, r.progressPct)}%`,
+                                background: r.progressPct >= 100 ? BRAND_COLORS.success : BRAND_COLORS.info,
+                            }}
+                        />
+                    </div>
+                    <span className="vcm-wi-bar-text">{r.progressPct}%</span>
+                </div>
             ),
         },
         {
@@ -346,15 +384,14 @@ const ProjectWorkItemsTab: React.FC<Props> = ({ project, canEdit }) => {
         {
             title: '', key: 'action', width: 50, align: 'center', fixed: 'right',
             render: (_: unknown, r: ProjectWorkItem) => r.level < 2 ? null : (
-                <Tooltip title={t('projectWorkItems.history')}>
-                    <Button
-                        type="text" size="small" icon={<HistoryOutlined />}
-                        onClick={() => setHistoryItem(r)}
-                    />
-                </Tooltip>
+                <Button
+                    type="text" size="small" icon={<HistoryOutlined />}
+                    title={t('projectWorkItems.history')}
+                    onClick={() => setHistoryItem(r)}
+                />
             ),
         },
-    ];
+    ], [t, canManageItems, canUpdateProgress, drafts, updateProgress.isPending, isOverdue, saveRow, saveDate]);
 
     // ── Render ────────────────────────────────────────────────────────────────
     return (
@@ -383,19 +420,6 @@ const ProjectWorkItemsTab: React.FC<Props> = ({ project, canEdit }) => {
                 </div>
 
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-                    {items.length > 0 && (
-                        <span style={{ display: 'flex', alignItems: 'center', gap: 6, marginRight: 4 }}>
-                            <Switch size="small" checked={onlyOverdue} onChange={setOnlyOverdue} />
-                            <span style={{ fontSize: 13, color: BRAND_COLORS.textSecondary }}>
-                                {t('projectWorkItems.filterOverdue')}
-                            </span>
-                            <Badge
-                                count={overdueCount}
-                                showZero
-                                style={{ backgroundColor: overdueCount > 0 ? BRAND_COLORS.error : BRAND_COLORS.textMuted }}
-                            />
-                        </span>
-                    )}
                     {items.length > 0 && (
                         <Button size="small" icon={<FileExcelOutlined />} onClick={handleExport}>
                             {t('projectWorkItems.exportExcel')}
@@ -458,32 +482,84 @@ const ProjectWorkItemsTab: React.FC<Props> = ({ project, canEdit }) => {
                     ))}
                 </Row>
 
+                {/*
+                  * Tabs chỉ làm THANH CHỌN sheet, KHÔNG chứa bảng.
+                  * Trước đây mỗi pane đều dựng một <Table> riêng, mà antd giữ pane
+                  * đã mở trong DOM -> bấm qua 6 sheet là 6 bảng cùng mount, mỗi lần
+                  * gõ một ô là render lại tất cả. Đó là nguyên nhân đơ với 427 hạng
+                  * mục. Cùng khuôn với Tabs ở ProjectDetail.tsx.
+                  */}
                 <Tabs
                     activeKey={currentSheet}
                     onChange={key => { setActiveSheet(key); setDrafts({}); }}
                     items={sheetNames.map(name => ({
                         key: name,
                         label: `${name} — ${sheetPct[name]}%`,
-                        children: onlyOverdue && visibleItems.length === 0 ? (
-                            <Empty
-                                image={Empty.PRESENTED_IMAGE_SIMPLE}
-                                description={t('projectWorkItems.noOverdue')}
-                                style={{ padding: '32px 0' }}
-                            />
-                        ) : (
-                            <Table
-                                dataSource={visibleItems}
-                                columns={columns}
-                                rowKey="id"
-                                size="small"
-                                pagination={false}
-                                scroll={{ x: 1520 }}
-                                rowClassName={r =>
-                                    `vcm-wi-level-${r.level}${isOverdue(r) ? ' vcm-wi-overdue' : ''}`}
-                            />
-                        ),
                     }))}
                 />
+
+                {/* Thanh lọc — phạm vi là SHEET ĐANG XEM */}
+                <div style={{
+                    display: 'flex', alignItems: 'center', gap: 8,
+                    flexWrap: 'wrap', marginBottom: 12,
+                }}>
+                    <Input
+                        allowClear
+                        prefix={<SearchOutlined style={{ color: BRAND_COLORS.textMuted }} />}
+                        placeholder={t('projectWorkItems.searchPlaceholder')}
+                        value={search}
+                        onChange={e => setSearch(e.target.value)}
+                        style={{ width: 'min(280px, 100%)' }}
+                        size="small"
+                    />
+                    <Segmented
+                        size="small"
+                        value={statusFilter}
+                        onChange={val => setStatusFilter(val as typeof statusFilter)}
+                        options={[
+                            { label: t('projectWorkItems.filterAll'), value: 'ALL' },
+                            { label: t('projectWorkItems.filterPending'), value: 'PENDING' },
+                            { label: t('projectWorkItems.filterDone'), value: 'DONE' },
+                            { label: t('projectWorkItems.filterOverdue'), value: 'OVERDUE' },
+                        ]}
+                    />
+                    {isFiltering && (
+                        <span style={{ fontSize: 12, color: BRAND_COLORS.textSecondary }}>
+                            {t('projectWorkItems.filterResult', { count: filteredLeafCount })}
+                        </span>
+                    )}
+                </div>
+
+                {isFiltering && visibleItems.length === 0 ? (
+                    <Empty
+                        image={Empty.PRESENTED_IMAGE_SIMPLE}
+                        description={t('projectWorkItems.noFilterResult')}
+                        style={{ padding: '32px 0' }}
+                    />
+                ) : (
+                    <Table
+                        dataSource={visibleItems}
+                        columns={columns}
+                        rowKey="id"
+                        size="small"
+                        // Phân trang là bắt buộc: một sheet có thể hơn trăm dòng, mỗi
+                        // dòng có InputNumber + Progress + Tag. Dựng hết một lúc là treo.
+                        pagination={{
+                            // 20 là mặc định vì chi phí render ~13ms/dòng: 50 dòng là
+                            // ngót 700ms mỗi lần đổi sheet. Ai cần xem nhiều hơn thì
+                            // tự tăng bằng ô chọn bên cạnh.
+                            defaultPageSize: 20,
+                            pageSizeOptions: [20, 50, 100, 200],
+                            showSizeChanger: true,
+                            size: 'small',
+                            showTotal: (total, range) =>
+                                t('projectWorkItems.pageTotal', { from: range[0], to: range[1], total }),
+                        }}
+                        scroll={{ x: 1520 }}
+                        rowClassName={r =>
+                            `vcm-wi-level-${r.level}${isOverdue(r) ? ' vcm-wi-overdue' : ''}`}
+                    />
+                )}
                 </>
             )}
 

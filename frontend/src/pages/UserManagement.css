@@ -79,6 +79,18 @@
     font-size: 11px;
 }
 
+/* Ma trận quyền là bảng dày đặc: padding ngang 8px mặc định của antd size="small"
+   ăn mất 16px mỗi ô, đủ để nhóm 3 nút (109.8px) xuống dòng và hàng cao gấp đôi.
+   Bóp còn 2px và cấm wrap — bề rộng cột đã tính sẵn theo PERM_COL_WIDTH. */
+.permissions-matrix .ant-table-cell.perm-cell {
+    padding-left: 2px !important;
+    padding-right: 2px !important;
+}
+
+.perm-radio {
+    white-space: nowrap;
+}
+
 .perm-radio-EDIT .ant-radio-button-wrapper-checked:not(.ant-radio-button-wrapper-disabled) {
     background: #1677ff !important;
     border-color: #1677ff !important;

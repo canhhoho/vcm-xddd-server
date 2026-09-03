@@ -4,6 +4,12 @@ export type ModuleAccess = 'EDIT' | 'VIEW' | 'NO_ACCESS';
 export interface ModulePermission {
     userId: string;
     userName?: string;
+    positionName?: string;
+    positionId?: string;
+    /** Đọc thẳng `users.category`, KHÔNG COALESCE với positions như User.category. */
+    category?: string;
+    /** Read-only. Đổi role đi qua PUT /users, không qua PUT /permissions. */
+    role?: UserRole;
     contracts: ModuleAccess;
     projects: ModuleAccess;
     targets: ModuleAccess;

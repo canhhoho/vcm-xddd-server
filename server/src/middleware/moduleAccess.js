@@ -10,17 +10,17 @@
  * đổi quyền có hiệu lực ngay, không cần user đăng nhập lại.
  *
  * Quy tắc (giống planAccess.js):
- *   - ADMIN     → toàn quyền.
- *   - NO_ACCESS → 403 mọi method.
- *   - VIEW      → chỉ GET; POST/PUT/DELETE → 403.
- *   - EDIT      → toàn quyền.
+ *   - role=ADMIN → toàn quyền, bỏ qua mọi cột module.
+ *   - EDIT       → toàn quyền trên module đó.
+ *   - VIEW       → chỉ GET; POST/PUT/PATCH/DELETE → 403.
+ *   - còn lại    → 403 mọi method. ALLOW-LIST, không phải deny-list: trước đây
+ *                  cổng đọc là `level === 'NO_ACCESS'` nên mọi giá trị lạ
+ *                  ('FULL' trong seed-test.sql, '', NULL, 'x') đều KHÁC
+ *                  'NO_ACCESS' và được cấp quyền ĐỌC. Xem services/accessLevels.js.
  */
 const { query } = require('../config/database');
 const { forbidden } = require('../routes/_planValidators');
-
-// Các cột quyền hợp lệ trong bảng users. Chặn ở đây để tên module truyền vào
-// không bao giờ ghép thẳng vào SQL mà không qua allowlist.
-const MODULE_COLUMNS = ['contracts', 'projects', 'targets', 'branches', 'business'];
+const { MODULE_COLUMNS, normalizeAccess, isAdminRole, canRead, canWrite } = require('../services/accessLevels');
 
 const WRITE_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 
@@ -39,11 +39,11 @@ async function loadModulePermissions(req) {
   const row = result.rows[0];
   const byModule = {};
   MODULE_COLUMNS.forEach(col => {
-    byModule[col] = String(row[col] || 'NO_ACCESS').toUpperCase();
+    byModule[col] = normalizeAccess(row[col]);
   });
 
   req._modulePermissions = {
-    isAdmin: String(row.role || '').toUpperCase() === 'ADMIN',
+    isAdmin: isAdminRole(row.role),
     byModule,
   };
   return req._modulePermissions;
@@ -71,11 +71,11 @@ function moduleAccess(moduleName) {
 
       const level = byModule[moduleName];
 
-      if (level === 'NO_ACCESS') {
+      if (!canRead(level)) {
         return next(forbidden(`Forbidden: no access to ${moduleName}`));
       }
 
-      if (WRITE_METHODS.has(req.method) && level !== 'EDIT') {
+      if (WRITE_METHODS.has(req.method) && !canWrite(level)) {
         return next(forbidden(`Forbidden: read-only access to ${moduleName}`));
       }
 
@@ -87,4 +87,3 @@ function moduleAccess(moduleName) {
 }
 
 module.exports = moduleAccess;
-module.exports.MODULE_COLUMNS = MODULE_COLUMNS;
