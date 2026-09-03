@@ -27,7 +27,7 @@
 /* --- Apple iOS Style Header --- */
 .project-header-ios {
     background: var(--pd-bg-white);
-    padding: 24px 24px 0 24px;
+    padding: 16px 24px 0 24px;
     flex-shrink: 0;
     z-index: 10;
     border-bottom: 1px solid var(--pd-border);
@@ -37,7 +37,7 @@
     width: 100%;
     display: flex;
     flex-direction: column;
-    gap: 16px;
+    gap: 12px;
 }
 
 .header-top-row {
@@ -67,16 +67,20 @@
 .header-title-container {
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: 4px;
 }
 
+/* 20px cho khớp .vcm-header-title mà 7 trang khác dùng.
+   max-width 1000px: tên dự án dài nhất đang gặp cần 947px để nằm một dòng, mà
+   khối cha ở màn 1600 có 1022px — để 900px là ép xuống hai dòng một cách vô ích,
+   mỗi dòng thừa tốn 26px ngay phía trên bảng. Màn hẹp vẫn tự xuống dòng. */
 .project-title-ios {
-    font-size: 24px;
+    font-size: 20px;
     font-weight: 800;
     color: var(--pd-text-main);
     margin: 0;
     line-height: 1.3;
-    max-width: 700px;
+    max-width: 1000px;
     word-break: break-word;
 }
 
@@ -129,8 +133,10 @@
     margin-bottom: 0 !important;
 }
 
+/* Dòng trên đặt margin-bottom: 0 !important rồi ở đây trả lại bằng padding —
+   tức 16px chưa hề bị xoá, chỉ đổi chỗ. Sửa ở ĐÂY mới thật sự ăn. */
 .project-tabs-segmented .ant-tabs-nav-wrap {
-    padding-bottom: 16px; 
+    padding-bottom: 8px;
 }
 
 .project-tabs-segmented .ant-tabs-nav-list {
@@ -167,147 +173,13 @@
 .project-content {
     flex: 1;
     overflow-y: auto;
-    padding: 24px;
+    padding: 16px;
     background-color: #F8FAFC;
 }
 
 .content-wrapper {
     width: 100%;
     padding: 0 16px;
-}
-
-/* --- Summary Tab --- */
-.info-strip {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    background: var(--pd-bg-white);
-    border-radius: 16px;
-    border: 1px solid var(--pd-border);
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.02);
-    padding: 8px 0;
-    margin-bottom: 24px;
-}
-
-.info-item {
-    padding: 16px 24px;
-    border-right: 1px solid var(--pd-border);
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-}
-
-.info-item:last-child {
-    border-right: none;
-}
-
-.info-label {
-    font-size: 11px;
-    text-transform: uppercase;
-    font-weight: 700;
-    color: #9CA3AF;
-    display: block;
-    margin-bottom: 6px;
-    letter-spacing: 0.5px;
-}
-
-.info-value {
-    font-size: 15px;
-    font-weight: 700;
-    color: var(--pd-text-main);
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.stat-card-row {
-    margin-top: 24px;
-}
-
-.stat-card {
-    background: var(--pd-bg-white);
-    border-radius: 16px;
-    padding: 24px;
-    border: 1px solid var(--pd-border);
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.02);
-    transition: all 0.25s ease;
-    height: 100%;
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-    min-height: 120px;
-}
-
-.stat-card:hover {
-    box-shadow: 0 10px 25px rgba(225, 29, 46, 0.08);
-    border-color: rgba(225, 29, 46, 0.25);
-    transform: translateY(-2px);
-}
-
-.stat-title {
-    font-size: 11px;
-    /* Increased font */
-    text-transform: uppercase;
-    font-weight: 700;
-    color: #9CA3AF;
-    margin-bottom: 8px;
-    letter-spacing: 0.5px;
-}
-
-.stat-value {
-    font-size: 32px;
-    /* Increased font significantly */
-    font-weight: 800;
-    line-height: 1;
-    color: var(--pd-text-main);
-}
-
-.stat-icon-box {
-    width: 48px;
-    /* Increased size */
-    height: 48px;
-    border-radius: 12px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 20px;
-}
-
-.chart-card {
-    background: var(--pd-bg-white);
-    border-radius: 16px;
-    padding: 24px;
-    border: 1px solid var(--pd-border);
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.02);
-    transition: all 0.25s ease;
-    height: 100%;
-}
-
-.chart-card:hover {
-    box-shadow: 0 10px 25px rgba(225, 29, 46, 0.08);
-    border-color: rgba(225, 29, 46, 0.25);
-}
-
-.chart-header {
-    font-size: 16px;
-    font-weight: 700;
-    color: var(--pd-text-main);
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin-bottom: 20px;
-}
-
-/* --- Tasks Tab --- */
-.task-toolbar {
-    background: #fff;
-    padding: 12px 16px;
-    border-radius: 16px;
-    margin-bottom: 24px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    border: 1px solid #F1F5F9;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
 }
 
 .task-list-container {
@@ -488,65 +360,6 @@
 
 .log-stats-row {
     margin-bottom: 24px;
-}
-
-.log-stats-card {
-    background: var(--pd-bg-white);
-    border: 1px solid var(--pd-border);
-    border-radius: 16px;
-    padding: 16px 20px;
-    display: flex;
-    align-items: center;
-    gap: 16px;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.02);
-    transition: all 0.25s ease;
-    height: 100%;
-}
-
-.log-stats-card:hover {
-    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.05);
-    transform: translateY(-2px);
-}
-
-.log-stats-icon {
-    width: 44px;
-    height: 44px;
-    border-radius: 12px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 20px;
-    flex-shrink: 0;
-}
-
-.log-stats-info {
-    min-width: 0;
-    flex: 1;
-}
-
-.log-stats-label {
-    font-size: 11px;
-    color: var(--pd-text-secondary);
-    font-weight: 600;
-    margin-bottom: 2px;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-.log-stats-value {
-    font-size: 22px;
-    font-weight: 800;
-    line-height: 1.2;
-}
-
-.log-stats-suffix {
-    font-size: 12px;
-    font-weight: 500;
-    color: #9CA3AF;
-    margin-left: 4px;
 }
 
 /* Summary panels */
@@ -755,40 +568,6 @@
     color: #9CA3AF;
 }
 
-/* --- Responsive Grid & Card Layout Extensions --- */
-
-@media (max-width: 992px) {
-    .info-strip {
-        grid-template-columns: repeat(2, 1fr);
-        padding: 12px;
-        gap: 12px;
-    }
-    .info-item {
-        border-right: none !important;
-        border-bottom: 1px solid var(--pd-border);
-        padding: 12px 16px;
-    }
-    .info-item:nth-last-child(-n+2) {
-        border-bottom: none;
-    }
-}
-
-@media (max-width: 576px) {
-    .info-strip {
-        grid-template-columns: 1fr;
-        padding: 8px;
-        gap: 8px;
-    }
-    .info-item {
-        border-right: none !important;
-        border-bottom: 1px solid var(--pd-border);
-        padding: 12px;
-    }
-    .info-item:last-child {
-        border-bottom: none;
-    }
-}
-
 /* --- Responsive Task List Row Styles --- */
 .task-row-content {
     display: flex;
@@ -920,16 +699,28 @@
     background: #FEE2E2 !important;
 }
 
-/* Thông tin dự án gọn trong header (thay cho tab Tổng quan đã bỏ) */
-.project-header-info {
+/* Nút mở Popover thông tin dự án, đứng cạnh mã hợp đồng */
+.project-info-btn {
+    width: 20px;
+    height: 20px;
+    min-width: 20px;
+    padding: 0;
+    color: #9CA3AF;
+}
+.project-info-btn:hover {
+    color: #2563EB;
+}
+.project-info-popover {
     display: flex;
-    flex-wrap: wrap;
-    gap: 4px 16px;
-    margin-top: 4px;
+    flex-direction: column;
+    gap: 6px;
     font-size: 13px;
     color: #6B7280;
+    max-width: 320px;
 }
-.project-header-info .header-info-label {
+
+/* Nhãn nay nằm trong Popover thông tin, không còn bọc bởi .project-header-info */
+.header-info-label {
     font-weight: 600;
     color: #9CA3AF;
     /* Các key i18n tái dùng có kiểu chữ khác nhau (formInvestor thường,
@@ -960,28 +751,6 @@
     color: #6B7280;
     min-width: 38px;
     text-align: right;
-}
-
-/* Thẻ thống kê dùng làm nút lọc: cần thấy rõ cái nào đang bật */
-.log-stats-card.is-clickable {
-    cursor: pointer;
-    outline: 2px solid transparent;
-    outline-offset: -2px;
-    transition: outline-color 0.15s;
-}
-.log-stats-card.is-clickable:focus-visible {
-    outline-color: #93C5FD;
-}
-.log-stats-card.is-active {
-    outline-color: #2563EB;
-}
-.log-stats-scope {
-    margin-left: 6px;
-    font-size: 11px;
-    font-weight: 400;
-    color: #9CA3AF;
-    text-transform: none;
-    letter-spacing: 0;
 }
 
 /* Đường dẫn nhóm, thay cho dòng cha khi bảng ở dạng danh sách phẳng */

@@ -435,3 +435,77 @@ body {
     min-height: 100vh;
   }
 }
+/* ── Dải thống kê gọn (VcmStatStrip) ─────────────────────────────────────────
+   Thay hàng thẻ `.log-stats-card` cao ~100px. Chip cao 28px nên đặt lọt được
+   vào cùng hàng với thanh công cụ, xoá hẳn một hàng thay vì chỉ làm nó thấp đi. */
+.vcm-stat-strip {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.vcm-stat-chip {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 5px;
+  padding: 3px 10px;
+  border: 1px solid #E5E7EB;
+  border-radius: 999px;
+  background: #FFFFFF;
+  line-height: 20px;
+  white-space: nowrap;
+  outline: 2px solid transparent;
+  outline-offset: -2px;
+  transition: border-color 0.15s, outline-color 0.15s, background 0.15s;
+}
+
+.vcm-stat-chip.is-clickable {
+  cursor: pointer;
+}
+
+.vcm-stat-chip.is-clickable:hover {
+  background: #F9FAFB;
+  border-color: #D1D5DB;
+}
+
+.vcm-stat-chip.is-clickable:focus-visible {
+  outline-color: #93C5FD;
+}
+
+.vcm-stat-chip.is-active {
+  outline-color: #2563EB;
+  border-color: #2563EB;
+  background: #EFF6FF;
+}
+
+.vcm-stat-chip-icon {
+  font-size: 12px;
+  line-height: 1;
+}
+
+.vcm-stat-chip-value {
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.vcm-stat-chip-suffix {
+  font-size: 11px;
+  font-weight: 500;
+  margin-left: 2px;
+  color: #6B7280;
+}
+
+.vcm-stat-chip-label {
+  font-size: 12px;
+  color: #6B7280;
+}
+
+@media (max-width: 768px) {
+  .vcm-stat-chip {
+    padding: 2px 8px;
+  }
+  .vcm-stat-chip-label {
+    font-size: 11px;
+  }
+}

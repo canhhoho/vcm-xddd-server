@@ -35,6 +35,7 @@ import { excelDateCell } from '../utils/excelExport';
 import type { ExcelCell } from '../utils/excelExport';
 import { useProjectLogs, useProjectLogMutations } from '../hooks/useProjectLogs';
 import ProjectLogForm from '../components/ProjectLogForm';
+import { VcmStatStrip } from '../components/VcmStatStrip';
 import type { Project, ProjectLog, ProjectLogPayload } from '../types';
 import { BRAND_COLORS } from '../styles/brandIdentity';
 
@@ -549,60 +550,38 @@ const ProjectLogTab: React.FC<ProjectLogTabProps> = ({ project, canEdit }) => {
                 </div>
             </div>
 
-            {/* ── Stats row ── */}
-            <Row gutter={[16, 16]} className="log-stats-row">
-                {[
-                    {
-                        label: t('projectLog.workDays'),
-                        value: stats.workDays,
-                        suffix: t('projectLog.workDaysUnit'),
-                        icon: '📅',
-                        color: '#6366F1',
-                        bg: '#EEF2FF',
-                    },
-                    {
-                        label: t('projectLog.totalWorkers'),
-                        value: stats.totalWorkers,
-                        suffix: t('projectLog.totalWorkersUnit'),
-                        icon: '👷',
-                        color: '#0EA5E9',
-                        bg: '#E0F2FE',
-                    },
-                    {
-                        label: t('projectLog.avgProgress'),
-                        value: `${stats.avgProgress}%`,
-                        suffix: '',
-                        icon: '📈',
-                        color: stats.avgProgress >= 70 ? '#10B981' : stats.avgProgress >= 40 ? '#F59E0B' : BRAND_COLORS.error,
-                        bg: stats.avgProgress >= 70 ? '#ECFDF5' : stats.avgProgress >= 40 ? '#FFFBEB' : '#FEF2F2',
-                    },
-                    {
-                        label: t('projectLog.incidentDays'),
-                        value: stats.incidentDays,
-                        suffix: t('projectLog.workDaysUnit'),
-                        icon: '⚠️',
-                        color: stats.incidentDays > 0 ? '#F59E0B' : BRAND_COLORS.textMuted,
-                        bg: stats.incidentDays > 0 ? '#FFFBEB' : BRAND_COLORS.backgroundLight,
-                    },
-                ].map((s, i) => (
-                    <Col xs={12} sm={12} md={6} key={i}>
-                        <div className="log-stats-card">
-                            <div className="log-stats-icon" style={{ backgroundColor: s.bg }}>
-                                {s.icon}
-                            </div>
-                            <div className="log-stats-info">
-                                <div className="log-stats-label">
-                                    {s.label}
-                                </div>
-                                <div className="log-stats-value" style={{ color: s.color }}>
-                                    {s.value}
-                                    {s.suffix && <span className="log-stats-suffix">{s.suffix}</span>}
-                                </div>
-                            </div>
-                        </div>
-                    </Col>
-                ))}
-            </Row>
+            {/* ── Stats ──
+              * Cùng dải gọn với tab Tiến độ hạng mục. Ở đây số liệu chỉ để xem
+              * (không phải bộ lọc) nên không truyền onSelect, và dải đứng riêng
+              * một hàng chứ không gộp vào thanh công cụ. */}
+            <div style={{ marginBottom: 12 }}>
+                <VcmStatStrip
+                    items={[
+                        {
+                            key: 'workDays', label: t('projectLog.workDays'),
+                            value: stats.workDays, suffix: t('projectLog.workDaysUnit'),
+                            icon: '📅', color: '#6366F1',
+                        },
+                        {
+                            key: 'totalWorkers', label: t('projectLog.totalWorkers'),
+                            value: stats.totalWorkers, suffix: t('projectLog.totalWorkersUnit'),
+                            icon: '👷', color: '#0EA5E9',
+                        },
+                        {
+                            key: 'avgProgress', label: t('projectLog.avgProgress'),
+                            value: `${stats.avgProgress}%`,
+                            icon: '📈',
+                            color: stats.avgProgress >= 70 ? '#10B981' : stats.avgProgress >= 40 ? '#F59E0B' : BRAND_COLORS.error,
+                        },
+                        {
+                            key: 'incidentDays', label: t('projectLog.incidentDays'),
+                            value: stats.incidentDays, suffix: t('projectLog.workDaysUnit'),
+                            icon: '⚠️',
+                            color: stats.incidentDays > 0 ? '#F59E0B' : BRAND_COLORS.textMuted,
+                        },
+                    ]}
+                />
+            </div>
 
             {/* ── Monthly summary (Materials & Equipment) ── */}
             {(monthSummaryText.mats || monthSummaryText.equip) && (

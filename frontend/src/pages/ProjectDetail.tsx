@@ -7,8 +7,9 @@ import {
     CheckCircleOutlined,
     ClockCircleOutlined,
     RocketOutlined,
+    InfoCircleOutlined,
 } from '@ant-design/icons';
-import { Tabs, Button, Avatar, Empty, Row, Col, Modal, Form, Input, Select, DatePicker, message, Tooltip } from 'antd';
+import { Tabs, Button, Avatar, Empty, Row, Col, Modal, Form, Input, Select, DatePicker, message, Tooltip, Popover } from 'antd';
 import dayjs from 'dayjs';
 import { usePermissions } from '../hooks/usePermissions';
 import { useTranslation } from 'react-i18next';
@@ -215,18 +216,39 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, onBack }) => {
                                     <h1 className="project-title-ios">{project.name}</h1>
                                     <StatusBadge status={project.status} />
                                 </div>
+                                {/*
+                                  * Chi nhánh / chủ đầu tư / thời gian nằm trong Popover
+                                  * chứ không phải một dòng thường trực: chúng vốn là nội
+                                  * dung của tab Tổng quan đã bỏ, tra thỉnh thoảng chứ
+                                  * không nhìn liên tục, mà mỗi dòng header ăn ~30px ngay
+                                  * phía trên bảng.
+                                  */}
                                 <div className="project-subtitle-ios">
                                     {t('projects.contractCode')}: <span className="subtitle-code">{project.code || '--'}</span>
+                                    {headerInfo.length > 0 && (
+                                        <Popover
+                                            trigger="click"
+                                            placement="bottomLeft"
+                                            content={
+                                                <div className="project-info-popover">
+                                                    {headerInfo.map(info => (
+                                                        <div key={info.label}>
+                                                            <span className="header-info-label">{info.label}:</span> {info.value}
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            }
+                                        >
+                                            <Button
+                                                type="text"
+                                                size="small"
+                                                className="project-info-btn"
+                                                icon={<InfoCircleOutlined />}
+                                                aria-label={t('common.details')}
+                                            />
+                                        </Popover>
+                                    )}
                                 </div>
-                                {headerInfo.length > 0 && (
-                                    <div className="project-header-info">
-                                        {headerInfo.map(info => (
-                                            <span key={info.label}>
-                                                <span className="header-info-label">{info.label}:</span> {info.value}
-                                            </span>
-                                        ))}
-                                    </div>
-                                )}
                             </div>
                         </div>
 

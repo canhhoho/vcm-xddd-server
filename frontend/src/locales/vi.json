@@ -922,7 +922,8 @@
         "set": "Đặt",
         "setAll": "Đặt tất cả",
         "optional": "(nếu có)",
-        "index": "STT"
+        "index": "STT",
+        "details": "Chi tiết"
     },
     "changePassword": {
         "title": "Đổi mật khẩu",
@@ -1122,6 +1123,11 @@
         "noteSaveSuccess": "Đã lưu ghi chú",
         "noteFromFile": "Ghi chú gốc",
         "colNoteTooltip": "Dòng trên: ghi chú từ file Excel. Dòng dưới: ghi chú của ngày đang chọn.",
-        "sortedFlatHint": "Đang sắp xếp — bảng hiện dạng danh sách phẳng"
+        "sortedFlatHint": "Đang sắp xếp — bảng hiện dạng danh sách phẳng",
+        "statTotalShort": "Tổng",
+        "statDoneShort": "Xong",
+        "statPendingShort": "Chưa xong",
+        "statOverdueShort": "Trễ",
+        "statScopeTooltip": "Số liệu tính theo phạm vi đang chọn. Bấm để lọc."
     }
 }

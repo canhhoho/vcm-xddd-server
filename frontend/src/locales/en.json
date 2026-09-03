@@ -922,7 +922,8 @@
         "set": "Set",
         "setAll": "Set All",
         "optional": "(optional)",
-        "index": "No."
+        "index": "No.",
+        "details": "Details"
     },
     "changePassword": {
         "title": "Change Password",
@@ -1095,11 +1096,11 @@
         "dateSaveSuccess": "Date saved",
         "statTotal": "Total items",
         "statDone": "Completed",
-        "statPending": "In progress",
+        "statPending": "Not done",
         "statOverdue": "Overdue",
         "searchPlaceholder": "Search by no., name, note…",
         "filterAll": "All",
-        "filterPending": "In progress",
+        "filterPending": "Not done",
         "filterDone": "Completed",
         "filterResult": "{{count}} results",
         "noFilterResult": "No work items match the filter in this section.",
@@ -1122,6 +1123,11 @@
         "noteSaveSuccess": "Note saved",
         "noteFromFile": "Original note",
         "colNoteTooltip": "Top: note from the Excel file. Bottom: note for the selected date.",
-        "sortedFlatHint": "Sorted — showing a flat list"
+        "sortedFlatHint": "Sorted — showing a flat list",
+        "statTotalShort": "Total",
+        "statDoneShort": "Done",
+        "statPendingShort": "Not done",
+        "statOverdueShort": "Overdue",
+        "statScopeTooltip": "Figures follow the selected scope. Click to filter."
     }
 }

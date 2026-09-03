@@ -114,6 +114,36 @@ const ALL_MODULE_KEYS: ModuleKey[] = MODULE_GROUPS.flatMap(
  */
 const PERM_COL_WIDTH = 116;
 
+/**
+ * Width CHUNG cho mọi cột Vai trò (3 tab: Người dùng, Chức danh, Phân quyền).
+ *
+ * Trước đây mỗi tab tự đặt một số (130/120/90) và tab Phân quyền để 90 thì thẻ
+ * Tag tràn hẳn ra ngoài viền ô — ba bản sao trôi mỗi nơi một số chính là thứ đẻ
+ * ra lỗi đó, nên gom về một hằng.
+ *
+ * 130 chứ không nhỏ hơn vì width còn phải chứa TIÊU ĐỀ cột, không chỉ nội dung:
+ * đo trên trình duyệt, "Quyền mặc định" (tab Chức danh) cần 126px kể cả padding,
+ * dưới mức đó là tiêu đề xuống hai dòng. Thẻ mã rộng nhất là ADMIN, chỉ cần 72px.
+ */
+const ROLE_COL_WIDTH = 130;
+
+/**
+ * Nhãn hiển thị trong ô bảng: chỉ MÃ quyền, nghĩa đầy đủ nằm ở tooltip.
+ *
+ * Các chuỗi `users.formDefaultRole*` ("Quản trị (ADMIN)") vốn soạn cho ô Select
+ * trong form, nơi phần trong ngoặc có tác dụng dạy mã tương ứng; nhét nguyên vào
+ * một ô bảng hẹp thì nửa nhãn là thừa và gây tràn (VI lẫn EN đều 16 ký tự).
+ *
+ * Map cứng, KHÔNG dựng chuỗi bằng nối/toUpperCase — xem bài học ở đầu
+ * components/plan/planConstants.ts.
+ */
+const ROLE_CODE: Record<string, string> = {
+    ADMIN: 'ADMIN',
+    EDIT: 'EDIT',
+    VIEW: 'VIEW',
+    NO_ACCESS: 'NO',
+};
+
 /** Nhãn ngắn cho 5 cột con — tiêu đề cha đã nói "Kế hoạch" rồi, không lặp lại */
 const PLAN_SHORT_LABEL: Record<PlanKey, string> = {
     plans_bd: 'BD', plans_mkt: 'MKT', plans_qs: 'QS', plans_des: 'DES', plans_pm: 'PM',
@@ -675,6 +705,7 @@ const UserManagement: React.FC = () => {
         });
     };
 
+    /** Nhãn đầy đủ. Dùng cho ô Select trong form và cho tooltip của thẻ trong bảng. */
     const getRoleLabel = useCallback((role?: UserRole | ModuleAccess) => {
         switch (role) {
             case 'ADMIN': return t('users.formDefaultRoleAdmin');
@@ -684,6 +715,24 @@ const UserManagement: React.FC = () => {
             default: return role || '-';
         }
     }, [t]);
+
+    /**
+     * Thẻ vai trò trong bảng: mã ngắn + tooltip mang nghĩa đầy đủ.
+     * Dùng chung cho cả ba tab để width và cách hiển thị không trôi mỗi nơi một kiểu.
+     */
+    const roleTag = useCallback((role?: UserRole) => {
+        const tag = (
+            <Tag color={getRoleColor(role)} style={{ margin: 0 }}>
+                {role ? (ROLE_CODE[role] ?? role) : '-'}
+            </Tag>
+        );
+        // ADMIN BYPASS toàn bộ ma trận quyền (moduleAccess.js:70, planAccess.js:134).
+        // Cảnh báo đó trước chỉ có ở tab Phân quyền; nay đi kèm thẻ ở mọi tab.
+        const title = role === 'ADMIN'
+            ? <>{getRoleLabel(role)}<br />{t('users.adminBypassHint')}</>
+            : getRoleLabel(role);
+        return <Tooltip title={title}>{tag}</Tooltip>;
+    }, [getRoleLabel, t]);
 
     const renderFilters = () => (
         <VcmFilterBar>
@@ -770,11 +819,9 @@ const UserManagement: React.FC = () => {
             title: t('users.colRole'),
             dataIndex: 'role',
             key: 'role',
-            width: 130,
+            width: ROLE_COL_WIDTH,
             align: 'center' as const,
-            render: (role: UserRole) => (
-                <Tag color={getRoleColor(role)} style={{ margin: 0 }}>{getRoleLabel(role)}</Tag>
-            )
+            render: (role: UserRole) => roleTag(role)
         },
         {
             // Trạng thái lấy từ usePresence (endpoint riêng, không cache), KHÔNG từ
@@ -886,14 +933,9 @@ const UserManagement: React.FC = () => {
             title: t('users.colRole'),
             dataIndex: 'role',
             key: 'role',
-            width: 90,
+            width: ROLE_COL_WIDTH,
             align: 'center' as const,
-            render: (role: UserRole | undefined) => {
-                const tag = <Tag color={getRoleColor(role)} style={{ margin: 0 }}>{getRoleLabel(role)}</Tag>;
-                return role === 'ADMIN'
-                    ? <Tooltip title={t('users.adminBypassHint')}>{tag}</Tooltip>
-                    : tag;
-            }
+            render: (role: UserRole | undefined) => roleTag(role)
         },
         ...MODULE_GROUPS.map(col => 'groupLabel' in col
             // Tiêu đề cha 2 tầng của antd Table: 5 cột plans_* nằm dưới "Kế hoạch"
@@ -925,7 +967,7 @@ const UserManagement: React.FC = () => {
                 </Dropdown>
             )
         }
-    ], [positions, permissionColumn, handleBulkPermissionChange, getRoleLabel, t]);
+    ], [positions, permissionColumn, handleBulkPermissionChange, roleTag, t]);
 
     // Position Table Columns
     const positionColumns = [
@@ -956,11 +998,9 @@ const UserManagement: React.FC = () => {
             title: t('users.formDefaultRole'),
             dataIndex: 'defaultRole',
             key: 'defaultRole',
-            width: 120,
+            width: ROLE_COL_WIDTH,
             align: 'center' as const,
-            render: (role: UserRole) => (
-                <Tag color={getRoleColor(role)} style={{ margin: 0 }}>{getRoleLabel(role)}</Tag>
-            )
+            render: (role: UserRole) => roleTag(role)
         },
         {
             title: t('common.description'),
@@ -1098,7 +1138,10 @@ const UserManagement: React.FC = () => {
                                             showSizeChanger: true,
                                             showTotal: (total) => t('users.totalUsers', { total }),
                                         }}
-                                        // 140+160+200+110+130+100 = 840, cộng ~200 cho cột mô tả co giãn
+                                        // 160 tên + 200 email + 140 chức danh + 110 nhóm
+                                        // + 130 vai trò + 130 trạng thái + 100 thao tác = 970,
+                                        // phần dư tới 1040 dành cho cột mô tả co giãn.
+                                        // (Comment cũ ghi 840 vì quên cột trạng thái.)
                                         scroll={{ x: 1040 }}
                                         className="user-table"
                                         size="small"
@@ -1179,9 +1222,12 @@ const UserManagement: React.FC = () => {
                                                 showSizeChanger: true,
                                                 showTotal: (total) => t('users.totalUsers', { total }),
                                             }}
-                                            // 160 tên + 150 chức danh + 90 role
-                                            // + 10×116 quyền + 100 "Đặt tất cả" = 1660
-                                            scroll={{ x: 160 + 150 + 90 + 10 * PERM_COL_WIDTH + 100 }}
+                                            // 160 tên + 150 chức danh + 130 vai trò
+                                            // + 10×116 quyền + 100 "Đặt tất cả" = 1700.
+                                            // Cộng từ hằng số, không gõ tay lại con số
+                                            // width: lệch hai chỗ là cột bị ghim hẹp
+                                            // hơn nội dung rồi tràn ra ngoài ô.
+                                            scroll={{ x: 160 + 150 + ROLE_COL_WIDTH + 10 * PERM_COL_WIDTH + 100 }}
                                             bordered
                                             size="small"
                                         />

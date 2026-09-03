@@ -19,7 +19,7 @@ import React, { useCallback, useDeferredValue, useEffect, useMemo, useRef, useSt
 import {
     Table, Button, InputNumber, DatePicker, Empty, Tag, Upload,
     Modal, message, Drawer, Popconfirm, Popover, Tabs, Alert, Spin,
-    Row, Col, Input, Segmented, Typography, Dropdown,
+    Input, Segmented, Typography, Dropdown,
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import type { MenuProps } from 'antd';
@@ -37,6 +37,8 @@ import {
 import { parseWorkItemsExcel, exportWorkItemsExcel } from '../utils/workItemsExcel';
 import type { ParseResult } from '../utils/workItemsExcel';
 import { FilterChips } from '../components/FilterChips';
+import { VcmStatStrip } from '../components/VcmStatStrip';
+import type { StatItem } from '../components/VcmStatStrip';
 import { BRAND_COLORS } from '../styles/brandIdentity';
 
 interface Props {
@@ -792,38 +794,46 @@ const ProjectWorkItemsTab: React.FC<Props> = ({ project, canEdit }) => {
         isOverdue, overdueDays, saveQty, saveNote, saveDate,
     ]);
 
-    const statCards = useMemo(() => ([
+    /**
+     * Chip thống kê kiêm nút lọc. Nhãn NGẮN vì dải này nằm cùng hàng với ô chọn
+     * ngày và hai nút Excel — nhãn đầy đủ chuyển vào tooltip.
+     */
+    const statCards: StatItem[] = useMemo(() => ([
         {
-            key: 'ALL' as StatusFilter, label: t('projectWorkItems.statTotal'), value: stats.total,
-            icon: '📋', color: BRAND_COLORS.info, bg: '#EFF6FF',
+            key: 'ALL', label: t('projectWorkItems.statTotalShort'),
+            title: t('projectWorkItems.statTotal'), value: stats.total,
+            icon: '📋', color: BRAND_COLORS.info,
         },
         {
-            key: 'DONE' as StatusFilter, label: t('projectWorkItems.statDone'), value: stats.done,
-            icon: '✅', color: BRAND_COLORS.success, bg: '#ECFDF5',
+            key: 'DONE', label: t('projectWorkItems.statDoneShort'),
+            title: t('projectWorkItems.statDone'), value: stats.done,
+            icon: '✅', color: BRAND_COLORS.success,
         },
         {
-            key: 'PENDING' as StatusFilter, label: t('projectWorkItems.statPending'), value: stats.pending,
-            icon: '🚧', color: BRAND_COLORS.warning, bg: '#FFFBEB',
+            key: 'PENDING', label: t('projectWorkItems.statPendingShort'),
+            title: t('projectWorkItems.statPending'), value: stats.pending,
+            icon: '🚧', color: BRAND_COLORS.warning,
         },
         {
-            key: 'OVERDUE' as StatusFilter, label: t('projectWorkItems.statOverdue'), value: stats.overdue,
+            key: 'OVERDUE', label: t('projectWorkItems.statOverdueShort'),
+            title: t('projectWorkItems.statOverdue'), value: stats.overdue,
             icon: '⚠️',
             color: stats.overdue > 0 ? BRAND_COLORS.error : BRAND_COLORS.textMuted,
-            bg: stats.overdue > 0 ? '#FEF2F2' : BRAND_COLORS.backgroundLight,
         },
     ]), [t, stats]);
 
-    const scopeSuffix = scope === 'PROJECT'
-        ? t('projectWorkItems.statScopeProject')
-        : t('projectWorkItems.statScopeSheet');
 
     // ── Render ────────────────────────────────────────────────────────────────
     return (
         <div>
-            {/* Toolbar */}
+            {/*
+              * Toolbar. Dải thống kê nằm CHUNG hàng này thay vì có hàng riêng:
+              * hàng thẻ cũ tốn ~100px trong khi khoảng giữa ở đây đang bỏ trống.
+              * Gộp vào là xoá hẳn một hàng, không chỉ làm nó thấp đi.
+              */}
             <div style={{
                 display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                flexWrap: 'wrap', gap: 8, padding: '12px 0',
+                flexWrap: 'wrap', gap: 8, padding: '8px 0',
             }}>
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
                     {canUpdateProgress && (
@@ -842,6 +852,16 @@ const ProjectWorkItemsTab: React.FC<Props> = ({ project, canEdit }) => {
                         </>
                     )}
                 </div>
+
+                {items.length > 0 && (
+                    <VcmStatStrip
+                        items={statCards}
+                        activeKey={statusFilter}
+                        onSelect={key => setStatusFilter(
+                            statusFilter === key ? 'ALL' : (key as StatusFilter))}
+                        title={t('projectWorkItems.statScopeTooltip')}
+                    />
+                )}
 
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
                     {items.length > 0 && (
@@ -888,39 +908,6 @@ const ProjectWorkItemsTab: React.FC<Props> = ({ project, canEdit }) => {
                 />
             ) : (
                 <>
-                <Row gutter={[16, 16]} className="log-stats-row">
-                    {statCards.map(s => {
-                        const active = statusFilter === s.key;
-                        const toggle = () => setStatusFilter(active ? 'ALL' : s.key);
-                        return (
-                            <Col xs={12} sm={12} md={6} key={s.key}>
-                                <div
-                                    className={`log-stats-card is-clickable${active ? ' is-active' : ''}`}
-                                    role="button"
-                                    tabIndex={0}
-                                    aria-pressed={active}
-                                    onClick={toggle}
-                                    onKeyDown={e => {
-                                        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); }
-                                    }}
-                                >
-                                    <div className="log-stats-icon" style={{ backgroundColor: s.bg }}>{s.icon}</div>
-                                    <div className="log-stats-info">
-                                        <div className="log-stats-label">{s.label}</div>
-                                        {/* Phạm vi đứng cạnh con số chứ không nối vào nhãn:
-                                            .log-stats-label có nowrap + ellipsis nên nối vào
-                                            là bị cắt cụt ("TỔNG HẠNG MỤC tro..."). */}
-                                        <div className="log-stats-value" style={{ color: s.color }}>
-                                            {s.value}
-                                            <span className="log-stats-scope">{scopeSuffix}</span>
-                                        </div>
-                                    </div>
-                                </div>
-                            </Col>
-                        );
-                    })}
-                </Row>
-
                 {/*
                   * Tabs chỉ làm THANH CHỌN sheet, KHÔNG chứa bảng.
                   * Trước đây mỗi pane đều dựng một <Table> riêng, mà antd giữ pane
@@ -929,6 +916,7 @@ const ProjectWorkItemsTab: React.FC<Props> = ({ project, canEdit }) => {
                   * mục. Cùng khuôn với Tabs ở ProjectDetail.tsx.
                   */}
                 <Tabs
+                    size="small"
                     activeKey={currentSheet}
                     // Bấm một sheet thì phải về phạm vi sheet, nếu không tab đổi
                     // mà bảng vẫn gộp cả dự án — đúng kiểu bẫy im lặng.
