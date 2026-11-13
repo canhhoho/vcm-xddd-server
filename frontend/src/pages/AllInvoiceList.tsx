@@ -25,9 +25,11 @@ import { VcmFilterBar } from '../components/VcmFilterBar';
 import { FilterChips } from '../components/FilterChips';
 import { VcmActionGroup } from '../components/VcmActionGroup';
 import { useFilterSync, useFilterSyncDate } from '../hooks/useFilterSync';
-import { useContracts } from '../hooks/useContracts';
+import { useContracts, CONTRACT_KEYS } from '../hooks/useContracts';
 import { useAppConfig } from '../hooks/useAppConfig';
 import { usePermissions } from '../hooks/usePermissions';
+import { useQueryClient } from '@tanstack/react-query';
+import ContractDetailModal from './ContractDetailModal';
 
 const { Option } = Select;
 
@@ -42,12 +44,25 @@ const AllInvoiceList: React.FC = () => {
     const { permissions, isAdmin } = usePermissions();
     const canView = isAdmin || permissions.contracts === 'VIEW' || permissions.contracts === 'EDIT';
 
+    const queryClient = useQueryClient();
     const { data: contracts = [] } = useContracts(canView);
     const { data: appConfig } = useAppConfig(canView);
 
     const [invoices, setInvoices] = useState<Invoice[]>([]);
     const [loading, setLoading] = useState(false);
     const [branches, setBranches] = useState<Province[]>([]);
+
+    // Contract Detail Modal
+    const [detailVisible, setDetailVisible] = useState(false);
+    const [detailContract, setDetailContract] = useState<Contract | null>(null);
+
+    const handleContractDetail = useCallback((contractId: string) => {
+        const contract = contracts.find(c => String(c.id) === String(contractId));
+        if (contract) {
+            setDetailContract(contract);
+            setDetailVisible(true);
+        }
+    }, [contracts]);
     const [editModalVisible, setEditModalVisible] = useState(false);
     const [editingInvoice, setEditingInvoice] = useState<Invoice | null>(null);
     const [form] = Form.useForm();
@@ -236,8 +251,14 @@ const AllInvoiceList: React.FC = () => {
             key: 'contractCode',
             width: 180,
             fixed: 'left' as const,
-            render: (text: string) => (
-                <span style={{ fontWeight: 600, color: '#1a1a2e', whiteSpace: 'normal', wordBreak: 'break-word' }}>{text}</span>
+            render: (text: string, record: Invoice) => (
+                <a
+                    onClick={() => handleContractDetail(record.contractId)}
+                    className="font-semibold text-blue-600 hover:underline"
+                    style={{ fontWeight: 600, color: '#1a1a2e', whiteSpace: 'normal', wordBreak: 'break-word', cursor: 'pointer' }}
+                >
+                    {text}
+                </a>
             ),
         },
         {
@@ -245,8 +266,14 @@ const AllInvoiceList: React.FC = () => {
             dataIndex: 'contractName',
             key: 'contractName',
             width: 280,
-            render: (text: string) => (
-                <span style={{ color: '#374151', whiteSpace: 'normal', wordBreak: 'break-word' }}>{text}</span>
+            render: (text: string, record: Invoice) => (
+                <a
+                    onClick={() => handleContractDetail(record.contractId)}
+                    className="text-gray-900 hover:text-blue-600"
+                    style={{ color: '#374151', whiteSpace: 'normal', wordBreak: 'break-word', cursor: 'pointer' }}
+                >
+                    {text}
+                </a>
             ),
         },
         {
@@ -265,8 +292,13 @@ const AllInvoiceList: React.FC = () => {
             key: 'invoiceNumber',
             width: 180,
             ellipsis: true,
-            render: (text: string) => (
-                <span style={{ color: '#1890ff', fontWeight: 500 }}>{text}</span>
+            render: (text: string, record: Invoice) => (
+                <a
+                    onClick={() => handleContractDetail(record.contractId)}
+                    style={{ color: '#1890ff', fontWeight: 500, cursor: 'pointer' }}
+                >
+                    {text}
+                </a>
             ),
         },
         {
@@ -413,7 +445,7 @@ const AllInvoiceList: React.FC = () => {
                 );
             },
         },
-    ], [t]);
+    ], [t, handleContractDetail]);
 
     return (
         <Card className="contracts-card">
@@ -567,6 +599,18 @@ const AllInvoiceList: React.FC = () => {
                     </Form.Item>
                 </Form>
             </Modal>
+
+            <ContractDetailModal
+                contract={detailContract}
+                visible={detailVisible}
+                onCancel={() => setDetailVisible(false)}
+                provinces={branches}
+                appConfig={appConfig}
+                onContractUpdate={() => {
+                    queryClient.invalidateQueries({ queryKey: CONTRACT_KEYS.list() });
+                    loadInvoices();
+                }}
+            />
         </Card>
     );
 };
