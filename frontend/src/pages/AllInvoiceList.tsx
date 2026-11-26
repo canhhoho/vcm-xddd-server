@@ -30,6 +30,7 @@ import { useAppConfig } from '../hooks/useAppConfig';
 import { usePermissions } from '../hooks/usePermissions';
 import { useQueryClient } from '@tanstack/react-query';
 import ContractDetailModal from './ContractDetailModal';
+import { isPreviewable, openAttachment, downloadAttachment } from '../utils/attachments';
 
 const { Option } = Select;
 
@@ -398,20 +399,13 @@ const AllInvoiceList: React.FC = () => {
                 const fileUrls = parseFileUrls(record.files);
 
                 const handleView = () => {
-                    fileUrls.forEach((url: string) => window.open(url, '_blank'));
+                    // Word/Excel không xem được trong trình duyệt → tải về thay vì mở tab trống.
+                    fileUrls.forEach((url: string, index: number) =>
+                        isPreviewable(url) ? openAttachment(url) : downloadAttachment(url, index));
                 };
 
                 const handleDownload = () => {
-                    fileUrls.forEach((url: string, index: number) => {
-                        const fileName = url.split('/').pop()?.split('?')[0] || `file_${index + 1}`;
-                        const link = document.createElement('a');
-                        link.href = url;
-                        link.download = fileName;
-                        link.target = '_blank';
-                        document.body.appendChild(link);
-                        link.click();
-                        document.body.removeChild(link);
-                    });
+                    fileUrls.forEach((url: string, index: number) => downloadAttachment(url, index));
                 };
 
                 return (

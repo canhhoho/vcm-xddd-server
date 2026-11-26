@@ -15,6 +15,7 @@ const planAccess = require('./middleware/planAccess');
 const moduleAccess = require('./middleware/moduleAccess');
 const projectMemberAccess = require('./middleware/projectMemberAccess');
 const rbac = require('./middleware/rbac');
+const { originalNameFromStored } = require('./middleware/fileUpload');
 
 // Route modules
 const authRoutes = require('./routes/auth');
@@ -70,10 +71,20 @@ if (process.env.NODE_ENV !== 'test') {
 // nosniff + attachment: file người dùng tải lên nằm cùng origin với app, nếu để
 // trình duyệt tự đoán kiểu và render inline thì một file .html/.svg độc hại sẽ
 // chạy script đọc được localStorage (nơi chứa JWT).
+// Ngoại lệ: PDF và ảnh raster được mở xem trực tiếp (inline). Các kiểu này không
+// chạy script trên origin của app (SVG/HTML đã bị fileUpload chặn ngay từ lúc tải
+// lên), nên nút "Xem" trên UI mở được file thay vì luôn bị ép tải xuống.
+const INLINE_EXT = new Set(['.pdf', '.jpg', '.jpeg', '.png', '.webp', '.gif']);
 app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads'), {
-  setHeaders: (res) => {
+  setHeaders: (res, filePath) => {
     res.setHeader('X-Content-Type-Options', 'nosniff');
-    res.setHeader('Content-Disposition', 'attachment');
+    const ext = path.extname(filePath).toLowerCase();
+    const name = originalNameFromStored(path.basename(filePath));
+    const type = INLINE_EXT.has(ext) ? 'inline' : 'attachment';
+    // filename* (RFC 5987) cho tên tiếng Việt; filename ASCII làm dự phòng.
+    const ascii = name.replace(/[^\x20-\x7e]/g, '_').replace(/["\\]/g, '_');
+    res.setHeader('Content-Disposition',
+      `${type}; filename="${ascii}"; filename*=UTF-8''${encodeURIComponent(name)}`);
   },
 }));
 

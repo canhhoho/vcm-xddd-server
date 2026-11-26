@@ -11,7 +11,7 @@ const CacheService = require('../services/cacheService');
 const {
   badRequest, conflict, assertDateRange, assertRequiredDate, assertRequiredText,
 } = require('./_planValidators');
-const { createUploader, removeUploadedFiles: removeFiles, toPublicUrls } = require('../middleware/fileUpload');
+const { createUploader, removeUploadedFiles: removeFiles, removeDroppedFiles, toPublicUrls } = require('../middleware/fileUpload');
 const { toInvoice } = require('./invoices');
 const { resolveAmounts, DEFAULT_TAX_RATE } = require('./_taxAmounts');
 
@@ -218,6 +218,14 @@ router.put('/:id', async (req, res, next) => {
 
     if (fields.length === 0) throw badRequest('No fields to update');
 
+    // Đọc danh sách file cũ để dọn những file người dùng đã gỡ khỏi hợp đồng
+    // (bấm xoá vì tải nhầm). Không dọn thì file mồ côi nằm trên đĩa mãi mãi.
+    let oldFileUrls = null;
+    if (d.fileUrls !== undefined) {
+      const old = await query('SELECT file_urls FROM contracts WHERE id = $1', [id]);
+      if (old.rowCount > 0) oldFileUrls = old.rows[0].file_urls || '';
+    }
+
     values.push(id);
     const result = await query(`UPDATE contracts SET ${fields.join(', ')} WHERE id = $${idx}`, values);
     if (result.rowCount === 0) {
@@ -225,6 +233,8 @@ router.put('/:id', async (req, res, next) => {
       err.statusCode = 404;
       throw err;
     }
+
+    if (oldFileUrls) removeDroppedFiles(oldFileUrls, d.fileUrls, UPLOAD_SUBDIR);
 
     await logActivity(req.user?.email || '', 'CONTRACT_UPDATE', `Updated contract ${id}`);
     CacheService.clear(['CONTRACTS_LIST']); CacheService.invalidateDashboard();

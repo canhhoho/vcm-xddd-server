@@ -11,6 +11,10 @@ const { v4: uuidv4 } = require('uuid');
 const CacheService = require('../services/cacheService');
 const { badRequest, assertRequiredDate, assertNonNegative } = require('./_planValidators');
 const { resolveAmounts, DEFAULT_TAX_RATE } = require('./_taxAmounts');
+const { removeUploadedFiles, removeDroppedFiles } = require('../middleware/fileUpload');
+
+// File hoá đơn được tải lên qua POST /contracts/upload nên nằm chung uploads/contracts/.
+const UPLOAD_SUBDIR = 'contracts';
 
 async function logActivity(email, action, description) {
   try {
@@ -158,6 +162,13 @@ router.put('/:id', async (req, res, next) => {
 
     if (fields.length === 0) throw badRequest('No fields to update');
 
+    // Đọc danh sách file cũ để dọn file người dùng đã gỡ (tải nhầm) sau khi lưu.
+    let oldFiles = null;
+    if (d.files !== undefined) {
+      const old = await query('SELECT files FROM invoices WHERE id = $1', [id]);
+      if (old.rowCount > 0) oldFiles = old.rows[0].files || '';
+    }
+
     values.push(id);
     const result = await query(`UPDATE invoices SET ${fields.join(', ')} WHERE id = $${idx}`, values);
     if (result.rowCount === 0) {
@@ -165,6 +176,8 @@ router.put('/:id', async (req, res, next) => {
       err.statusCode = 404;
       throw err;
     }
+
+    if (oldFiles) removeDroppedFiles(oldFiles, d.files, UPLOAD_SUBDIR);
 
     await logActivity(req.user?.email || '', 'INVOICE_UPDATE', `Updated invoice ${id}`);
     CacheService.clear(['CONTRACTS_LIST']); CacheService.invalidateDashboard();
@@ -178,12 +191,15 @@ router.put('/:id', async (req, res, next) => {
 // DELETE /invoices/:id
 router.delete('/:id', async (req, res, next) => {
   try {
-    const result = await query('DELETE FROM invoices WHERE id = $1 RETURNING invoice_number', [req.params.id]);
+    const result = await query('DELETE FROM invoices WHERE id = $1 RETURNING invoice_number, files', [req.params.id]);
     if (result.rowCount === 0) {
       const err = new Error('Invoice not found');
       err.statusCode = 404;
       throw err;
     }
+
+    // Trước đây xoá hoá đơn để lại file đính kèm mồ côi trên đĩa.
+    removeUploadedFiles(result.rows[0].files, UPLOAD_SUBDIR);
 
     await logActivity(req.user?.email || '', 'INVOICE_DELETE', `Deleted invoice ${result.rows[0].invoice_number}`);
     CacheService.clear(['CONTRACTS_LIST']); CacheService.invalidateDashboard();

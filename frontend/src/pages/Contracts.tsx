@@ -23,6 +23,7 @@ import {
     Dropdown,
     List,
     Typography,
+    Popconfirm,
 } from 'antd';
 import type { MenuProps } from 'antd';
 import {
@@ -32,7 +33,8 @@ import {
     DownloadOutlined,
     DownOutlined,
     FilePdfOutlined,
-    CloseCircleOutlined,
+    EyeOutlined,
+    DeleteOutlined,
 } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import dayjs from 'dayjs';
@@ -56,6 +58,7 @@ import { normalizeId } from '../utils/common';
 import { exportExcelSheet, excelDateCell, excelDateTimeCell } from '../utils/excelExport';
 import type { ExportColumn } from '../utils/excelExport';
 import { BRAND_COLORS } from '../styles/brandIdentity';
+import { getAttachmentName, isPreviewable, openAttachment, downloadAttachment } from '../utils/attachments';
 
 const { Option } = Select;
 const { Text } = Typography;
@@ -845,7 +848,7 @@ const Contracts: React.FC = () => {
                         {/* Show existing files when editing */}
                         {editingContract && existingFiles.length > 0 && (
                             <div style={{ marginBottom: 12 }}>
-                                <div style={{ fontSize: 13, color: '#888', marginBottom: 6 }}>
+                                <div style={{ fontSize: 13, color: BRAND_COLORS.textSecondary, marginBottom: 6 }}>
                                     {t('contracts.existingFiles')}
                                 </div>
                                 <List
@@ -853,13 +856,13 @@ const Contracts: React.FC = () => {
                                     bordered
                                     dataSource={existingFiles}
                                     renderItem={(url: string, index: number) => {
-                                        const fileName = url.split('/').pop()?.split('?')[0] || `file_${index + 1}`;
+                                        const fileName = getAttachmentName(url, index);
                                         return (
                                             <List.Item
                                                 style={{ padding: '6px 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
                                             >
                                                 <Space size="small" style={{ flex: 1, minWidth: 0 }}>
-                                                    <FilePdfOutlined style={{ color: '#ff4d4f', fontSize: 16 }} />
+                                                    <FilePdfOutlined style={{ color: BRAND_COLORS.dangerText, fontSize: 16 }} />
                                                     <a
                                                         href={url}
                                                         target="_blank"
@@ -867,20 +870,32 @@ const Contracts: React.FC = () => {
                                                         style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 350 }}
                                                         title={fileName}
                                                     >
-                                                        {decodeURIComponent(fileName)}
+                                                        {fileName}
                                                     </a>
                                                 </Space>
-                                                <Tooltip title={t('common.delete')}>
-                                                    <Button
-                                                        type="text"
-                                                        danger
-                                                        size="small"
-                                                        icon={<CloseCircleOutlined />}
-                                                        onClick={() => {
-                                                            setExistingFiles(prev => prev.filter((_, i) => i !== index));
-                                                        }}
-                                                    />
-                                                </Tooltip>
+                                                <Space size={0}>
+                                                    <Tooltip title={isPreviewable(url) ? t('contracts.viewFile') : t('common.download')}>
+                                                        <Button
+                                                            type="text"
+                                                            size="small"
+                                                            icon={isPreviewable(url) ? <EyeOutlined /> : <DownloadOutlined />}
+                                                            style={{ color: BRAND_COLORS.actionView }}
+                                                            onClick={() => isPreviewable(url) ? openAttachment(url) : downloadAttachment(url, index)}
+                                                        />
+                                                    </Tooltip>
+                                                    <Popconfirm
+                                                        title={t('contracts.deleteFileConfirm', { name: fileName })}
+                                                        description={t('contracts.deleteFileHint')}
+                                                        onConfirm={() => setExistingFiles(prev => prev.filter((_, i) => i !== index))}
+                                                        okText={t('common.delete')}
+                                                        okButtonProps={{ danger: true }}
+                                                        cancelText={t('common.cancel')}
+                                                    >
+                                                        <Tooltip title={t('common.delete')}>
+                                                            <Button type="text" danger size="small" icon={<DeleteOutlined />} />
+                                                        </Tooltip>
+                                                    </Popconfirm>
+                                                </Space>
                                             </List.Item>
                                         );
                                     }}
@@ -888,17 +903,19 @@ const Contracts: React.FC = () => {
                             </div>
                         )}
                         <Upload
+                            multiple
                             beforeUpload={(file) => {
-                                setFileList([...fileList, file]);
+                                // Cập nhật dạng hàm: chọn nhiều file một lần thì beforeUpload
+                                // chạy liên tiếp trong cùng tick; dùng `fileList` từ closure sẽ
+                                // chỉ giữ lại file cuối.
+                                setFileList(prev => [...prev, file]);
                                 return false; // Prevent auto upload
                             }}
                             onRemove={(file) => {
-                                const index = fileList.indexOf(file);
-                                const newFileList = fileList.slice();
-                                newFileList.splice(index, 1);
-                                setFileList(newFileList);
+                                setFileList(prev => prev.filter(f => f.uid !== file.uid));
                             }}
                             fileList={fileList}
+                            showUploadList={{ showRemoveIcon: true }}
                         >
                             <Button icon={<UploadOutlined />}>{t('contracts.formAttachmentButton')}</Button>
                         </Upload>
@@ -918,6 +935,7 @@ const Contracts: React.FC = () => {
                 provinces={branches}
                 appConfig={appConfig}
                 onContractUpdate={() => queryClient.invalidateQueries({ queryKey: CONTRACT_KEYS.list() })}
+                canEdit={canEdit}
             />
         </div>
     );

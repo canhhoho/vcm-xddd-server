@@ -26,6 +26,7 @@ import { BRAND_COLORS } from '../styles/brandIdentity';
 import { useProjects, useProjectMutations } from '../hooks/useProjects';
 import { useContracts } from '../hooks/useContracts';
 import { useAppConfig } from '../hooks/useAppConfig';
+import { getAttachmentName } from '../utils/attachments';
 
 const { Option } = Select;
 
@@ -501,7 +502,7 @@ const Projects: React.FC = () => {
                                     bordered
                                     dataSource={existingFiles}
                                     renderItem={(url: string, index: number) => {
-                                        const fileName = url.split('/').pop()?.split('?')[0] || `file_${index + 1}`;
+                                        const fileName = getAttachmentName(url, index);
                                         return (
                                             <List.Item
                                                 style={{ padding: '6px 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
@@ -515,7 +516,7 @@ const Projects: React.FC = () => {
                                                         style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 400 }}
                                                         title={fileName}
                                                     >
-                                                        {decodeURIComponent(fileName)}
+                                                        {fileName}
                                                     </a>
                                                 </Space>
                                                 <Tooltip title={t('common.delete')}>

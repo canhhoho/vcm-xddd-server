@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Modal, Tag, Row, Col, Divider, Progress, Tooltip, Descriptions, Card, Space, Button } from 'antd';
+import React, { useEffect, useState } from 'react';
+import { Modal, Tag, Row, Col, Divider, Progress, Tooltip, Descriptions, Card, Space, Button, Popconfirm, message } from 'antd';
 import {
     FileTextOutlined,
     EnvironmentOutlined,
@@ -8,7 +8,9 @@ import {
     ClockCircleOutlined,
     SyncOutlined,
     FilePdfOutlined,
-    DownloadOutlined
+    DownloadOutlined,
+    EyeOutlined,
+    DeleteOutlined
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import type { Contract, Province } from '../types';
@@ -16,6 +18,8 @@ import InvoiceList from './InvoiceList';
 import { useTranslation } from 'react-i18next';
 import { normalizeId } from '../utils/common';
 import { BRAND_COLORS } from '../styles/brandIdentity';
+import { getAttachmentName, splitFileUrls, isPreviewable, openAttachment, downloadAttachment } from '../utils/attachments';
+import { useContractMutations } from '../hooks/useContracts';
 
 const DATE_FORMAT = 'DD/MM/YYYY';
 
@@ -29,6 +33,8 @@ interface ContractDetailModalProps {
     provinces: Province[];
     appConfig?: any;
     onContractUpdate?: () => void;
+    /** Hiện nút xoá file đính kèm. Server vẫn kiểm quyền contracts=EDIT. */
+    canEdit?: boolean;
 }
 
 const ContractDetailModal: React.FC<ContractDetailModalProps> = ({
@@ -37,7 +43,8 @@ const ContractDetailModal: React.FC<ContractDetailModalProps> = ({
     onCancel,
     provinces,
     appConfig,
-    onContractUpdate
+    onContractUpdate,
+    canEdit = false
 }) => {
     // Mọi hook phải chạy ở mọi lần render — `contract` bắt đầu bằng null rồi mới có
     // giá trị, nên đặt `if (!contract) return null` phía trên đây sẽ làm số hook thay
@@ -45,6 +52,29 @@ const ContractDetailModal: React.FC<ContractDetailModalProps> = ({
     const { t } = useTranslation();
 
     const [stats, setStats] = useState({ totalInvoiced: 0, totalPaid: 0 });
+    // `contract` là bản chụp lúc mở modal, không tự cập nhật sau khi xoá file.
+    // Giữ danh sách hiện hành ở đây; null = chưa sửa gì, dùng của `contract`.
+    const [fileOverride, setFileOverride] = useState<{ id: string; urls: string[] } | null>(null);
+    const { updateContract } = useContractMutations();
+    // Đóng modal thì bỏ bản ghi đè: lần mở sau `contract` đã là dữ liệu mới từ list.
+    useEffect(() => { if (!visible) setFileOverride(null); }, [visible]);
+
+    const fileUrls = fileOverride && fileOverride.id === contract?.id
+        ? fileOverride.urls
+        : splitFileUrls(contract?.fileUrl);
+
+    const handleRemoveFile = async (url: string) => {
+        if (!contract) return;
+        const next = fileUrls.filter(u => u !== url);
+        try {
+            const res = await updateContract.mutateAsync({ id: contract.id, data: { fileUrls: next.join('\n') } });
+            if (!res.success) throw new Error(res.error);
+            setFileOverride({ id: contract.id, urls: next });
+            message.success(t('contracts.deleteFileSuccess'));
+        } catch {
+            message.error(t('contracts.deleteFileError'));
+        }
+    };
 
     const getBranchCode = (id: string) => {
         const normalizedSearch = normalizeId(id);
@@ -130,9 +160,6 @@ const ContractDetailModal: React.FC<ContractDetailModalProps> = ({
 
                         {/* File Attachments */}
                         {(() => {
-                            const fileUrls = contract.fileUrl
-                                ? contract.fileUrl.split(/[\r\n,]+/).map(f => f.trim()).filter(f => f.length > 0)
-                                : [];
                             if (fileUrls.length === 0) return null;
                             return (
                                 <div style={{ marginTop: 12, paddingTop: 12, borderTop: `1px dashed ${BRAND_COLORS.border}` }}>
@@ -141,7 +168,7 @@ const ContractDetailModal: React.FC<ContractDetailModalProps> = ({
                                     </div>
                                     <Space direction="vertical" size={4} style={{ width: '100%' }}>
                                         {fileUrls.map((url, index) => {
-                                            const fileName = url.split('/').pop()?.split('?')[0] || `file_${index + 1}`;
+                                            const fileName = getAttachmentName(url, index);
                                             return (
                                                 <div key={index} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 8px', borderRadius: 6, background: BRAND_COLORS.backgroundLight }}>
                                                     <Space size="small" style={{ flex: 1, minWidth: 0 }}>
@@ -153,26 +180,44 @@ const ContractDetailModal: React.FC<ContractDetailModalProps> = ({
                                                             style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 250, fontSize: 13 }}
                                                             title={fileName}
                                                         >
-                                                            {decodeURIComponent(fileName)}
+                                                            {fileName}
                                                         </a>
                                                     </Space>
-                                                    <Tooltip title={t('common.download')}>
-                                                        <Button
-                                                            type="text"
-                                                            size="small"
-                                                            icon={<DownloadOutlined />}
-                                                            style={{ color: BRAND_COLORS.success }}
-                                                            onClick={() => {
-                                                                const link = document.createElement('a');
-                                                                link.href = url;
-                                                                link.download = fileName;
-                                                                link.target = '_blank';
-                                                                document.body.appendChild(link);
-                                                                link.click();
-                                                                document.body.removeChild(link);
-                                                            }}
-                                                        />
-                                                    </Tooltip>
+                                                    <Space size={0}>
+                                                        {isPreviewable(url) && (
+                                                            <Tooltip title={t('contracts.viewFile')}>
+                                                                <Button
+                                                                    type="text"
+                                                                    size="small"
+                                                                    icon={<EyeOutlined />}
+                                                                    style={{ color: BRAND_COLORS.actionEdit }}
+                                                                    onClick={() => openAttachment(url)}
+                                                                />
+                                                            </Tooltip>
+                                                        )}
+                                                        <Tooltip title={t('common.download')}>
+                                                            <Button
+                                                                type="text"
+                                                                size="small"
+                                                                icon={<DownloadOutlined />}
+                                                                style={{ color: BRAND_COLORS.success }}
+                                                                onClick={() => downloadAttachment(url, index)}
+                                                            />
+                                                        </Tooltip>
+                                                        {canEdit && (
+                                                            <Popconfirm
+                                                                title={t('contracts.deleteFileConfirm', { name: fileName })}
+                                                                onConfirm={() => handleRemoveFile(url)}
+                                                                okText={t('common.delete')}
+                                                                okButtonProps={{ danger: true, loading: updateContract.isPending }}
+                                                                cancelText={t('common.cancel')}
+                                                            >
+                                                                <Tooltip title={t('common.delete')}>
+                                                                    <Button type="text" danger size="small" icon={<DeleteOutlined />} loading={updateContract.isPending} />
+                                                                </Tooltip>
+                                                            </Popconfirm>
+                                                        )}
+                                                    </Space>
                                                 </div>
                                             );
                                         })}

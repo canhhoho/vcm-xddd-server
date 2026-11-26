@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Table, Button, Space, Modal, Form, Input, InputNumber, DatePicker, message, Tooltip, Upload, List, AutoComplete } from 'antd';
+import { Table, Button, Space, Modal, Form, Input, InputNumber, DatePicker, message, Tooltip, Upload, List, AutoComplete, Popconfirm } from 'antd';
 import {
     PlusOutlined,
     EditOutlined,
@@ -13,8 +13,7 @@ import {
     UserOutlined,
     PaperClipOutlined,
     FilePdfOutlined,
-    DownloadOutlined,
-    CloseCircleOutlined
+    DownloadOutlined
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import type { ColumnsType } from 'antd/es/table';
@@ -23,6 +22,8 @@ import type { Invoice } from '../types';
 import { usePermissions } from '../hooks/usePermissions';
 import { useTranslation } from 'react-i18next';
 import { VcmActionGroup } from '../components/VcmActionGroup';
+import { BRAND_COLORS } from '../styles/brandIdentity';
+import { getAttachmentName, isPreviewable, openAttachment, downloadAttachment } from '../utils/attachments';
 
 interface InvoiceListProps {
     contractId: string;
@@ -285,11 +286,11 @@ const InvoiceList: React.FC<InvoiceListProps> = ({ contractId, onStatsChange, on
                     <Space size="small" wrap>
                         {fileUrls.map((url: string, index: number) => {
                             return (
-                                <Tooltip title={t('common.view')} key={index}>
+                                <Tooltip title={getAttachmentName(url, index)} key={index}>
                                     <Button
                                         type="link"
-                                        icon={<FilePdfOutlined style={{ color: '#ff4d4f' }} />}
-                                        onClick={() => window.open(url, '_blank')}
+                                        icon={<FilePdfOutlined style={{ color: BRAND_COLORS.dangerText }} />}
+                                        onClick={() => isPreviewable(url) ? openAttachment(url) : downloadAttachment(url, index)}
                                         size="small"
                                     />
                                 </Tooltip>
@@ -305,16 +306,7 @@ const InvoiceList: React.FC<InvoiceListProps> = ({ contractId, onStatsChange, on
             render: (_, record) => {
                 const handleDownload = () => {
                     const fileUrls = parseFileUrls(record.files);
-                    fileUrls.forEach((url: string, index: number) => {
-                        const fileName = url.split('/').pop()?.split('?')[0] || `file_${index + 1}`;
-                        const link = document.createElement('a');
-                        link.href = url;
-                        link.download = fileName;
-                        link.target = '_blank';
-                        document.body.appendChild(link);
-                        link.click();
-                        document.body.removeChild(link);
-                    });
+                    fileUrls.forEach((url: string, index: number) => downloadAttachment(url, index));
                 };
 
                 return (
@@ -478,7 +470,7 @@ const InvoiceList: React.FC<InvoiceListProps> = ({ contractId, onStatsChange, on
                         {/* Show existing files when editing */}
                         {editingInvoice && existingFiles.length > 0 && (
                             <div style={{ marginBottom: 12 }}>
-                                <div style={{ fontSize: 13, color: '#888', marginBottom: 6 }}>
+                                <div style={{ fontSize: 13, color: BRAND_COLORS.textSecondary, marginBottom: 6 }}>
                                     {t('invoices.existingFiles')}
                                 </div>
                                 <List
@@ -486,13 +478,13 @@ const InvoiceList: React.FC<InvoiceListProps> = ({ contractId, onStatsChange, on
                                     bordered
                                     dataSource={existingFiles}
                                     renderItem={(url: string, index: number) => {
-                                        const fileName = url.split('/').pop()?.split('?')[0] || `file_${index + 1}`;
+                                        const fileName = getAttachmentName(url, index);
                                         return (
                                             <List.Item
                                                 style={{ padding: '6px 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
                                             >
                                                 <Space size="small" style={{ flex: 1, minWidth: 0 }}>
-                                                    <FilePdfOutlined style={{ color: '#ff4d4f', fontSize: 16 }} />
+                                                    <FilePdfOutlined style={{ color: BRAND_COLORS.dangerText, fontSize: 16 }} />
                                                     <a
                                                         href={url}
                                                         target="_blank"
@@ -500,20 +492,32 @@ const InvoiceList: React.FC<InvoiceListProps> = ({ contractId, onStatsChange, on
                                                         style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 280 }}
                                                         title={fileName}
                                                     >
-                                                        {decodeURIComponent(fileName)}
+                                                        {fileName}
                                                     </a>
                                                 </Space>
-                                                <Tooltip title={t('common.delete')}>
-                                                    <Button
-                                                        type="text"
-                                                        danger
-                                                        size="small"
-                                                        icon={<CloseCircleOutlined />}
-                                                        onClick={() => {
-                                                            setExistingFiles(prev => prev.filter((_, i) => i !== index));
-                                                        }}
-                                                    />
-                                                </Tooltip>
+                                                <Space size={0}>
+                                                    <Tooltip title={isPreviewable(url) ? t('contracts.viewFile') : t('common.download')}>
+                                                        <Button
+                                                            type="text"
+                                                            size="small"
+                                                            icon={isPreviewable(url) ? <EyeOutlined /> : <DownloadOutlined />}
+                                                            style={{ color: BRAND_COLORS.actionView }}
+                                                            onClick={() => isPreviewable(url) ? openAttachment(url) : downloadAttachment(url, index)}
+                                                        />
+                                                    </Tooltip>
+                                                    <Popconfirm
+                                                        title={t('contracts.deleteFileConfirm', { name: fileName })}
+                                                        description={t('contracts.deleteFileHint')}
+                                                        onConfirm={() => setExistingFiles(prev => prev.filter((_, i) => i !== index))}
+                                                        okText={t('common.delete')}
+                                                        okButtonProps={{ danger: true }}
+                                                        cancelText={t('common.cancel')}
+                                                    >
+                                                        <Tooltip title={t('common.delete')}>
+                                                            <Button type="text" danger size="small" icon={<DeleteOutlined />} />
+                                                        </Tooltip>
+                                                    </Popconfirm>
+                                                </Space>
                                             </List.Item>
                                         );
                                     }}
